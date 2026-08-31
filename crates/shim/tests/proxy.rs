@@ -2060,6 +2060,7 @@ fn cleans_an_escaped_descendant_after_the_cli_root_exits() {
         .env(STOCK_CODEX_PATH_ENV, fake_codex_path())
         .env("FAKE_CODEX_SPAWN_CHILD", "1")
         .env("FAKE_CODEX_ROOT_EXIT", "1")
+        .env("FAKE_CODEX_ROOT_EXIT_DELAY_MS", "1500")
         .env("FAKE_CODEX_CHILD_NEW_GROUP", "1")
         .env("FAKE_CODEX_READY_PATH", &ready)
         .stdin(Stdio::null())
