@@ -64,7 +64,7 @@ describe("Release notes Markdown", () => {
   it("renders the current GitHub Release subset as structured elements", () => {
     const root = render(
       [
-        "codexhost 是一个将 Pi 和 Claude Code 接入 Codex Desktop 的跨平台 Host。",
+        "BOFT CLI 是一个将 Pi 和 Claude Code 接入 Codex Desktop 的跨平台 Host。",
         "",
         "## 本次发布",
         "",
@@ -133,9 +133,7 @@ describe("Release notes Markdown", () => {
     expect(strong?.textContent).toBe("restart");
     const link = descendants(root).find((element) => element.tagName === "a");
     expect(link?.textContent).toBe("Releases");
-    expect(link?.attributes.get("href")).toBe(
-      "https://github.com/LiberSeek/BOFT-CLI/releases",
-    );
+    expect(link?.attributes.get("href")).toBe("https://github.com/LiberSeek/BOFT-CLI/releases");
     expect(link?.attributes.get("target")).toBe("_blank");
     expect(link?.attributes.get("rel")).toBe("noopener noreferrer");
   });

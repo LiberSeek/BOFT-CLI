@@ -1,15 +1,15 @@
 # SSH 远程 Harness Host
 
-Codex Desktop 可以通过原生 SSH 工作流打开另一台机器上的项目。两端都安装 codexhost 后，远程工作区就能使用只安装、只登录在开发机上的 Harness，包括 Claude Code。
+Codex Desktop 可以通过原生 SSH 工作流打开另一台机器上的项目。两端都安装 BOFT CLI 后，远程工作区就能使用只安装、只登录在开发机上的 Harness，包括 Claude Code。
 
 这条链路保留 Codex Desktop 原生界面和 SSH 传输，不会把 Claude 登录伪装成 OpenAI 兼容 API；Native Session 仍由远程机器上的 Claude Code 自己维护。
 
 ## 前置条件
 
-- 客户端已安装 Codex Desktop 和 codexhost。
-- macOS 或 x64/ARM64 Linux SSH 开发机已安装 Codex CLI，以及与客户端相同版本的 codexhost。
+- 客户端已安装 Codex Desktop 和 BOFT CLI。
+- macOS 或 x64/ARM64 Linux SSH 开发机已安装 Codex CLI，以及与客户端相同版本的 BOFT CLI。
 - 目标 Harness 已在 SSH 开发机安装并登录。Claude Code 请在开发机完成正常登录，不要把账号文件复制到客户端。
-- 启用 codexhost 前，Codex Desktop 原生 SSH 工作区已经可以正常使用。
+- 启用 BOFT CLI 前，Codex Desktop 原生 SSH 工作区已经可以正常使用。
 
 客户端可以是 Windows。远程 Host 暂不支持 Windows，因为 Codex 当前的远程控制传输使用 Unix socket。
 
@@ -18,14 +18,14 @@ Codex Desktop 可以通过原生 SSH 工作流打开另一台机器上的项目�
 ```bash
 npm install -g @liberseek/boft-cli
 boft remote install
-codexhost remote start
-codexhost remote status
+boft remote start
+boft remote status
 ```
 
 如果 `codex` 已经指向 OpenCodex 或其他包装器，请显式传入真正的官方 Codex 可执行文件：
 
 ```bash
-codexhost remote install \
+boft remote install \
   --stock-codex /absolute/path/to/official/codex \
   --claude-command /absolute/path/to/claude
 ```
@@ -49,7 +49,7 @@ codexhost remote install \
 
 ## 从 Codex Desktop 使用
 
-在客户端通过 codexhost 启动 Codex Desktop，打开 SSH 工作区，然后在该远程输入框的 Agent/Model 选择器中选择目标 Harness。模型发现、Thread、Turn、工具、审批和历史都会由 SSH 开发机上的 codexhost 处理。本地 Harness 可用性会始终独立初始化和缓存，因此 SSH 连接不可用时，切回本地输入框不会被远程检查阻塞。
+在客户端通过 `boft` 启动 Codex Desktop，打开 SSH 工作区，然后在该远程输入框的 Agent/Model 选择器中选择目标 Harness。模型发现、Thread、Turn、工具、审批和历史都会由 SSH 开发机上的 BOFT CLI 处理。本地 Harness 可用性会始终独立初始化和缓存，因此 SSH 连接不可用时，切回本地输入框不会被远程检查阻塞。
 
 远程项目中新开的任务仍应保持 draft 状态并允许选择 Agent。当前 Desktop 版本会从活动输入框自身的标记判断身份，因此项目页其他位置的后台/预热会话不会再把新任务误锁成已有 Codex Thread；首个 Turn 提交并完成绑定后，实际 Thread 身份才成为准确信息源。
 
@@ -58,12 +58,12 @@ codexhost remote install \
 ## 诊断与回滚
 
 ```bash
-codexhost remote start
-codexhost remote stop
-codexhost remote status
-codexhost remote uninstall
+boft remote start
+boft remote stop
+boft remote status
+boft remote uninstall
 ```
 
 `start` 可重复执行并启动已安装的无头 Remote Host；`stop` 只停止经过校验的 codexhost listener，不影响其他 Codex 进程。`status` 除了报告运行状态和协议身份，也会报告原生入口、启动配置、runtime 或数据目录缺失/被修改；托管启动配置块只剩一侧标记或存在其他格式损坏时，会返回 degraded，而 install 与 uninstall 仍会拒绝自动改写；遇到会阻塞 bootstrap 的旧 Shell 入口时，也会明确提示重新安装迁移。`uninstall` 会先核对 manifest 中记录的入口摘要，再只移除托管入口、manifest 和启动配置块，并保留 profile 备份及 `~/.codexhost/remote/data`，便于恢复 Thread 映射。卸载后同样需要重新连接远程工作区。
 
-远程 Host 不拥有本机 codexhost Launcher 或自动更新控制器。请在两台机器上使用相同的包管理器更新到同一 codexhost 版本，然后重新连接。
+远程 Host 不拥有本机 BOFT CLI Launcher 或自动更新控制器。请在两台机器上使用相同的包管理器更新到同一 BOFT CLI 版本，然后重新连接。

@@ -1,15 +1,15 @@
 # Remote SSH Harness Host
 
-Codex Desktop can open a project on another machine through its native SSH workflow. Installing codexhost on both machines lets that remote workspace use Harnesses that are installed and authenticated only on the development host, including Claude Code.
+Codex Desktop can open a project on another machine through its native SSH workflow. Installing BOFT CLI on both machines lets that remote workspace use Harnesses that are installed and authenticated only on the development host, including Claude Code.
 
 This path keeps the native Codex Desktop UI and SSH transport. It does not turn a Claude login into an OpenAI-compatible API: Claude Code itself owns the Native Session on the remote machine.
 
 ## Prerequisites
 
-- Codex Desktop and codexhost on the client machine.
-- Codex CLI and the same codexhost version on a macOS or x64/ARM64 Linux SSH host.
+- Codex Desktop and BOFT CLI on the client machine.
+- Codex CLI and the same BOFT CLI version on a macOS or x64/ARM64 Linux SSH host.
 - The desired Harness installed and authenticated on the SSH host. For Claude Code, run its normal login there; do not copy its account files to the client.
-- A working Codex Desktop SSH workspace before enabling codexhost.
+- A working Codex Desktop SSH workspace before enabling BOFT CLI.
 
 Windows is supported as the client. A Windows machine is not currently supported as the remote Host because Codex's remote control transport uses Unix sockets.
 
@@ -18,14 +18,14 @@ Windows is supported as the client. A Windows machine is not currently supported
 ```bash
 npm install -g @liberseek/boft-cli
 boft remote install
-codexhost remote start
-codexhost remote status
+boft remote start
+boft remote status
 ```
 
 If `codex` already resolves to OpenCodex or another wrapper, pass the real official Codex executable explicitly:
 
 ```bash
-codexhost remote install \
+boft remote install \
   --stock-codex /absolute/path/to/official/codex \
   --claude-command /absolute/path/to/claude
 ```
@@ -62,12 +62,12 @@ The remote Claude Code process sees the remote cwd and account. Prompts, streame
 ## Diagnose and roll back
 
 ```bash
-codexhost remote start
-codexhost remote stop
-codexhost remote status
-codexhost remote uninstall
+boft remote start
+boft remote stop
+boft remote status
+boft remote uninstall
 ```
 
 `start` is idempotent and starts the installed headless Remote Host. `stop` stops only a verified codexhost listener and leaves unrelated Codex processes running. `status` reports runtime state and protocol identity in addition to a missing or modified native entrypoint, startup block, runtime, or data directory. A partially edited or otherwise malformed managed startup block is reported as degraded; install and uninstall still refuse to rewrite it automatically. Status also identifies the legacy blocking shell entrypoint and asks for a reinstall migration. `uninstall` verifies the recorded entrypoint digest before removing only the managed entrypoint, manifest, and startup block. It preserves profile backups and `~/.codexhost/remote/data` so Thread mappings remain recoverable. Reconnect the remote workspace after uninstalling.
 
-Remote Host processes do not own the local codexhost Launcher or self-update controller. Update codexhost with the same package manager on both machines, then reconnect.
+Remote Host processes do not own the local BOFT CLI launcher or self-update controller. Update BOFT CLI with the same package manager on both machines, then reconnect.

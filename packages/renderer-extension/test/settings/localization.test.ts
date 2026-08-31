@@ -33,7 +33,7 @@ describe("Renderer settings localization", () => {
 
     expect(english.title).toBe("Settings");
     expect(chinese.title).toBe("设置");
-    expect(chinese.openSettings).toBe("打开 codexhost 设置");
+    expect(chinese.openSettings).toBe("打开 BOFT CLI 设置");
     expect(chinese.updateInstallation).toBe("安装方式");
     expect(chinese.updateInstallationWindowsInstaller).toBe("Windows 安装程序");
     expect(english.updateInstallationMacOsDmg).toBe("macOS DMG");
@@ -43,7 +43,7 @@ describe("Renderer settings localization", () => {
     expect(chinese.updateWindowsManualRequired).toContain("Windows 暂不支持自动更新");
     expect(chinese.updateWindowsInstallerDescription).toContain("适用于当前系统的安装包");
     expect(chinese.updateManualNpmDescription).toBe(
-      "如需手动更新，请在终端运行以下命令。更新完成后，请退出 Codex 并通过 codexhost 重新启动。",
+      "如需手动更新，请在终端运行以下命令。更新完成后，请退出 Codex 并通过 boft 重新启动。",
     );
     expect(english.updateInstalling).toBe("Installing update...");
     expect(english.updateDownloadFromReleases).toBe("Download from GitHub Releases");

@@ -353,7 +353,9 @@ describe("npm package release", () => {
   it("injects package resources when the user runs codexhost with no args", () => {
     const source = createNpmBinLauncherSource({ version: "0.1.0" });
     expect(source).toContain('"darwin-arm64": "@liberseek/boft-cli-darwin-arm64"');
-    expect(source).toContain('const launcher = path.join(packageRoot, "bin", `codexhost${executableSuffix}`);')
+    expect(source).toContain(
+      'const launcher = path.join(packageRoot, "bin", `codexhost${executableSuffix}`);',
+    );
     expect(source).toContain('"linux-x64": "@liberseek/boft-cli-linux-x64"');
     expect(source).toContain('"linux-arm64": "@liberseek/boft-cli-linux-arm64"');
     expect(source).toContain("require.resolve");

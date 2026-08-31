@@ -66,7 +66,7 @@ describe("GitHub Release update discovery", () => {
             size: 42,
             browser_download_url:
               "https://github.com/LiberSeek/BOFT-CLI/releases/download/v1.2.3/boft-cli-1.2.3-windows-x64.exe",
-          }
+          },
         ],
       }),
     );

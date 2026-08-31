@@ -1,6 +1,6 @@
 <div align="center">
 
-# CodexHost
+# BOFT CLI
 
 **Run Pi and other Agent Harnesses inside Codex Desktop**
 
@@ -8,7 +8,7 @@ We believe **Codex Desktop** provides one of the best desktop development experi
 
 But **Codex** is not the only capable **Agent Harness**. Some developers prefer **Claude Code** or **Pi Agent**.
 
-**codexhost** lets you choose the **Agent** that actually executes your tasks inside **Codex Desktop**, while preserving the native Codex experience and letting those Agents work together.
+**BOFT CLI** lets you choose the **Agent** that actually executes your tasks inside **Codex Desktop**, while preserving the native Codex experience and letting those Agents work together.
 
 ⭐ If this project helps you, please give it a Star! ⭐
 
@@ -75,7 +75,7 @@ If Apple says the app cannot be verified when you first open it, run:
 xattr -dr com.apple.quarantine /Applications/codexhost.app
 ```
 
-Then open `codexhost` again.
+Then run `boft` again. `codexhost` remains available as a compatibility command.
 
 **Windows** - Portable Codex Desktop
 
@@ -85,7 +85,7 @@ For a portable/extracted Codex Desktop, set `CODEXHOST_INSTALL_ROOT` to the extr
 [Environment]::SetEnvironmentVariable("CODEXHOST_INSTALL_ROOT", "D:\CodexPortable", "User")
 ```
 
-Fully quit Codex Desktop, open a new terminal, and start codexhost.
+Fully quit Codex Desktop, open a new terminal, and run `boft`.
 
 </details>
 
@@ -96,7 +96,7 @@ Fully quit Codex Desktop, open a new terminal, and start codexhost.
     <td colspan="2" valign="top">
       <p><strong>Full workspace</strong></p>
       <div align="center">
-        <img width="90%" src="imgs/codexhost-full-workspace.png" alt="The complete CodexHost workspace in Codex Desktop, showing the project tree, conversation area, and multiple Agent selectors">
+        <img width="90%" src="imgs/codexhost-full-workspace.png" alt="The complete BOFT CLI workspace in Codex Desktop, showing the project tree, conversation area, and multiple Agent selectors">
       </div>
     </td>
   </tr>
@@ -153,12 +153,12 @@ You can ask the current Agent to delegate an independent task to another Harness
 >
 > Ask `@omp` to implement this feature while I continue working on the documentation.
 
-codexhost creates a separate Native Session for the target Harness. The delegated session appears in the Codex Desktop conversation list, where you can open it, inspect progress, or continue the conversation.
+BOFT CLI creates a separate Native Session for the target Harness. The delegated session appears in the Codex Desktop conversation list, where you can open it, inspect progress, or continue the conversation.
 
 <details>
 <summary><h3 id="remote-harness">Remote Harness</h3></summary>
 
-Use Harnesses on remote nodes within Codex Desktop on your local machine, executing tasks on remote machines while continuing to use Codex Desktop’s unified interface. Both ends need to install the same codexhost version.
+Use Harnesses on remote nodes within Codex Desktop on your local machine, executing tasks on remote machines while continuing to use Codex Desktop’s unified interface. Both ends need to install the same BOFT CLI version.
 
 **Two connection methods are supported:**
 
@@ -181,7 +181,7 @@ boft remote start
 boft remote status
 ```
 
-Then start Codex Desktop through local codexhost, open the SSH workspace, and choose the target Harness in the remote composer’s Agent/Model selector.
+Then start Codex Desktop through local `boft`, open the SSH workspace, and choose the target Harness in the remote composer’s Agent/Model selector.
 
 [Remote SSH setup, diagnostics, and uninstall →](remote-ssh-host.md)
 
@@ -200,7 +200,7 @@ This path does not add a public service or TCP listener. Harness credentials rem
 
 Most multi-agent clients connect different Harnesses through the [ACP](https://agentclientprotocol.com/) protocol. This is quick to integrate, but native capabilities such as tools, approvals, permissions, diffs, and questions are first reduced to a common denominator and then approximated again in the UI.
 
-codexhost takes a different approach:
+BOFT CLI takes a different approach:
 
 - **Desktop layer:** Use CDP / Electron Inspector to enhance the official Codex Desktop with Agent selection and session controls. The chat shell is not recreated, and the official installer is not modified.
 - **Protocol layer:** Use a CLI shim to transparently connect to the official app-server and forward Codex requests unchanged.

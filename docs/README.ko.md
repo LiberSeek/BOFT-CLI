@@ -1,6 +1,6 @@
 <div align="center">
 
-# CodexHost
+# BOFT CLI
 
 **Codex Desktop에서 Pi와 다른 Harness를 실행하세요**
 
@@ -8,7 +8,7 @@
 
 하지만 **Codex**만이 뛰어난 **Agent Harness**인 것은 아닙니다. **Claude Code**나 **Pi Agent**를 선호하는 개발자도 있습니다.
 
-**codexhost**를 사용하면 **Codex Desktop**의 기본 경험을 유지하면서 실제 작업을 실행할 **Agent**를 선택하고, 여러 Agent가 함께 작업하도록 할 수 있습니다.
+**BOFT CLI**를 사용하면 **Codex Desktop**의 기본 경험을 유지하면서 실제 작업을 실행할 **Agent**를 선택하고, 여러 Agent가 함께 작업하도록 할 수 있습니다.
 
 ⭐ 이 프로젝트가 도움이 되었다면 Star를 눌러 주세요! ⭐
 
@@ -74,7 +74,7 @@ boft
 xattr -dr com.apple.quarantine /Applications/codexhost.app
 ```
 
-그런 다음 `codexhost`를 다시 실행하세요.
+그런 다음 `boft`를 다시 실행하세요. `codexhost`는 호환성 명령으로 계속 사용할 수 있습니다.
 
 **Windows** - 휴대용 Codex Desktop
 
@@ -84,7 +84,7 @@ xattr -dr com.apple.quarantine /Applications/codexhost.app
 [Environment]::SetEnvironmentVariable("CODEXHOST_INSTALL_ROOT", "D:\CodexPortable", "User")
 ```
 
-새 터미널을 열고 codexhost를 시작하세요.
+새 터미널을 열고 `boft`를 실행하세요.
 
 </details>
 
@@ -95,7 +95,7 @@ xattr -dr com.apple.quarantine /Applications/codexhost.app
     <td colspan="2" valign="top">
       <p><strong>전체 작업 화면</strong></p>
       <div align="center">
-        <img width="90%" src="imgs/codexhost-full-workspace.png" alt="프로젝트 구조, 대화 영역 및 여러 Agent 선택기가 표시된 Codex Desktop의 CodexHost 전체 작업 화면">
+        <img width="90%" src="imgs/codexhost-full-workspace.png" alt="프로젝트 구조, 대화 영역 및 여러 Agent 선택기가 표시된 Codex Desktop의 BOFT CLI 전체 작업 화면">
       </div>
     </td>
   </tr>
@@ -152,12 +152,12 @@ xattr -dr com.apple.quarantine /Applications/codexhost.app
 >
 > 제가 문서를 정리하는 동안 `@omp`에게 이 기능을 구현하도록 요청하세요.
 
-codexhost는 대상 Harness를 위한 별도의 Native Session을 만듭니다. 위임된 Session은 Codex Desktop의 대화 목록에 표시되며, 언제든 열어서 진행 상황을 확인하거나 대화를 이어갈 수 있습니다.
+BOFT CLI는 대상 Harness를 위한 별도의 Native Session을 만듭니다. 위임된 Session은 Codex Desktop의 대화 목록에 표시되며, 언제든 열어서 진행 상황을 확인하거나 대화를 이어갈 수 있습니다.
 
 <details>
 <summary><h3 id="원격-harness">원격 Harness</h3></summary>
 
-로컬 Codex Desktop에서 원격 노드의 Harness를 사용하여 원격 컴퓨터에서 작업을 실행하면서 Codex Desktop의 통합 인터페이스를 계속 사용할 수 있습니다. 양쪽 끝에 동일한 버전의 codexhost를 설치해야 합니다.
+로컬 Codex Desktop에서 원격 노드의 Harness를 사용하여 원격 컴퓨터에서 작업을 실행하면서 Codex Desktop의 통합 인터페이스를 계속 사용할 수 있습니다. 양쪽 끝에 동일한 버전의 BOFT CLI를 설치해야 합니다.
 
 **두 가지 연결 방식을 지원합니다:**
 
@@ -180,7 +180,7 @@ boft remote start
 boft remote status
 ```
 
-그런 다음 로컬 codexhost를 통해 Codex Desktop을 시작하고 SSH 작업 공간을 연 뒤, 원격 composer의 Agent/Model 선택기에서 원하는 Harness를 선택하세요.
+그런 다음 로컬 `boft`를 통해 Codex Desktop을 시작하고 SSH 작업 공간을 연 뒤, 원격 composer의 Agent/Model 선택기에서 원하는 Harness를 선택하세요.
 
 [SSH 원격 설정, 진단 및 제거 문서 보기 →](remote-ssh-host.md)
 
@@ -199,7 +199,7 @@ Windows가 제어 대상 Host인 경우, codexhost는 Codex Desktop의 공식 �
 
 대부분의 멀티 에이전트 클라이언트는 [ACP](https://agentclientprotocol.com/) 프로토콜을 통해 여러 Harness를 연결합니다. 통합은 빠르지만 도구, 승인, 권한, Diff, 질문과 같은 기본 기능이 먼저 공통분모로 축소된 후 UI에서 다시 근사하게 구현됩니다.
 
-codexhost는 다른 방식을 사용합니다.
+BOFT CLI는 다른 방식을 사용합니다.
 
 - **Desktop 계층**: CDP / Electron Inspector를 사용해 공식 Codex Desktop에 Agent 선택과 Session 제어 기능을 추가합니다. 채팅 UI를 다시 만들지 않으며 공식 설치 프로그램도 수정하지 않습니다.
 - **프로토콜 계층**: CLI Shim을 사용해 공식 app-server에 투명하게 연결하고 Codex 요청을 변경 없이 전달합니다.

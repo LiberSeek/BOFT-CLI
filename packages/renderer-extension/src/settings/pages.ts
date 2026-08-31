@@ -157,7 +157,7 @@ function aboutPage(messages: RendererSettingsMessages): RendererSettingsPageDefi
       panel.className = "settings-about-panel";
       const product = document.createElement("strong");
       product.className = "settings-about-product";
-      product.textContent = "CodexHost";
+      product.textContent = "BOFT CLI";
       const tagline = document.createElement("strong");
       tagline.className = "settings-about-tagline";
       tagline.textContent = messages.aboutTagline;

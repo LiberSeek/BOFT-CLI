@@ -173,7 +173,7 @@ export function mountRendererSettingsTrigger(
   button.append(createRendererSettingsBrandIcon(24));
 
   const brandLabel = ownerDocument.createElement("span");
-  brandLabel.textContent = "CodexHost";
+  brandLabel.textContent = "BOFT CLI";
   brandLabel.style.fontSize = "13px";
   brandLabel.style.fontWeight = "600";
   brandLabel.style.lineHeight = "1";

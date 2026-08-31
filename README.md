@@ -1,6 +1,6 @@
 <div align="center">
 
-# CodexHost
+# BOFT CLI
 
 **在 Codex Desktop 中运行 Pi 和其他 Harness**
 
@@ -8,7 +8,7 @@
 
 但 **Codex** 并不是唯一优秀的 **Agent Harness**，也有人偏好 **Claude Code** 和 **Pi Agent**。
 
-**CodexHost** 让你在 **Codex Desktop** 中选择真正执行任务的 **Agent**，同时保留 **Codex** 的原生体验，并让它们协作完成任务
+**BOFT CLI** 让你在 **Codex Desktop** 中选择真正执行任务的 **Agent**，同时保留 **Codex** 的原生体验，并让它们协作完成任务。
 
 ⭐ 如果这个项目对你有帮助，请给我们一个 Star！⭐
 
@@ -87,7 +87,7 @@ xattr -dr com.apple.quarantine /Applications/codexhost.app
 [Environment]::SetEnvironmentVariable("CODEXHOST_INSTALL_ROOT", "D:\CodexPortable", "User")
 ```
 
-然后完全退出 Codex Desktop，重新打开终端并启动 codexhost。
+然后完全退出 Codex Desktop，重新打开终端并运行 `boft`。`codexhost` 仍可作为兼容命令使用。
 
 </details>
 
@@ -155,13 +155,13 @@ xattr -dr com.apple.quarantine /Applications/codexhost.app
 >
 > 让 `@omp` 实现这个功能，我继续整理文档。
 
-CodexHost 会为目标 Harness 创建独立的 Native Session。委派会话将出现在 Codex Desktop 的会话列表中，你可以随时打开、查看进度或继续对话。
+BOFT CLI 会为目标 Harness 创建独立的 Native Session。委派会话将出现在 Codex Desktop 的会话列表中，你可以随时打开、查看进度或继续对话。
 
 <details>
 <summary><h3 id="远程连接-harness">远程连接 Harness</h3></summary>
 
 
-在本机的 Codex Desktop 中使用远程节点上的 Harness，在远程机器执行任务，同时继续使用 Codex Desktop 的统一界面。两端需要安装相同版本的 codexhost。
+在本机的 Codex Desktop 中使用远程节点上的 Harness，在远程机器执行任务，同时继续使用 Codex Desktop 的统一界面。两端需要安装相同版本的 BOFT CLI。
 
 **支持两种连接方式：**
 
@@ -184,7 +184,7 @@ boft remote start
 boft remote status
 ```
 
-然后通过本地 codexhost 启动 Codex Desktop，打开 SSH 工作区，在远程输入框的 Agent/Model 选择器中选择目标 Harness。
+然后通过本地 `boft` 启动 Codex Desktop，打开 SSH 工作区，在远程输入框的 Agent/Model 选择器中选择目标 Harness。
 
 [查看 SSH 配置、诊断与卸载文档 →](docs/remote-ssh-host.zh-CN.md)
 
@@ -203,7 +203,7 @@ Windows 作为被控 Host 时，可以保留 Codex Desktop 官方配对、账号
 
 多数「多 Agent 客户端」通过 [ACP](https://agentclientprotocol.com/) 协议接入不同 Harness。接入快，但工具、审批、权限、Diff、提问等原生能力会先被削平。
 
-CodexHost 尽量不走这条路：
+BOFT CLI 尽量不走这条路：
 
 - **Desktop 侧**：用 CDP / Electron Inspector 在官方 Codex Desktop 上增强 Agent 选择与会话界面，不重做聊天壳，也不改官方安装包
 - **协议侧**：用 CLI Shim 透明接入官方 app-server；Codex 请求原样转发
@@ -220,7 +220,7 @@ CodexHost 尽量不走这条路：
   <tr>
     <td>
       <strong>加入交流群</strong><br />
-      <sub>对 CodexHost 用法、功能感兴趣的开发者可以扫码加入微信群交流。</sub>
+      <sub>对 BOFT CLI 用法、功能感兴趣的开发者可以扫码加入微信群交流。</sub>
       <ul>
         <li><sub>安装问题可以加群询问</sub></li>
         <li><sub>功能建议与反馈</sub></li>

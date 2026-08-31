@@ -436,9 +436,7 @@ describe("Renderer Updates page", () => {
     expect(releaseLink.rel).toBe("noopener noreferrer");
 
     await vi.waitFor(() => {
-      expect(releaseLink.href).toBe(
-        "https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3",
-      );
+      expect(releaseLink.href).toBe("https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3");
     });
 
     const panel = elementWithClass(content, "settings-update-panel");
@@ -450,16 +448,14 @@ describe("Renderer Updates page", () => {
       expect(panel.dataset.updateState).toBe("failed");
     });
     expect(descendants(content)).toContain(releaseLink);
-    expect(releaseLink.href).toBe(
-      "https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3",
-    );
+    expect(releaseLink.href).toBe("https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3");
 
     cleanup?.();
     scope.dispose();
   });
 
   it.each([
-    ["npm" as const, "Windows 暂不支持自动更新。请退出 codexhost，在终端运行以下命令完成更新。"],
+    ["npm" as const, "Windows 暂不支持自动更新。请退出 BOFT CLI，在终端运行以下命令完成更新。"],
     [
       "windows-installer" as const,
       "Windows 暂不支持自动更新。请下载并运行适用于当前系统的安装包。",
@@ -533,11 +529,10 @@ describe("Renderer Updates page", () => {
       "我们认为 Codex Desktop 提供了目前最好的桌面开发交互体验",
     );
     expect(visibleText(content)).toContain("Claude Code 和 Pi Agent");
-    expect(visibleText(content)).toContain("codexhost 是一个开源项目");
+    expect(visibleText(content)).toContain("BOFT CLI 是一个开源项目");
     expect(visibleText(content)).toContain("请给我们一个 Star");
     const repository = descendants(content).find(
-      ({ tagName, href }) =>
-        tagName === "a" && href === "https://github.com/LiberSeek/BOFT-CLI",
+      ({ tagName, href }) => tagName === "a" && href === "https://github.com/LiberSeek/BOFT-CLI",
     );
     expect(repository).toMatchObject({ target: "_blank", rel: "noopener noreferrer" });
     expect(visibleNotesText(repository as FakeElement)).toContain(
