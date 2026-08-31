@@ -50,8 +50,8 @@ describe("platform packagers", () => {
     expect(workflow).toContain("npm_tag=next");
     expect(workflow).toContain("npm_tag=latest");
 
-    expect(workflow).toContain("codexhost-*.dmg");
-    expect(workflow).toContain("codexhost-*.exe");
+    expect(workflow).toContain("boft-cli-*.dmg");
+    expect(workflow).toContain("boft-cli-*.exe");
     expect(workflow).not.toContain("codexhost-*.msi");
     expect(workflow).toContain("npm run release:npm --");
     expect(workflow).toContain("Build npm package from installer outputs");
@@ -64,7 +64,7 @@ describe("platform packagers", () => {
     expect(linuxPackageCommand).not.toContain("--skip-build");
     expect(workflow).toContain("--skip-build");
     expect(workflow).toContain("--pack");
-    expect(workflow).toContain("codexhost-cli-*-${{ matrix.target }}.tgz");
+    expect(workflow).toContain("boft-cli-*-${{ matrix.target }}.tgz");
     expect(workflow).toContain("Build installer package");
     expect(workflow).toContain("if: runner.os != 'Linux'");
     expect(workflow).toContain("target: linux-x64");
@@ -85,11 +85,11 @@ describe("platform packagers", () => {
     expect(workflow).toContain("publish-release:");
     const publishRelease = workflow.slice(workflow.indexOf("  publish-release:"));
     expect(publishRelease).toContain("gh release create");
-    expect(publishRelease).toContain('"codexhost-${VERSION}-windows-x64.exe"');
-    expect(publishRelease).toContain('"codexhost-${VERSION}-windows-arm64.exe"');
-    expect(publishRelease).toContain('"codexhost-${VERSION}-macos-x64.dmg"');
-    expect(publishRelease).toContain('"codexhost-${VERSION}-macos-arm64.dmg"');
-    expect(publishRelease).not.toContain('"codexhost-cli-${VERSION}');
+    expect(publishRelease).toContain('"boft-cli-${VERSION}-windows-x64.exe"');
+    expect(publishRelease).toContain('"boft-cli-${VERSION}-windows-arm64.exe"');
+    expect(publishRelease).toContain('"boft-cli-${VERSION}-macos-x64.dmg"');
+    expect(publishRelease).toContain('"boft-cli-${VERSION}-macos-arm64.dmg"');
+    expect(publishRelease).not.toContain('"codexhost-${VERSION}');
     expect(workflow).not.toContain("softprops/action-gh-release");
     expect(workflow).not.toContain("codexhost-*.sha256");
     expect(workflow).not.toContain("checksums.txt");

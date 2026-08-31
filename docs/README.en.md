@@ -58,11 +58,11 @@ https://github.com/user-attachments/assets/c48192d7-23ff-4f6e-b61a-6345a655bb76
 > Supports macOS, Windows, and [x64/ARM64 Linux](linux.md).
 
 ```bash
-npm install -g @codexhost/cli
-codexhost
+npm install -g @liberseek/boft-cli
+boft
 ```
 
-**Or download** [installers](https://github.com/BytePioneer-AI/codex-host/releases) (macOS, Windows)
+**Or download** [installers](https://github.com/LiberSeek/BOFT-CLI/releases) (macOS, Windows)
 
 <details>
 <summary>Installation Troubleshooting</summary>
@@ -175,10 +175,10 @@ Connect to and control Harnesses on other development nodes over SSH through Cod
 Run this on the SSH remote host:
 
 ```bash
-npm install -g @codexhost/cli
-codexhost remote install
-codexhost remote start
-codexhost remote status
+npm install -g @liberseek/boft-cli
+boft remote install
+boft remote start
+boft remote status
 ```
 
 Then start Codex Desktop through local codexhost, open the SSH workspace, and choose the target Harness in the remote composer’s Agent/Model selector.

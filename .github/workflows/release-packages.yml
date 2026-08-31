@@ -24,6 +24,7 @@ env:
 jobs:
   prepare:
     name: Resolve release metadata
+    if: github.repository == 'LiberSeek/BOFT-CLI'
     runs-on: ubuntu-latest
     outputs:
       npm_tag: ${{ steps.release.outputs.npm_tag }}
@@ -205,12 +206,12 @@ jobs:
       - name: Upload packaged artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: codexhost-${{ matrix.target }}
+          name: boft-cli-${{ matrix.target }}
           path: |
-            build/release/${{ needs.prepare.outputs.version }}/${{ matrix.target }}/codexhost-*.dmg
-            build/release/${{ needs.prepare.outputs.version }}/${{ matrix.target }}/codexhost-*.exe
-            build/npm/${{ needs.prepare.outputs.version }}/${{ matrix.target }}/codexhost-cli-*-${{ matrix.target }}.tgz
-            build/npm/${{ needs.prepare.outputs.version }}/meta/codexhost-cli-${{ needs.prepare.outputs.version }}.tgz
+            build/release/${{ needs.prepare.outputs.version }}/${{ matrix.target }}/boft-cli-*.dmg
+            build/release/${{ needs.prepare.outputs.version }}/${{ matrix.target }}/boft-cli-*.exe
+            build/npm/${{ needs.prepare.outputs.version }}/${{ matrix.target }}/boft-cli-*-${{ matrix.target }}.tgz
+            build/npm/${{ needs.prepare.outputs.version }}/meta/boft-cli-${{ needs.prepare.outputs.version }}.tgz
           if-no-files-found: error
           retention-days: 7
 
@@ -239,7 +240,7 @@ jobs:
       - name: Download npm artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: codexhost-*
+          pattern: boft-cli-*
           path: build/npm-publish
           merge-multiple: true
 
@@ -272,7 +273,7 @@ jobs:
       - name: Download packaged artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: codexhost-*
+          pattern: boft-cli-*
           path: release-assets
           merge-multiple: true
 
@@ -292,10 +293,10 @@ jobs:
         run: |
           set -euo pipefail
           expected=(
-            "codexhost-${VERSION}-macos-arm64.dmg"
-            "codexhost-${VERSION}-macos-x64.dmg"
-            "codexhost-${VERSION}-windows-x64.exe"
-            "codexhost-${VERSION}-windows-arm64.exe"
+            "boft-cli-${VERSION}-macos-arm64.dmg"
+            "boft-cli-${VERSION}-macos-x64.dmg"
+            "boft-cli-${VERSION}-windows-x64.exe"
+            "boft-cli-${VERSION}-windows-arm64.exe"
           )
           files=()
           for name in "${expected[@]}"; do
@@ -321,7 +322,7 @@ jobs:
             flags=(
               --repo "${{ github.repository }}"
               --verify-tag
-              --title "codexhost ${VERSION}"
+              --title "BOFT CLI ${VERSION}"
               --notes-file release-metadata/release-notes.md
             )
             if [[ "$PRERELEASE" == "true" ]]; then

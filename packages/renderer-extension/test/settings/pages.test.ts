@@ -148,7 +148,7 @@ function updateCheck(status: UpdateStatus | null = null): UpdateCheckResult {
     updateAvailable: true,
     installationAvailable: true,
     releaseNotes: "Safer updates",
-    releaseNotesUrl: "https://github.com/BytePioneer-AI/codex-host/releases/tag/v1.2.3",
+    releaseNotesUrl: "https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3",
     status,
     error: null,
   };
@@ -263,7 +263,7 @@ describe("Renderer Connections page", () => {
     expect(visibleText(content)).toContain("startup");
     const issueLink = descendants(content).find(
       ({ tagName, href }) =>
-        tagName === "a" && href === "https://github.com/BytePioneer-AI/codex-host/issues/new",
+        tagName === "a" && href === "https://github.com/LiberSeek/BOFT-CLI/issues/new",
     );
     expect(issueLink).toBeDefined();
     const copyButton = descendants(
@@ -437,7 +437,7 @@ describe("Renderer Updates page", () => {
 
     await vi.waitFor(() => {
       expect(releaseLink.href).toBe(
-        "https://github.com/BytePioneer-AI/codex-host/releases/tag/v1.2.3",
+        "https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3",
       );
     });
 
@@ -451,7 +451,7 @@ describe("Renderer Updates page", () => {
     });
     expect(descendants(content)).toContain(releaseLink);
     expect(releaseLink.href).toBe(
-      "https://github.com/BytePioneer-AI/codex-host/releases/tag/v1.2.3",
+      "https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3",
     );
 
     cleanup?.();
@@ -498,13 +498,13 @@ describe("Renderer Updates page", () => {
     ).toBeUndefined();
     expect(client.startUpdate).not.toHaveBeenCalled();
     if (installation === "npm") {
-      expect(visibleText(content)).toContain("npm install -g @codexhost/cli@latest");
+      expect(visibleText(content)).toContain("npm install -g @liberseek/boft-cli@latest");
     } else {
       const link = descendants(content).find(
         ({ tagName, href }) =>
           tagName === "a" &&
           href ===
-            "https://github.com/BytePioneer-AI/codex-host/releases/download/v1.2.3/codexhost-1.2.3-windows-x64.exe",
+            "https://github.com/LiberSeek/BOFT-CLI/releases/download/v1.2.3/boft-cli-1.2.3-windows-x64.exe",
       );
       expect(link).toMatchObject({ target: "_blank", rel: "noopener noreferrer" });
     }
@@ -537,11 +537,11 @@ describe("Renderer Updates page", () => {
     expect(visibleText(content)).toContain("请给我们一个 Star");
     const repository = descendants(content).find(
       ({ tagName, href }) =>
-        tagName === "a" && href === "https://github.com/BytePioneer-AI/codex-host",
+        tagName === "a" && href === "https://github.com/LiberSeek/BOFT-CLI",
     );
     expect(repository).toMatchObject({ target: "_blank", rel: "noopener noreferrer" });
     expect(visibleNotesText(repository as FakeElement)).toContain(
-      "https://github.com/BytePioneer-AI/codex-host",
+      "https://github.com/LiberSeek/BOFT-CLI",
     );
 
     cleanup?.();

@@ -76,8 +76,8 @@ describe("Release notes Markdown", () => {
         "### npm",
         "",
         "```bash",
-        "npm install -g @codexhost/cli",
-        "codexhost",
+        "npm install -g @liberseek/boft-cli",
+        "boft",
         "```",
       ].join("\n"),
     );
@@ -94,13 +94,13 @@ describe("Release notes Markdown", () => {
     expect(visibleText(root)).toContain("本次发布");
     expect(visibleText(root)).not.toContain("##");
     expect(visibleText(root)).not.toContain("- 新增");
-    expect(visibleText(root)).toContain("npm install -g @codexhost/cli");
+    expect(visibleText(root)).toContain("npm install -g @liberseek/boft-cli");
 
     const list = descendants(root).find((element) => element.tagName === "ul");
     expect(list?.children).toHaveLength(2);
     const code = descendants(root).find((element) => element.tagName === "code");
     expect(code?.className).toBe("language-bash");
-    expect(code?.textContent).toBe("npm install -g @codexhost/cli\ncodexhost");
+    expect(code?.textContent).toBe("npm install -g @liberseek/boft-cli\nboft");
   });
 
   it("preserves authored line breaks within bilingual paragraphs", () => {
@@ -122,7 +122,7 @@ describe("Release notes Markdown", () => {
         "Use `codexhost` and **restart** after install.",
         "",
         "1. Download the package",
-        "2. Open [Releases](https://github.com/BytePioneer-AI/codex-host/releases)",
+        "2. Open [Releases](https://github.com/LiberSeek/BOFT-CLI/releases)",
       ].join("\n"),
     );
 
@@ -134,7 +134,7 @@ describe("Release notes Markdown", () => {
     const link = descendants(root).find((element) => element.tagName === "a");
     expect(link?.textContent).toBe("Releases");
     expect(link?.attributes.get("href")).toBe(
-      "https://github.com/BytePioneer-AI/codex-host/releases",
+      "https://github.com/LiberSeek/BOFT-CLI/releases",
     );
     expect(link?.attributes.get("target")).toBe("_blank");
     expect(link?.attributes.get("rel")).toBe("noopener noreferrer");

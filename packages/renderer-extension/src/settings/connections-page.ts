@@ -13,7 +13,7 @@ import { createRendererSettingsIcon } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
 
 export const CODEXHOST_GITHUB_ISSUES_NEW_URL =
-  "https://github.com/BytePioneer-AI/codex-host/issues/new";
+  "https://github.com/LiberSeek/BOFT-CLI/issues/new";
 
 const HARNESS_INSTALL_URLS: Readonly<Record<ExternalRendererAgent, string>> = Object.freeze({
   pi: "https://pi.dev/",

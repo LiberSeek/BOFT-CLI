@@ -118,7 +118,7 @@ describe("Renderer fixed Model request client", () => {
         updateAvailable: true,
         installationAvailable: true,
         releaseNotes: "Safer updates",
-        releaseNotesUrl: "https://github.com/BytePioneer-AI/codex-host/releases/tag/v1.2.3",
+        releaseNotesUrl: "https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3",
         status: null,
         error: null,
       })
@@ -354,7 +354,7 @@ describe("Renderer fixed Model request client", () => {
       updateAvailable: true,
       installationAvailable: true,
       releaseNotes: "Safer updates",
-      releaseNotesUrl: "https://github.com/BytePioneer-AI/codex-host/releases/tag/v1.2.3",
+      releaseNotesUrl: "https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3",
       status: null,
       error: null,
       artifactUrl: "https://example.com/update.exe",

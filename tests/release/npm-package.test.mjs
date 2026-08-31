@@ -104,19 +104,19 @@ async function createHomebrewNodeLayout(root) {
 async function createGlobalCodexhostInstall(prefix) {
   const platformPackage =
     process.platform === "win32"
-      ? `@codexhost/cli-win32-${process.arch}`
-      : `@codexhost/cli-darwin-${process.arch}`;
+      ? `@liberseek/boft-cli-win32-${process.arch}`
+      : `@liberseek/boft-cli-darwin-${process.arch}`;
   const packageRoot = path.join(prefix, "lib", "node_modules", platformPackage);
   const launcherPath = path.join(
     prefix,
     "lib",
     "node_modules",
-    "@codexhost",
-    "cli",
+    "@liberseek",
+    "boft-cli",
     "bin",
-    "codexhost.js",
+    "boft.js",
   );
-  const userBin = path.join(prefix, "bin", "codexhost");
+  const userBin = path.join(prefix, "bin", "boft");
   await writeExecutable(launcherPath, createNpmBinLauncherSource({ version: "0.1.5" }));
   await mkdir(path.dirname(userBin), { recursive: true });
   await symlink(path.relative(path.dirname(userBin), launcherPath), userBin);
@@ -159,7 +159,7 @@ async function createNpmMetaPackageFixture(root) {
         absolute,
         `${JSON.stringify(createNpmMetaPackageManifest({ version: "0.1.0" }), null, 2)}\n`,
       );
-    } else if (relative === "bin/codexhost.js") {
+    } else if (relative === "bin/boft.js" || relative === "bin/codexhost.js") {
       await writeFile(absolute, createNpmBinLauncherSource({ version: "0.1.0" }));
     } else {
       await writeFile(absolute, `npm-meta-package:${relative}\n`);
@@ -168,8 +168,8 @@ async function createNpmMetaPackageFixture(root) {
 }
 
 async function createLauncherLifecycleFixture(root, platform) {
-  const launcherPath = path.join(root, "node_modules", "@codexhost", "cli", "bin", "codexhost.js");
-  const platformPackage = `@codexhost/cli-${platform}-x64`;
+  const launcherPath = path.join(root, "node_modules", "@liberseek", "boft-cli", "bin", "boft.js");
+  const platformPackage = `@liberseek/boft-cli-${platform}-x64`;
   const platformRoot = path.join(root, "node_modules", ...platformPackage.split("/"));
   const executableSuffix = platform === "win32" ? ".exe" : "";
   const npmCliPath = path.join(root, "npm-cli.js");
@@ -320,7 +320,7 @@ describe("npm package release", () => {
   it("publishes a scoped platform package with platform constraints", () => {
     const target = releaseTarget("macos-arm64");
     const manifest = createNpmPackageManifest({ version: "0.1.0", target });
-    expect(manifest.name).toBe("@codexhost/cli-darwin-arm64");
+    expect(manifest.name).toBe("@liberseek/boft-cli-darwin-arm64");
     expect(npmPlatformPackageName(target)).toBe(manifest.name);
     expect(manifest.private).toBeUndefined();
     expect(manifest.bin).toBeUndefined();
@@ -341,6 +341,7 @@ describe("npm package release", () => {
   it("publishes one meta package with exact optional platform dependencies", () => {
     const manifest = createNpmMetaPackageManifest({ version: "0.1.0" });
     expect(manifest.name).toBe(NPM_PACKAGE_NAME);
+    expect(manifest.bin.boft).toBe("bin/boft.js");
     expect(manifest.bin.codexhost).toBe("bin/codexhost.js");
     expect(manifest.os).toBeUndefined();
     expect(manifest.cpu).toBeUndefined();
@@ -351,9 +352,10 @@ describe("npm package release", () => {
 
   it("injects package resources when the user runs codexhost with no args", () => {
     const source = createNpmBinLauncherSource({ version: "0.1.0" });
-    expect(source).toContain('"darwin-arm64": "@codexhost/cli-darwin-arm64"');
-    expect(source).toContain('"linux-x64": "@codexhost/cli-linux-x64"');
-    expect(source).toContain('"linux-arm64": "@codexhost/cli-linux-arm64"');
+    expect(source).toContain('"darwin-arm64": "@liberseek/boft-cli-darwin-arm64"');
+    expect(source).toContain('const launcher = path.join(packageRoot, "bin", `codexhost${executableSuffix}`);')
+    expect(source).toContain('"linux-x64": "@liberseek/boft-cli-linux-x64"');
+    expect(source).toContain('"linux-arm64": "@liberseek/boft-cli-linux-arm64"');
     expect(source).toContain("require.resolve");
     expect(source).toContain("--omit=optional");
     expect(source).toContain('launchArguments = ["launch"]');
@@ -515,14 +517,14 @@ describe("npm package release", () => {
       path.resolve(import.meta.dirname, "../../scripts/release/prepare-npm.mjs"),
       "utf8",
     );
-    expect(source).toContain('NPM_PACKAGE_NAME = "@codexhost/cli"');
+    expect(source).toContain('NPM_PACKAGE_NAME = "@liberseek/boft-cli"');
     expect(Object.values(NPM_PLATFORM_PACKAGE_NAMES)).toEqual([
-      "@codexhost/cli-darwin-arm64",
-      "@codexhost/cli-darwin-x64",
-      "@codexhost/cli-win32-x64",
-      "@codexhost/cli-win32-arm64",
-      "@codexhost/cli-linux-x64",
-      "@codexhost/cli-linux-arm64",
+      "@liberseek/boft-cli-darwin-arm64",
+      "@liberseek/boft-cli-darwin-x64",
+      "@liberseek/boft-cli-win32-x64",
+      "@liberseek/boft-cli-win32-arm64",
+      "@liberseek/boft-cli-linux-x64",
+      "@liberseek/boft-cli-linux-arm64",
     ]);
     expect(source).toContain("publishConfig");
     expect(source).toContain('access: "public"');
@@ -530,16 +532,16 @@ describe("npm package release", () => {
 
   it("names npm tarballs with the release target so four matrix jobs do not collide", () => {
     expect(npmTarballFileName({ version: "0.1.0", target: releaseTarget("macos-arm64") })).toBe(
-      "codexhost-cli-0.1.0-macos-arm64.tgz",
+      "boft-cli-0.1.0-macos-arm64.tgz",
     );
     expect(npmTarballFileName({ version: "0.1.0", target: releaseTarget("windows-x64") })).toBe(
-      "codexhost-cli-0.1.0-windows-x64.tgz",
+      "boft-cli-0.1.0-windows-x64.tgz",
     );
     expect(npmTarballFileName({ version: "0.1.0", target: releaseTarget("linux-x64") })).toBe(
-      "codexhost-cli-0.1.0-linux-x64.tgz",
+      "boft-cli-0.1.0-linux-x64.tgz",
     );
     expect(npmTarballFileName({ version: "0.1.0", target: releaseTarget("linux-arm64") })).toBe(
-      "codexhost-cli-0.1.0-linux-arm64.tgz",
+      "boft-cli-0.1.0-linux-arm64.tgz",
     );
   });
 });

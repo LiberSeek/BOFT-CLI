@@ -62,11 +62,11 @@ https://github.com/user-attachments/assets/c48192d7-23ff-4f6e-b61a-6345a655bb76
 > 支持 macOS、Windows 和 [x64/ARM64 Linux](docs/linux.zh-CN.md)。
 
 ```bash
-npm install -g @codexhost/cli
-codexhost
+npm install -g @liberseek/boft-cli
+boft
 ```
 
-**或下载** [安装包](https://github.com/BytePioneer-AI/codex-host/releases)（macOS、Windows）
+**或下载** [安装包](https://github.com/LiberSeek/BOFT-CLI/releases)（macOS、Windows）
 
 <details>
 <summary>安装问题排查</summary>
@@ -178,10 +178,10 @@ CodexHost 会为目标 Harness 创建独立的 Native Session。委派会话将�
 在 SSH 远程主机上执行：
 
 ```bash
-npm install -g @codexhost/cli
-codexhost remote install
-codexhost remote start
-codexhost remote status
+npm install -g @liberseek/boft-cli
+boft remote install
+boft remote start
+boft remote status
 ```
 
 然后通过本地 codexhost 启动 Codex Desktop，打开 SSH 工作区，在远程输入框的 Agent/Model 选择器中选择目标 Harness。
@@ -240,8 +240,8 @@ CodexHost 尽量不走这条路：
 环境要求：官方 Codex Desktop、Node.js 22.19+ 或 24、Rust。
 
 ```bash
-git clone https://github.com/BytePioneer-AI/codex-host
-cd codex-host
+git clone https://github.com/LiberSeek/BOFT-CLI
+cd BOFT-CLI
 npm ci
 npm start
 ```

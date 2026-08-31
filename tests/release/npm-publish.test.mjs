@@ -36,26 +36,26 @@ describe("npm registry publishing", () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "codexhost-npm-publish-"));
     const version = "0.1.0-test.1";
     const names = [
-      `codexhost-cli-${version}-macos-arm64.tgz`,
-      `codexhost-cli-${version}-macos-x64.tgz`,
-      `codexhost-cli-${version}-windows-x64.tgz`,
-      `codexhost-cli-${version}-windows-arm64.tgz`,
-      `codexhost-cli-${version}-linux-x64.tgz`,
-      `codexhost-cli-${version}-linux-arm64.tgz`,
-      `codexhost-cli-${version}.tgz`,
+      `boft-cli-${version}-macos-arm64.tgz`,
+      `boft-cli-${version}-macos-x64.tgz`,
+      `boft-cli-${version}-windows-x64.tgz`,
+      `boft-cli-${version}-windows-arm64.tgz`,
+      `boft-cli-${version}-linux-x64.tgz`,
+      `boft-cli-${version}-linux-arm64.tgz`,
+      `boft-cli-${version}.tgz`,
     ];
     try {
       await mkdir(path.join(root, "nested"));
       for (const name of names) await writeFile(path.join(root, "nested", name), name);
       const plan = await createNpmPublishPlan({ artifactsRoot: root, version });
       expect(plan.map((entry) => entry.packageName)).toEqual([
-        "@codexhost/cli-darwin-arm64",
-        "@codexhost/cli-darwin-x64",
-        "@codexhost/cli-win32-x64",
-        "@codexhost/cli-win32-arm64",
-        "@codexhost/cli-linux-x64",
-        "@codexhost/cli-linux-arm64",
-        "@codexhost/cli",
+        "@liberseek/boft-cli-darwin-arm64",
+        "@liberseek/boft-cli-darwin-x64",
+        "@liberseek/boft-cli-win32-x64",
+        "@liberseek/boft-cli-win32-arm64",
+        "@liberseek/boft-cli-linux-x64",
+        "@liberseek/boft-cli-linux-arm64",
+        "@liberseek/boft-cli",
       ]);
       expect(plan.at(-1).kind).toBe("meta");
     } finally {

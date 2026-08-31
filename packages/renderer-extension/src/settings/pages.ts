@@ -34,9 +34,9 @@ import {
   runBoundedRendererUpdateRequest,
 } from "./update-request.js";
 
-export const CODEXHOST_GITHUB_REPOSITORY_URL = "https://github.com/BytePioneer-AI/codex-host";
+export const CODEXHOST_GITHUB_REPOSITORY_URL = "https://github.com/LiberSeek/BOFT-CLI";
 export const CODEXHOST_RELEASES_LATEST_URL = `${CODEXHOST_GITHUB_REPOSITORY_URL}/releases/latest`;
-export const CODEXHOST_NPM_MANUAL_UPDATE_COMMAND = "npm install -g @codexhost/cli@latest";
+export const CODEXHOST_NPM_MANUAL_UPDATE_COMMAND = "npm install -g @liberseek/boft-cli@latest";
 
 interface RendererUserAgentData {
   readonly platform?: string;
@@ -60,7 +60,7 @@ function windowsInstallerDownloadUrl(window: Window | null | undefined, version:
   const hints = navigator ? rendererUserAgentData(navigator) : undefined;
   const identity = `${hints?.architecture ?? ""} ${hints?.platform ?? ""} ${navigator?.platform ?? ""} ${navigator?.userAgent ?? ""}`;
   const architecture = /arm64|aarch64|\barm\b/iu.test(identity) ? "arm64" : "x64";
-  return `https://github.com/BytePioneer-AI/codex-host/releases/download/v${version}/codexhost-${version}-windows-${architecture}.exe`;
+  return `https://github.com/LiberSeek/BOFT-CLI/releases/download/v${version}/boft-cli-${version}-windows-${architecture}.exe`;
 }
 
 export const DEFAULT_RENDERER_SETTINGS_PAGE_IDS = ["connections", "updates", "about"] as const;

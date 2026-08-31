@@ -4,8 +4,8 @@
 The release system SHALL define `linux-arm64` as an npm distribution target using Rust target `aarch64-unknown-linux-gnu`, npm platform `linux`, and npm CPU `arm64`. The architecture-neutral CLI package SHALL select the matching ARM64 platform package when `process.platform` is `linux` and `process.arch` is `arm64`.
 
 #### Scenario: ARM64 user installs the npm CLI
-- **WHEN** an ARM64 Linux user installs `@codexhost/cli` with optional dependencies enabled
-- **THEN** npm installs `@codexhost/cli-linux-arm64`
+- **WHEN** an ARM64 Linux user installs `@liberseek/boft-cli` with optional dependencies enabled
+- **THEN** npm installs `@liberseek/boft-cli-linux-arm64`
 - **AND** the CLI resolves that package instead of the x64 package
 
 ### Requirement: Linux Desktop discovery SHALL enforce the native architecture

@@ -1507,7 +1507,7 @@ mod tests {
             .join("npm-runtime-fixture");
         let node_path = fixture_root.join("node");
         let cli_path = fixture_root.join("npm/bin/npm-cli.js");
-        let package_root = fixture_root.join("@codexhost/cli-platform");
+        let package_root = fixture_root.join("@liberseek/boft-cli-platform");
         let forwarded = npm_update_runtime_environment([
             (
                 OsString::from(NPM_NODE_PATH_ENV),

@@ -23,7 +23,7 @@ use crate::request::{
 #[cfg(target_os = "macos")]
 use crate::status::unix_seconds;
 
-const NPM_PACKAGE_NAME: &str = "@codexhost/cli";
+const NPM_PACKAGE_NAME: &str = "@liberseek/boft-cli";
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 const DISTRIBUTION_FILE: &str = "codexhost-distribution.json";
 

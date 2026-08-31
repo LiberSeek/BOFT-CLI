@@ -18,14 +18,14 @@ import { hostReleaseTarget, npmReleaseUsage, releaseTargetForHost } from "./targ
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 
-export const NPM_PACKAGE_NAME = "@codexhost/cli";
+export const NPM_PACKAGE_NAME = "@liberseek/boft-cli";
 export const NPM_PLATFORM_PACKAGE_NAMES = Object.freeze({
-  "macos-arm64": "@codexhost/cli-darwin-arm64",
-  "macos-x64": "@codexhost/cli-darwin-x64",
-  "windows-x64": "@codexhost/cli-win32-x64",
-  "windows-arm64": "@codexhost/cli-win32-arm64",
-  "linux-x64": "@codexhost/cli-linux-x64",
-  "linux-arm64": "@codexhost/cli-linux-arm64",
+  "macos-arm64": "@liberseek/boft-cli-darwin-arm64",
+  "macos-x64": "@liberseek/boft-cli-darwin-x64",
+  "windows-x64": "@liberseek/boft-cli-win32-x64",
+  "windows-arm64": "@liberseek/boft-cli-win32-arm64",
+  "linux-x64": "@liberseek/boft-cli-linux-x64",
+  "linux-arm64": "@liberseek/boft-cli-linux-arm64",
 });
 export const NPM_RUNTIME_PLATFORM_PACKAGES = Object.freeze({
   "darwin-arm64": NPM_PLATFORM_PACKAGE_NAMES["macos-arm64"],
@@ -36,7 +36,7 @@ export const NPM_RUNTIME_PLATFORM_PACKAGES = Object.freeze({
   "linux-arm64": NPM_PLATFORM_PACKAGE_NAMES["linux-arm64"],
 });
 export const NPM_PACKAGE_DESCRIPTION =
-  "Run Pi and Claude Code as first-class external harnesses inside Codex Desktop.";
+  "BOFT CLI runs Pi and other external harnesses inside Codex Desktop.";
 
 export function npmPlatformPackageName(target) {
   const packageName = NPM_PLATFORM_PACKAGE_NAMES[target.id];
@@ -225,12 +225,12 @@ export function createNpmPackageManifest({ version, target }) {
     keywords: ["codex", "codexhost", "pi", "claude-code", "agent", "harness"],
     repository: {
       type: "git",
-      url: "git+https://github.com/BytePioneer-AI/codex-host.git",
+      url: "git+https://github.com/LiberSeek/BOFT-CLI.git",
     },
     bugs: {
-      url: "https://github.com/BytePioneer-AI/codex-host/issues",
+      url: "https://github.com/LiberSeek/BOFT-CLI/issues",
     },
-    homepage: "https://github.com/BytePioneer-AI/codex-host#readme",
+    homepage: "https://github.com/LiberSeek/BOFT-CLI#readme",
     publishConfig: {
       access: "public",
     },
@@ -920,7 +920,7 @@ export async function prepareNpmPackage({
 }
 
 export function npmTarballFileName({ version, target }) {
-  return `codexhost-cli-${version}-${target.id}.tgz`;
+  return `boft-cli-${version}-${target.id}.tgz`;
 }
 
 export async function packNpmPackage({ packageRoot, outputRoot, version, target }) {

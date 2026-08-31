@@ -5,7 +5,7 @@ OpenAI now publishes official ChatGPT Desktop `.deb` and `.rpm` packages for ARM
 ## What Changes
 
 - Add `linux-arm64` as a first-class npm release and distribution target using `aarch64-unknown-linux-gnu`.
-- Publish and select `@codexhost/cli-linux-arm64` on `linux/arm64` hosts.
+- Publish and select `@liberseek/boft-cli-linux-arm64` on `linux/arm64` hosts.
 - Accept official little-endian ARM64 ChatGPT Desktop and packaged Codex CLI ELF executables while preserving same-architecture validation.
 - Extend update metadata, release publishing, CI, package smoke tests, and Linux Gate A contracts to cover ARM64.
 - Update Linux support documentation to describe official x64 and ARM64 `.deb`/`.rpm` support and the absence of a Linux installer package.

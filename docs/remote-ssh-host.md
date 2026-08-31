@@ -16,8 +16,8 @@ Windows is supported as the client. A Windows machine is not currently supported
 ## Install on the SSH host
 
 ```bash
-npm install -g @codexhost/cli
-codexhost remote install
+npm install -g @liberseek/boft-cli
+boft remote install
 codexhost remote start
 codexhost remote status
 ```

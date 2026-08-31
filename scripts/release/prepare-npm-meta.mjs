@@ -14,7 +14,7 @@ import {
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 
 export function expectedNpmMetaPackagePaths() {
-  return ["README.md", "bin/codexhost.js", "package.json"];
+  return ["README.md", "bin/boft.js", "bin/codexhost.js", "package.json"];
 }
 
 export function createNpmMetaPackageManifest({ version }) {
@@ -23,7 +23,7 @@ export function createNpmMetaPackageManifest({ version }) {
     version,
     description: NPM_PACKAGE_DESCRIPTION,
     type: "module",
-    bin: { codexhost: "bin/codexhost.js" },
+    bin: { boft: "bin/boft.js", codexhost: "bin/codexhost.js" },
     files: ["bin/**", "README.md"],
     engines: { node: ">=22" },
     optionalDependencies: Object.fromEntries(
@@ -32,10 +32,10 @@ export function createNpmMetaPackageManifest({ version }) {
     keywords: ["codex", "codexhost", "pi", "claude-code", "agent", "harness"],
     repository: {
       type: "git",
-      url: "git+https://github.com/BytePioneer-AI/codex-host.git",
+      url: "git+https://github.com/LiberSeek/BOFT-CLI.git",
     },
-    bugs: { url: "https://github.com/BytePioneer-AI/codex-host/issues" },
-    homepage: "https://github.com/BytePioneer-AI/codex-host#readme",
+    bugs: { url: "https://github.com/LiberSeek/BOFT-CLI/issues" },
+    homepage: "https://github.com/LiberSeek/BOFT-CLI#readme",
     publishConfig: { access: "public" },
   };
 }
@@ -56,11 +56,11 @@ npm automatically installs the matching macOS, Windows, or Linux platform packag
 ## Usage
 
 \`\`\`bash
-codexhost --version
-codexhost
+boft --version
+boft
 \`\`\`
 
-The \`codexhost\` command starts Codex Desktop. On macOS and Linux it returns immediately while the packaged Launcher keeps supervising in the background. On Windows, the command remains attached until Codex Desktop exits so shells that clean up process trees of completed commands cannot discard the supervisor. Re-running \`codexhost\` attaches to the same controlled instance.
+The \`boft\` command starts Codex Desktop. \`codexhost\` remains available as a compatibility alias. On macOS and Linux it returns immediately while the packaged Launcher keeps supervising in the background. On Windows, the command remains attached until Codex Desktop exits so shells that clean up process trees of completed commands cannot discard the supervisor. Re-running \`boft\` attaches to the same controlled instance.
 
 If installation used \`--omit=optional\`, reinstall without that option so npm can select the native package for the current architecture.
 `;
@@ -94,8 +94,8 @@ export async function validateNpmMetaPackage({ packageRoot }) {
   const manifest = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
   if (manifest.name !== NPM_PACKAGE_NAME)
     throw new Error(`npm meta package name must be ${NPM_PACKAGE_NAME}`);
-  if (manifest.bin?.codexhost !== "bin/codexhost.js") {
-    throw new Error("npm meta package must expose bin/codexhost.js");
+  if (manifest.bin?.boft !== "bin/boft.js" || manifest.bin?.codexhost !== "bin/codexhost.js") {
+    throw new Error("npm meta package must expose boft and codexhost launchers");
   }
   if (manifest.os !== undefined || manifest.cpu !== undefined) {
     throw new Error("npm meta package must be architecture-neutral");
@@ -109,12 +109,12 @@ export async function prepareNpmMetaPackage({ version, root = repositoryRoot }) 
   const packageRoot = path.join(outputRoot, "package");
   await rm(packageRoot, { recursive: true, force: true });
   await mkdir(path.join(packageRoot, "bin"), { recursive: true });
-  await writeFile(
-    path.join(packageRoot, "bin", "codexhost.js"),
-    createNpmBinLauncherSource({ version: packageVersion }),
-    "utf8",
-  );
-  await chmod(path.join(packageRoot, "bin", "codexhost.js"), 0o755);
+  const launcherSource = createNpmBinLauncherSource({ version: packageVersion });
+  for (const launcherName of ["boft.js", "codexhost.js"]) {
+    const launcherPath = path.join(packageRoot, "bin", launcherName);
+    await writeFile(launcherPath, launcherSource, "utf8");
+    await chmod(launcherPath, 0o755);
+  }
   await writeFile(
     path.join(packageRoot, "package.json"),
     `${JSON.stringify(createNpmMetaPackageManifest({ version: packageVersion }), null, 2)}\n`,
@@ -128,7 +128,7 @@ export async function prepareNpmMetaPackage({ version, root = repositoryRoot }) 
 }
 
 export function npmMetaTarballFileName(version) {
-  return `codexhost-cli-${version}.tgz`;
+  return `boft-cli-${version}.tgz`;
 }
 
 export async function packNpmMetaPackage({ outputRoot, packageRoot, version }) {

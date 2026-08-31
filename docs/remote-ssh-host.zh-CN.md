@@ -16,8 +16,8 @@ Codex Desktop 可以通过原生 SSH 工作流打开另一台机器上的项目�
 ## 在 SSH 开发机安装
 
 ```bash
-npm install -g @codexhost/cli
-codexhost remote install
+npm install -g @liberseek/boft-cli
+boft remote install
 codexhost remote start
 codexhost remote status
 ```
