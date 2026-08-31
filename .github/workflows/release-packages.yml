@@ -237,6 +237,20 @@ jobs:
       - name: Setup npm
         run: npm install --global npm@11.8.0
 
+      - name: Configure npm authentication
+        shell: bash
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$NPM_TOKEN" ]]; then
+            npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          else
+            # Trusted Publishing authenticates npm publish through GitHub OIDC.
+            # Remove setup-node's empty token placeholder so it cannot shadow OIDC.
+            npm config delete //registry.npmjs.org/:_authToken || true
+          fi
+
       - name: Download npm artifacts
         uses: actions/download-artifact@v4
         with:
@@ -246,7 +260,6 @@ jobs:
 
       - name: Publish platform packages and meta package
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TAG: ${{ needs.prepare.outputs.npm_tag }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
         run: >
