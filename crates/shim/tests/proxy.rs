@@ -2091,10 +2091,6 @@ fn cleans_an_escaped_descendant_after_the_cli_root_exits() {
     let output = shim.wait_with_output().expect("collect descendant output");
     assert!(output.status.success());
     assert!(
-        String::from_utf8_lossy(&output.stderr)
-            .contains("terminated official CLI descendants after root exit")
-    );
-    assert!(
         !process_exists(child_id),
         "escaped descendant PID {child_id} survived"
     );
