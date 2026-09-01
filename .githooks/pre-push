@@ -39,10 +39,25 @@ while read -r local_ref local_oid remote_ref remote_oid; do
     continue
   fi
 
-  if [[ "$local_ref" == refs/heads/$allowed_branch || "$local_ref" == "$allowed_prefix"* ]]; then
+  if [[ "$local_ref" == refs/heads/$allowed_branch ]]; then
+    if [[ "$remote_ref" != refs/heads/main ]]; then
+      echo "Push blocked: ${local_ref} may only update ${remote_name}/main." >&2
+      exit 1
+    fi
+    continue
+  fi
+  if [[ "$local_ref" == "$allowed_prefix"* ]]; then
+    if [[ "$remote_ref" != "$local_ref" ]]; then
+      echo "Push blocked: topic branch ${local_ref#refs/heads/} must use the matching remote branch." >&2
+      exit 1
+    fi
     continue
   fi
   if [[ -n "$allowed_extra_prefix" && "$local_ref" == "$allowed_extra_prefix"* ]]; then
+    if [[ "$remote_ref" != "$local_ref" ]]; then
+      echo "Push blocked: contribution branch ${local_ref#refs/heads/} must use the matching remote branch." >&2
+      exit 1
+    fi
     continue
   fi
 
