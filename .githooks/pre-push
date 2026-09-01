@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+remote_name="${1:-}"
+remote_url="${2:-}"
+
+case "$remote_name" in
+  upstream)
+    echo "Push blocked: upstream is fetch-only (${remote_url})." >&2
+    exit 1
+    ;;
+  public)
+    allowed_branch='ce'
+    allowed_prefix='refs/heads/ce/'
+    ;;
+  origin)
+    allowed_branch='main'
+    allowed_prefix='refs/heads/ee/'
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  if [[ "$remote_ref" == refs/tags/* ]]; then
+    echo "Push blocked: release tags must be reviewed and pushed explicitly." >&2
+    exit 1
+  fi
+
+  if [[ "$local_ref" == refs/heads/$allowed_branch || "$local_ref" == "$allowed_prefix"* ]]; then
+    continue
+  fi
+
+  echo "Push blocked: ${local_ref} cannot be pushed to ${remote_name}." >&2
+  echo "Use ${allowed_branch} or ${allowed_prefix}* for ${remote_name}." >&2
+  exit 1
+done
