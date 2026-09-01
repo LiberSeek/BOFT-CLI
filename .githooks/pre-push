@@ -12,10 +12,12 @@ case "$remote_name" in
   public)
     allowed_branch='ce'
     allowed_prefix='refs/heads/ce/'
+    allowed_extra_prefix='refs/heads/upstream/'
     ;;
   origin)
-    allowed_branch='main'
+    allowed_branch='ee'
     allowed_prefix='refs/heads/ee/'
+    allowed_extra_prefix=''
     ;;
   *)
     exit 0
@@ -40,8 +42,11 @@ while read -r local_ref local_oid remote_ref remote_oid; do
   if [[ "$local_ref" == refs/heads/$allowed_branch || "$local_ref" == "$allowed_prefix"* ]]; then
     continue
   fi
+  if [[ -n "$allowed_extra_prefix" && "$local_ref" == "$allowed_extra_prefix"* ]]; then
+    continue
+  fi
 
   echo "Push blocked: ${local_ref} cannot be pushed to ${remote_name}." >&2
-  echo "Use ${allowed_branch} or ${allowed_prefix}* for ${remote_name}." >&2
+  echo "Use ${allowed_branch}, ${allowed_prefix}*, or the configured contribution prefix for ${remote_name}." >&2
   exit 1
 done

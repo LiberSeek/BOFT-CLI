@@ -20,26 +20,29 @@ The checkout uses three remotes with separate responsibilities:
 
 | Remote     | URL                                                | Responsibility     | Push                                                              |
 | ---------- | -------------------------------------------------- | ------------------ | ----------------------------------------------------------------- |
-| `origin`   | `git@github.com:LiberSeek/BOFT-CLI-EE.git`         | EE repository      | allowed                                                           |
-| `public`   | `git@github.com:LiberSeek/BOFT-CLI.git`            | CE repository      | allowed from `ce` or `ce/*`; direct integration is `ce` to `main` |
-| `upstream` | `https://github.com/BytePioneer-AI/codex-host.git` | CodexHost upstream | disabled                                                          |
+| `origin`   | `git@github.com:LiberSeek/BOFT-CLI-EE.git`         | EE repository      | allowed from `ee` or `ee/*`                                      |
+| `public`   | `git@github.com:LiberSeek/BOFT-CLI.git`            | CE repository/fork | allowed from `ce`, `ce/*`, or `upstream/*`                       |
+| `upstream` | `https://github.com/BytePioneer-AI/codex-host.git` | CodexHost upstream | fetch-only                                                        |
 
-`origin` is the default push remote. The `public` and `upstream` remotes should
-be used explicitly when fetching or publishing CE/upstream changes.
+`origin` is the default push remote for EE work. The `public` and `upstream`
+remotes should be used explicitly when fetching or publishing CE and upstream
+contribution branches. The `upstream/*` branches on `public` are fork branches
+used as the head of pull requests to `BytePioneer-AI/codex-host`.
 
 ## Local Branches
 
-| Branch          | Tracks                       | Meaning                                              |
-| --------------- | ---------------------------- | ---------------------------------------------------- |
-| `main`          | `origin/main`                | EE integration branch; contains CE plus EE-only code |
-| `ce`            | `public/main`                | CE integration branch; must not contain EE-only code |
-| `upstream/main` | fetched from `upstream/main` | upstream reference; never a development branch       |
+| Branch          | Tracks                       | Meaning                                                        |
+| --------------- | ---------------------------- | -------------------------------------------------------------- |
+| `main`          | `upstream/main`              | upstream-compatible baseline and upstream PR starting point   |
+| `ce`            | `public/main`                | CE integration branch; must not contain EE-only code           |
+| `ee`            | `origin/main`                | EE integration branch; contains CE plus EE-only code            |
 
 Feature branches use one of these prefixes:
 
 - `ce/<topic>`: CE work, based on `ce`
-- `ee/<topic>`: EE work, based on `main`
-- `sync/<topic>`: temporary upstream synchronization work, based on `ce`
+- `ee/<topic>`: EE work, based on `ee`
+- `upstream/<topic>`: contribution work for a PR to `upstream/main`, based on `main`
+- `sync/<topic>`: temporary synchronization work, based on `main` or `ce` as appropriate
 
 ## Development Flow
 
@@ -60,6 +63,7 @@ change is integrated into `public/main`, update the local CE branch:
 git switch ce
 git fetch --no-tags public main
 git reset --hard public/main
+git branch --set-upstream-to=public/main ce
 ```
 
 The `ce` branch is the only local branch allowed to update `public/main`
@@ -71,7 +75,7 @@ to matching `ce/*` branches for review.
 EE starts from the CE baseline and adds private functionality:
 
 ```bash
-git switch main
+git switch ee
 git pull --ff-only origin main
 git fetch --no-tags public main
 git merge --no-ff public/main -m "sync: update EE with CE"
@@ -81,28 +85,40 @@ git push origin HEAD
 ```
 
 EE-only changes are developed and reviewed in `LiberSeek/BOFT-CLI-EE`. They
-must never be merged back into `public/main`.
+must never be merged back into `public/main` or `upstream/main`.
 
-When CE moves forward, merge `public/main` into `main`, resolve conflicts in
-the EE checkout, and run the complete validation required by the affected
-packages before pushing `origin/main`.
+When CE moves forward, merge `public/main` into `ee`, resolve conflicts in the
+EE checkout, and run the complete validation required by the affected packages
+before pushing `origin/main`.
 
-### Upstream synchronization
+### Upstream synchronization and contributions
 
-Upstream work is reviewed through a temporary branch. Do not merge upstream
-straight into EE:
+`main` follows the upstream baseline and is never pushed. Refresh it with:
 
 ```bash
 git fetch --no-tags upstream main
-git switch ce
-git switch -c sync/upstream-<date>
-git merge --no-ff upstream/main -m "sync: update from codex-host upstream"
-# run validation and review branding/license changes
+git switch main
+git reset --hard upstream/main
+git branch --set-upstream-to=upstream/main main
+```
+
+For a change that should be contributed to CodexHost, start from `main` and
+use an upstream-prefixed branch. If the change already exists on `ce`,
+cherry-pick only the upstream-compatible commits onto that branch:
+
+```bash
+git switch main
+git switch -c upstream/<topic>
+# develop directly, or cherry-pick selected commits from ce
+# run validation
 git push public HEAD
 ```
 
-Only upstream changes that are suitable for CE should be integrated into
-`public/main`, then propagated to EE through the normal CE-to-EE merge.
+Open the PR from `LiberSeek/BOFT-CLI:upstream/<topic>` to
+`BytePioneer-AI/codex-host:main`. Do not push to the `upstream` remote. After
+an upstream change is accepted, refresh `main`, then bring the desired result
+into `ce` through a reviewed CE change. EE receives it only through the normal
+CE-to-EE merge.
 
 ## Edition Boundaries
 
@@ -184,10 +200,10 @@ and all CI jobs have been verified.
 
 The tracked hook at `.githooks/pre-push` is installed as this checkout's
 `core.hooksPath`. It rejects all pushes to `upstream`, rejects EE branches from
-`public`, and rejects CE branches from `origin`. It permits only annotated `v*`
-release tags from `ce` to `public` or from `main` to `origin`. Keep this guard
-enabled on the shared checkout; use an explicit, reviewed override only when
-repairing the repository configuration.
+`public`, and rejects CE/upstream contribution branches from `origin`. It
+permits CE release tags from `ce` to `public` and EE release tags from `ee` to
+`origin`. Keep this guard enabled on the shared checkout; use an explicit,
+reviewed override only when repairing the repository configuration.
 
 To reinstall it after cloning or changing the checkout location:
 
