@@ -22,10 +22,19 @@ case "$remote_name" in
     ;;
 esac
 
+current_branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+
 while read -r local_ref local_oid remote_ref remote_oid; do
   if [[ "$remote_ref" == refs/tags/* ]]; then
-    echo "Push blocked: release tags must be reviewed and pushed explicitly." >&2
-    exit 1
+    if [[ "$remote_ref" != refs/tags/v* || "$current_branch" != "$allowed_branch" ]]; then
+      echo "Push blocked: only an annotated v* release tag from ${allowed_branch} may be pushed to ${remote_name}." >&2
+      exit 1
+    fi
+    if [[ "$(git cat-file -t "$local_oid")" != "tag" ]]; then
+      echo "Push blocked: release tag ${remote_ref#refs/tags/} must be annotated." >&2
+      exit 1
+    fi
+    continue
   fi
 
   if [[ "$local_ref" == refs/heads/$allowed_branch || "$local_ref" == "$allowed_prefix"* ]]; then

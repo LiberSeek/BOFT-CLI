@@ -18,22 +18,22 @@ It is not part of active development.
 
 The checkout uses three remotes with separate responsibilities:
 
-| Remote | URL | Responsibility | Push |
-| --- | --- | --- | --- |
-| `origin` | `git@github.com:LiberSeek/BOFT-CLI-EE.git` | EE repository | allowed |
-| `public` | `git@github.com:LiberSeek/BOFT-CLI.git` | CE repository | allowed from `ce` or `ce/*`; direct integration is `ce` to `main` |
-| `upstream` | `https://github.com/BytePioneer-AI/codex-host.git` | CodexHost upstream | disabled |
+| Remote     | URL                                                | Responsibility     | Push                                                              |
+| ---------- | -------------------------------------------------- | ------------------ | ----------------------------------------------------------------- |
+| `origin`   | `git@github.com:LiberSeek/BOFT-CLI-EE.git`         | EE repository      | allowed                                                           |
+| `public`   | `git@github.com:LiberSeek/BOFT-CLI.git`            | CE repository      | allowed from `ce` or `ce/*`; direct integration is `ce` to `main` |
+| `upstream` | `https://github.com/BytePioneer-AI/codex-host.git` | CodexHost upstream | disabled                                                          |
 
 `origin` is the default push remote. The `public` and `upstream` remotes should
 be used explicitly when fetching or publishing CE/upstream changes.
 
 ## Local Branches
 
-| Branch | Tracks | Meaning |
-| --- | --- | --- |
-| `main` | `origin/main` | EE integration branch; contains CE plus EE-only code |
-| `ce` | `public/main` | CE integration branch; must not contain EE-only code |
-| `upstream/main` | fetched from `upstream/main` | upstream reference; never a development branch |
+| Branch          | Tracks                       | Meaning                                              |
+| --------------- | ---------------------------- | ---------------------------------------------------- |
+| `main`          | `origin/main`                | EE integration branch; contains CE plus EE-only code |
+| `ce`            | `public/main`                | CE integration branch; must not contain EE-only code |
+| `upstream/main` | fetched from `upstream/main` | upstream reference; never a development branch       |
 
 Feature branches use one of these prefixes:
 
@@ -157,12 +157,13 @@ Every EE change requires all CE checks plus:
 
 ## Local Setup
 
-The repository requires Node.js `22.19.x` or `24.x` and npm `11.8.0`.
+The repository requires Node.js `22.22.0` or `24.x` and npm `11.8.0`.
 Install the pinned JavaScript toolchain and dependencies with:
 
 ```bash
-nvm use 22.19.0
-corepack npm install --global npm@11.8.0
+nvm install 22.22.0
+nvm use 22.22.0
+npm install --global npm@11.8.0
 npm ci
 ```
 
@@ -183,9 +184,10 @@ and all CI jobs have been verified.
 
 The tracked hook at `.githooks/pre-push` is installed as this checkout's
 `core.hooksPath`. It rejects all pushes to `upstream`, rejects EE branches from
-`public`, and rejects CE branches from `origin`. Keep this guard enabled on the
-shared checkout; use an explicit, reviewed override only when repairing the
-repository configuration.
+`public`, and rejects CE branches from `origin`. It permits only annotated `v*`
+release tags from `ce` to `public` or from `main` to `origin`. Keep this guard
+enabled on the shared checkout; use an explicit, reviewed override only when
+repairing the repository configuration.
 
 To reinstall it after cloning or changing the checkout location:
 
