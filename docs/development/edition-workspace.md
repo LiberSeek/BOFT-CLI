@@ -198,16 +198,20 @@ and all CI jobs have been verified.
 
 ## Push Guard
 
-The tracked hook at `.githooks/pre-push` is installed as this checkout's
-`core.hooksPath`. It rejects all pushes to `upstream`, rejects EE branches from
-`public`, and rejects CE/upstream contribution branches from `origin`. It
-permits CE release tags from `ce` to `public` and EE release tags from `ee` to
-`origin`. Keep this guard enabled on the shared checkout; use an explicit,
-reviewed override only when repairing the repository configuration.
+The tracked hook at `.githooks/pre-push` is copied into the local
+`.git/hooks/pre-push` so the guard remains active while switching between the
+CE/EE branches and the upstream-tracking `main` branch. It rejects all pushes
+to `upstream`, rejects EE branches from `public`, and rejects CE/upstream
+contribution branches from `origin`. It permits CE release tags from `ce` to
+`public` and EE release tags from `ee` to `origin`. Keep this guard enabled on
+the shared checkout; use an explicit, reviewed override only when repairing the
+repository configuration.
 
 To reinstall it after cloning or changing the checkout location:
 
 ```bash
-git config core.hooksPath .githooks
-chmod +x .githooks/pre-push
+mkdir -p .git/hooks
+cp .githooks/pre-push .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+git config core.hooksPath .git/hooks
 ```
