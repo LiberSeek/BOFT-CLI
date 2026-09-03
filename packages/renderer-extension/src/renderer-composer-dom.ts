@@ -481,6 +481,16 @@ export function creditsPlacementAnchor(control: ComposerAgentControl): HTMLEleme
   return root?.parentElement ? root : null;
 }
 
+/** Shared gap between Model, Agent, and Send in the composer trailing cluster. */
+const TRAILING_CLUSTER_GAP_PX = 4;
+
+function applyTrailingClusterSpacing(...roots: readonly HTMLElement[]): void {
+  for (const root of roots) {
+    root.style.marginInlineStart = "0";
+    root.style.marginInlineEnd = `${TRAILING_CLUSTER_GAP_PX}px`;
+  }
+}
+
 function refreshTrailingClusterPlacement(control: ComposerAgentControl): void {
   const sendButton = control.sendButton;
   const modelRoot = control.modelPicker?.root;
@@ -489,6 +499,9 @@ function refreshTrailingClusterPlacement(control: ComposerAgentControl): void {
   const anchor = trailingActionAnchor(sendButton);
   const parent = anchor.parentElement;
   if (!parent || typeof parent.insertBefore !== "function") return;
+  // Keep Model ↔ Agent ↔ Send gaps identical regardless of which controls are
+  // currently visible; spacing lives on our owned roots, not the native Send.
+  applyTrailingClusterSpacing(modelRoot, agentRoot);
   if (
     modelRoot.parentElement === parent &&
     agentRoot.parentElement === parent &&

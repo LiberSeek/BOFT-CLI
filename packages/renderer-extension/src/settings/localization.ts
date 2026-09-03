@@ -21,7 +21,6 @@ export interface RendererSettingsMessages {
   readonly locale: RendererSettingsLocale;
   readonly title: string;
   readonly close: string;
-  readonly starOnGitHub: string;
   readonly sectionsLabel: string;
   readonly generalSection: string;
   readonly otherSection: string;
@@ -30,6 +29,9 @@ export interface RendererSettingsMessages {
   readonly notAvailable: string;
   readonly runtimeCapabilityNotInstalled: string;
   readonly connectionsDescription: string;
+  readonly pluginsDescription: string;
+  readonly pluginsRefresh: string;
+  readonly pluginsRefreshing: string;
   readonly connectionAdapter: string;
   readonly connectionHosts: string;
   readonly connectionLocalHost: string;
@@ -58,6 +60,7 @@ export interface RendererSettingsMessages {
   readonly connectionStatusUnsupported: string;
   readonly connectionComponent: string;
   readonly connectionStatus: string;
+  readonly connectionAction: string;
   readonly connectionHostsScrollLeft: string;
   readonly connectionHostsScrollRight: string;
   readonly connectionOpenInstallation: string;
@@ -117,10 +120,14 @@ export interface RendererSettingsMessages {
   readonly updateDownloadFromReleases: string;
   readonly updateDownloadWindowsInstaller: string;
   readonly aboutTagline: string;
-  readonly aboutParagraphs: readonly string[];
-  readonly aboutOpenSource: string;
+  readonly aboutLead: string;
+  readonly aboutExtensionIntro: string;
+  readonly aboutAgents: readonly Readonly<{ name: string; description: string }>[];
+  readonly aboutClosingParagraphs: readonly string[];
+  readonly aboutOpenSourceAfter: string;
   readonly aboutStarCallout: string;
-  readonly aboutRepository: string;
+  readonly aboutBrand: string;
+  readonly aboutBrandTagline: string;
   readonly pageLabels: Readonly<Record<DefaultRendererSettingsPageId, string>>;
 }
 
@@ -128,7 +135,6 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "en",
   title: "Settings",
   close: "Close settings",
-  starOnGitHub: "Give us a Star~",
   sectionsLabel: "Settings sections",
   generalSection: "General",
   otherSection: "Other",
@@ -136,16 +142,18 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   inDevelopment: "In development",
   notAvailable: "Not available",
   runtimeCapabilityNotInstalled: "This runtime capability is not installed yet.",
-  connectionsDescription:
-    "View runtime status by Host. Select an item to inspect details or complete its setup.",
+  connectionsDescription: "Add and configure Agent Harnesses supported by the system.",
+  pluginsDescription: "Extend and manage Codex plugins.",
+  pluginsRefresh: "Scan environment",
+  pluginsRefreshing: "Scanning...",
   connectionAdapter: "Renderer adapter",
   connectionHosts: "Hosts",
   connectionLocalHost: "Local",
   connectionRemoteHost: "Remote Host",
   connectionActiveHost: "Current",
   connectionReason: "Reason",
-  connectionRefresh: "Run connection diagnostics",
-  connectionRefreshing: "Running diagnostics...",
+  connectionRefresh: "Scan environment",
+  connectionRefreshing: "Scanning...",
   connectionViewError: "View error",
   connectionCopyDetails: "Copy diagnostics",
   connectionCopied: "Copied",
@@ -166,6 +174,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionStatusUnsupported: "Unsupported",
   connectionComponent: "Component",
   connectionStatus: "Status",
+  connectionAction: "Actions",
   connectionHostsScrollLeft: "Show previous Hosts",
   connectionHostsScrollRight: "Show more Hosts",
   connectionOpenInstallation: "Open official installation page",
@@ -188,8 +197,8 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionGroupDragHandle: "Drag to reorder",
   connectionGroupReset: "Reset order",
   pickerMoreAgentsLabel: "More agents",
-  pickerManageLink: "Manage",
-  pickerHideUnusedAgentsCta: "Hide unused agents",
+  pickerManageLink: "Settings",
+  pickerHideUnusedAgentsCta: "Customize agents",
   enabled: "Enabled",
   disabled: "Disabled",
   openSettings: "Open BOFT CLI settings",
@@ -231,17 +240,31 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   updateCopyFailed: "Copy failed",
   updateDownloadFromReleases: "Download from GitHub Releases",
   updateDownloadWindowsInstaller: "Download Windows installer",
-  aboutTagline: "Run Pi and other Harnesses in Codex Desktop",
-  aboutParagraphs: Object.freeze([
-    "We believe Codex Desktop offers the best desktop development experience available today.",
-    "But Codex is not the only excellent Agent Harness. Some developers prefer Claude Code or Pi Agent.",
-    "BOFT CLI lets you choose the Agent that actually executes tasks inside Codex Desktop, while preserving the native Codex experience and enabling them to collaborate.",
+  aboutTagline: "An Extension for running third-party Agent Harnesses in Codex.",
+  aboutLead: "Codex provides an excellent desktop development experience.",
+  aboutExtensionIntro:
+    "BOFT CLI builds on that, bringing in more compelling Agents through an Extension.",
+  aboutAgents: Object.freeze([
+    Object.freeze({
+      name: "Pi Agent",
+      description: "A lightweight coding Agent, integrated through its official RPC.",
+    }),
+    Object.freeze({
+      name: "DeepSeek Harness",
+      description: "DeepSeek's native Harness, with full streaming and tool fidelity.",
+    }),
   ]),
-  aboutOpenSource: "BOFT CLI is an open-source project. The source code is available at:",
+  aboutClosingParagraphs: Object.freeze([
+    "Experience the strengths of third-party Agent Harnesses conveniently inside Codex.",
+    "Keep the native Codex experience, and organize them to get outstanding work done.",
+  ]),
+  aboutOpenSourceAfter: "is an open-source project.",
   aboutStarCallout: "⭐ If this project helps you, please give us a Star! ⭐",
-  aboutRepository: "Open-source repository",
+  aboutBrand: "LIBERSEEK",
+  aboutBrandTagline: "Explore toward the future",
   pageLabels: Object.freeze({
-    connections: "Connections",
+    connections: "Agents",
+    plugins: "Plugin",
     updates: "Updates",
     about: "About",
   }),
@@ -251,7 +274,6 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "zh-CN",
   title: "设置",
   close: "关闭设置",
-  starOnGitHub: "点个 Star~",
   sectionsLabel: "设置分类",
   generalSection: "通用",
   otherSection: "其他",
@@ -259,15 +281,18 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   inDevelopment: "开发中",
   notAvailable: "暂不可用",
   runtimeCapabilityNotInstalled: "运行时尚未安装该项能力，因此暂不可用。",
-  connectionsDescription: "按 Host 查看运行时状态。选择一项，在右侧检查详情或完成配置。",
+  connectionsDescription: "添加和配置系统中支持的 Agent Harness。",
+  pluginsDescription: "扩展和管理 Codex 的插件。",
+  pluginsRefresh: "扫描环境",
+  pluginsRefreshing: "正在扫描...",
   connectionAdapter: "Renderer 适配器",
   connectionHosts: "Host 列表",
   connectionLocalHost: "本地",
   connectionRemoteHost: "远程 Host",
   connectionActiveHost: "当前",
   connectionReason: "原因",
-  connectionRefresh: "重新诊断连接",
-  connectionRefreshing: "正在诊断...",
+  connectionRefresh: "扫描环境",
+  connectionRefreshing: "正在扫描...",
   connectionViewError: "查看错误",
   connectionCopyDetails: "复制诊断信息",
   connectionCopied: "已复制",
@@ -288,6 +313,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionStatusUnsupported: "不支持",
   connectionComponent: "组件",
   connectionStatus: "状态",
+  connectionAction: "操作",
   connectionHostsScrollLeft: "查看前面的 Host",
   connectionHostsScrollRight: "查看更多 Host",
   connectionOpenInstallation: "前往官方安装页面",
@@ -308,8 +334,8 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionGroupDragHandle: "拖动排序",
   connectionGroupReset: "恢复默认排列",
   pickerMoreAgentsLabel: "更多 Agent",
-  pickerManageLink: "管理",
-  pickerHideUnusedAgentsCta: "收起不常用的 Agent",
+  pickerManageLink: "设置",
+  pickerHideUnusedAgentsCta: "设置 Agent 显示",
   enabled: "已开启",
   disabled: "已关闭",
   openSettings: "打开 BOFT CLI 设置",
@@ -351,17 +377,30 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   updateCopyFailed: "复制失败",
   updateDownloadFromReleases: "前往 GitHub Releases 下载",
   updateDownloadWindowsInstaller: "下载 Windows 安装包",
-  aboutTagline: "在 Codex Desktop 中运行 Pi 和其他 Harness",
-  aboutParagraphs: Object.freeze([
-    "我们认为 Codex Desktop 提供了目前最好的桌面开发交互体验。",
-    "但 Codex 并不是唯一优秀的 Agent Harness，也有人偏好 Claude Code 和 Pi Agent。",
-    "BOFT CLI 让你在 Codex Desktop 中选择真正执行任务的 Agent，同时保留 Codex 的原生体验，并让它们协作完成任务。",
+  aboutTagline: "在 Codex 中运行第三方 Agent Harness 的 Extension。",
+  aboutLead: "Codex 提供了优秀的桌面开发交互体验。",
+  aboutExtensionIntro: "BOFT CLI 在基础上，通过 Extension 加入了更多引人入胜的 Agent。",
+  aboutAgents: Object.freeze([
+    Object.freeze({
+      name: "Pi Agent",
+      description: "轻量编程 Agent，通过官方 RPC 接入。",
+    }),
+    Object.freeze({
+      name: "DeepSeek Harness",
+      description: "深度求索原生 Harness，保留完整流式与工具能力。",
+    }),
   ]),
-  aboutOpenSource: "BOFT CLI 是一个开源项目，开源地址：",
+  aboutClosingParagraphs: Object.freeze([
+    "让你便捷地在 Codex 中尽情体验第三方 Agent Harness 带来的优质能力。",
+    "同时保留 Codex 的原生体验，并组织它们出色地完成任务。",
+  ]),
+  aboutOpenSourceAfter: "是开源项目。",
   aboutStarCallout: "⭐ 如果这个项目对你有帮助，请给我们一个 Star！⭐",
-  aboutRepository: "开源仓库",
+  aboutBrand: "LIBERSEEK",
+  aboutBrandTagline: "向未来探索",
   pageLabels: Object.freeze({
-    connections: "连接",
+    connections: "Agents",
+    plugins: "Plugin",
     updates: "更新",
     about: "关于",
   }),

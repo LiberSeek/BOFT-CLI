@@ -44,7 +44,7 @@ describe("Renderer settings header trigger", () => {
     ).toBe("empty-actions");
   });
 
-  it("shows a dedicated update button and opens the Updates page directly", () => {
+  it("expands an inline clickable Updates action and opens the Updates page directly", () => {
     class FakeElement {
       readonly attributes = new Map<string, string>();
       readonly children: FakeElement[] = [];
@@ -53,6 +53,7 @@ describe("Renderer settings header trigger", () => {
       readonly style: Record<string, string | ((name: string, value: string) => void)> = {};
       disabled = false;
       isConnected = true;
+      textContent = "";
       title = "";
       type = "";
 
@@ -77,6 +78,9 @@ describe("Renderer settings header trigger", () => {
       }
       hasAttribute(name: string): boolean {
         return this.attributes.has(name);
+      }
+      matches(): boolean {
+        return false;
       }
       remove(): void {
         this.isConnected = false;
@@ -106,19 +110,54 @@ describe("Renderer settings header trigger", () => {
       document,
     );
 
-    expect(control.updateButton.style.display).toBe("none");
+    const iconWrap = control.button.children[0] as unknown as FakeElement;
+    const brandLabel = control.button.children[1] as unknown as FakeElement;
+    const updateDot = iconWrap.children[1] as unknown as FakeElement;
+
+    expect(brandLabel.textContent).toBe("BOFT CLI");
+    expect(brandLabel.style.maxWidth).toBe("0");
+    expect(control.updateButton.textContent).toBe("Updates");
+    expect(control.updateButton.style.maxWidth).toBe("0");
+    expect(control.updateButton.style.pointerEvents).toBe("none");
+    expect(updateDot.style.display).toBe("none");
+    expect(control.root.hasAttribute("data-update-available")).toBe(false);
+    expect(control.root.children).toEqual([control.button, control.updateButton]);
+
+    (control.root as unknown as FakeElement).dispatch("pointerenter");
+    expect(brandLabel.style.maxWidth).toBe("96px");
+    expect(control.updateButton.style.maxWidth).toBe("0");
+    (control.root as unknown as FakeElement).dispatch("pointerleave");
+
     control.setUpdateAvailable(true);
-    expect(control.updateButton.style.display).toBe("inline-flex");
-    expect(control.updateButton.style.background).toBe("#2563eb");
-    expect(control.updateButton.style.color).toBe("#ffffff");
-    expect(
-      (control.updateButton.children[1] as unknown as { textContent: string }).textContent,
-    ).toBe("Updates");
+    expect(updateDot.style.display).toBe("block");
     expect(control.root.hasAttribute("data-update-available")).toBe(true);
+
+    (control.root as unknown as FakeElement).dispatch("pointerenter");
+    expect(brandLabel.style.maxWidth).toBe("96px");
+    expect(brandLabel.style.opacity).toBe("1");
+    expect(control.updateButton.style.maxWidth).toBe("64px");
+    expect(control.updateButton.style.opacity).toBe("1");
+    expect(control.updateButton.style.pointerEvents).toBe("auto");
+    expect(control.updateButton.style.color).toBe("#2563eb");
+
+    (control.updateButton as unknown as FakeElement).dispatch("pointerenter");
+    expect(control.updateButton.style.color).toBe("#1d4ed8");
+    expect(control.updateButton.style.background).toBe("rgba(37, 99, 235, 0.14)");
+    (control.updateButton as unknown as FakeElement).dispatch("pointerleave");
+    expect(control.updateButton.style.color).toBe("#2563eb");
+    expect(control.updateButton.style.background).toBe("transparent");
+
     (control.updateButton as unknown as FakeElement).dispatch("click");
     expect(opened).toHaveBeenCalledWith(control.updateButton, "updates");
+
+    (control.root as unknown as FakeElement).dispatch("pointerleave");
+    expect(brandLabel.style.maxWidth).toBe("0");
+    expect(control.updateButton.style.maxWidth).toBe("0");
+    expect(control.updateButton.style.pointerEvents).toBe("none");
+
     control.setUpdateAvailable(false);
-    expect(control.updateButton.style.display).toBe("none");
+    expect(updateDot.style.display).toBe("none");
+    expect(control.root.hasAttribute("data-update-available")).toBe(false);
     control.dispose();
     vi.unstubAllGlobals();
   });

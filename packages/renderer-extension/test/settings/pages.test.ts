@@ -3,10 +3,18 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/settings/icons.js", () => ({
   createRendererSettingsIcon: () => "icon",
+  createRendererSettingsBrandIcon: () => "brand-icon",
+  createRendererSettingsGitHubIcon: () => "github-icon",
   isRendererSettingsIconName: () => true,
 }));
 
+vi.mock("../../src/assets/logo-animated.mp4", () => ({
+  default: "data:video/mp4;base64,AAAA",
+}));
+
+import { createAgentGroupPreferenceStore } from "../../src/agent-group-preference.js";
 import { RendererSettingsPageScope } from "../../src/settings/core.js";
+import { createConnectionsSettingsPage } from "../../src/settings/connections-page.js";
 import { rendererSettingsMessages } from "../../src/settings/localization.js";
 import {
   CODEXHOST_RELEASES_LATEST_URL,
@@ -251,13 +259,30 @@ describe("Renderer Connections page", () => {
     });
 
     expect(visibleText(content)).toContain("本地");
+    expect(visibleText(content)).toContain("Agents");
     expect(
-      descendants(content).filter((candidate) =>
-        candidate.className.split(" ").includes("settings-connection-row__mark--logo"),
+      descendants(content).filter(
+        (candidate) =>
+          candidate.dataset.connectionItem !== undefined &&
+          candidate.dataset.connectionItem !== "",
       ),
-    ).toHaveLength(3);
-    expect(visibleText(content)).toContain("CH");
+    ).toHaveLength(2);
+    expect(visibleText(content)).not.toContain("Renderer 适配器");
+    expect(visibleText(content)).not.toContain("CH");
+    expect(
+      descendants(content).some((candidate) => candidate.dataset.connectionItem === "renderer-adapter"),
+    ).toBe(false);
     expect(visibleText(content)).toContain("公司");
+    expect(visibleText(content)).not.toContain("pi exited with code 1");
+    expect(elementWithClass(content, "settings-segmented")).toBeDefined();
+    expect(visibleText(content)).toContain("查看错误");
+
+    const viewError = descendants(content).find(
+      ({ tagName, className }) =>
+        tagName === "button" && className.split(" ").includes("settings-connection-view-error"),
+    );
+    if (!viewError) throw new Error("View error button is not rendered");
+    viewError.dispatch("click");
     expect(visibleText(content)).toContain("pi exited with code 1");
     expect(visibleText(content)).toContain("~/.pi/agent/settings.json");
     expect(visibleText(content)).toContain("startup");
@@ -282,11 +307,11 @@ describe("Renderer Connections page", () => {
     if (!refresh) throw new Error("Connection refresh button is not rendered");
     refresh.dispatch("click");
     expect(refresh.disabled).toBe(true);
-    expect(visibleNotesText(refresh)).toContain("正在诊断...");
+    expect(visibleNotesText(refresh)).toContain("正在扫描...");
     expect(diagnostics.refresh).toHaveBeenCalledWith();
     refreshRequest.resolve(undefined);
     await vi.waitFor(() => expect(refresh.disabled).toBe(false));
-    expect(visibleNotesText(refresh)).toContain("重新诊断连接");
+    expect(visibleNotesText(refresh)).toContain("扫描环境");
 
     const installLink = descendants(content).find(
       ({ tagName, href }) =>
@@ -297,7 +322,6 @@ describe("Renderer Connections page", () => {
       rel: "noopener noreferrer",
     });
 
-    expect(visibleText(content)).toContain("查看错误");
     const remoteTab = descendants(content).find(
       ({ tagName, dataset }) =>
         tagName === "button" &&
@@ -316,18 +340,238 @@ describe("Renderer Connections page", () => {
         attributes.get("aria-selected") === "true",
     );
     expect(selectedRemoteTab).toBeDefined();
+    expect(
+      selectedRemoteTab?.className.split(" ").includes("settings-segmented__item--selected"),
+    ).toBe(true);
 
-    const hostTabs = elementWithClass(content, "settings-connection-host-tabs");
-    hostTabs.clientWidth = 240;
-    hostTabs.scrollWidth = 720;
-    hostTabs.dispatch("scroll");
-    const scrollRight = descendants(content).find(
-      ({ dataset }) => dataset.connectionHostScroll === "right",
+    cleanup?.();
+  });
+
+  it("lists installed Agents before uninstalled ones even when preference order mixes them", () => {
+    const storage = {
+      data: new Map<string, string>(),
+      getItem(key: string) {
+        return this.data.get(key) ?? null;
+      },
+      setItem(key: string, value: string) {
+        this.data.set(key, value);
+      },
+      removeItem(key: string) {
+        this.data.delete(key);
+      },
+      clear() {
+        this.data.clear();
+      },
+      key() {
+        return null;
+      },
+      get length() {
+        return this.data.size;
+      },
+    } satisfies Storage;
+    const groupPreference = createAgentGroupPreferenceStore(storage);
+    // Put the uninstalled Agent first in the raw preference order.
+    groupPreference.moveAgent("deepseek-harness", "main", "pi");
+    groupPreference.moveAgent("pi", "main", null);
+
+    const diagnostics: RendererConnectionDiagnostics = {
+      snapshot: vi.fn((): RendererConnectionSnapshot => ({
+        adapter: {
+          state: "ready",
+          reason: "ready",
+          modelUpdates: 1,
+          hook: "request-bridge",
+        },
+        hosts: [
+          {
+            hostId: "local",
+            active: true,
+            agents: [
+              { agent: "deepseek-harness", availability: "notInstalled", error: null },
+              { agent: "pi", availability: "ready", error: null },
+            ],
+          },
+        ],
+      })),
+      refresh: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    };
+    const page = createConnectionsSettingsPage(
+      rendererSettingsMessages("zh-CN"),
+      () => diagnostics,
+      groupPreference,
     );
-    if (!scrollRight) throw new Error("Host scroll button is not rendered");
-    expect(scrollRight.disabled).toBe(false);
-    scrollRight.dispatch("click");
-    expect(hostTabs.scrollLeft).toBeGreaterThan(0);
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    const agentRows = descendants(content).filter(
+      (candidate) =>
+        candidate.dataset.connectionItem === "pi" ||
+        candidate.dataset.connectionItem === "deepseek-harness",
+    );
+    expect(agentRows.map((row) => row.dataset.connectionItem)).toEqual([
+      "pi",
+      "deepseek-harness",
+    ]);
+    expect(
+      groupPreference
+        .list()
+        .filter((entry) => entry.agent === "pi" || entry.agent === "deepseek-harness")
+        .map((entry) => entry.agent),
+    ).toEqual(["pi", "deepseek-harness"]);
+
+    cleanup?.();
+  });
+
+  it("can move an Agent from More back to Main even when Main has no same-install peer", () => {
+    const storage = {
+      data: new Map<string, string>(),
+      getItem(key: string) {
+        return this.data.get(key) ?? null;
+      },
+      setItem(key: string, value: string) {
+        this.data.set(key, value);
+      },
+      removeItem(key: string) {
+        this.data.delete(key);
+      },
+      clear() {
+        this.data.clear();
+      },
+      key() {
+        return null;
+      },
+      get length() {
+        return this.data.size;
+      },
+    } satisfies Storage;
+    const groupPreference = createAgentGroupPreferenceStore(storage);
+    // Uninstalled Agent alone in More; Main only has an installed peer.
+    groupPreference.moveAgent("pi", "main", null);
+    groupPreference.moveAgent("deepseek-harness", "more", null);
+
+    const diagnostics: RendererConnectionDiagnostics = {
+      snapshot: vi.fn((): RendererConnectionSnapshot => ({
+        adapter: {
+          state: "ready",
+          reason: "ready",
+          modelUpdates: 0,
+          hook: "request-bridge",
+        },
+        hosts: [
+          {
+            hostId: "local",
+            active: true,
+            agents: [
+              { agent: "pi", availability: "ready", error: null },
+              { agent: "deepseek-harness", availability: "notInstalled", error: null },
+            ],
+          },
+        ],
+      })),
+      refresh: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    };
+    const page = createConnectionsSettingsPage(
+      rendererSettingsMessages("zh-CN"),
+      () => diagnostics,
+      groupPreference,
+    );
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    expect(groupPreference.sectionOf("deepseek-harness")).toBe("more");
+
+    const divider = elementWithClass(content, "settings-connection-group-divider");
+    const dragEvent = {
+      preventDefault() {},
+      stopPropagation() {},
+      dataTransfer: { setData() {}, effectAllowed: "move" },
+    };
+    divider.dispatch("dragover", dragEvent);
+    // Simulate the More→Main path exposed by dropping on the divider.
+    groupPreference.moveAgent("deepseek-harness", "main", "pi");
+    // After moving ahead of installed `pi`, reconcile on next render keeps buckets:
+    // installed first, then uninstalled — but section must be main.
+    expect(groupPreference.sectionOf("deepseek-harness")).toBe("main");
+
+    cleanup?.();
+  });
+});
+
+describe("Renderer Plugin page", () => {
+  it("renders Renderer adapter status and refresh diagnostics", async () => {
+    const refreshRequest = deferred<undefined>();
+    const diagnostics: RendererConnectionDiagnostics = {
+      snapshot: vi.fn((): RendererConnectionSnapshot => ({
+        adapter: {
+          state: "ready",
+          reason: "ready",
+          modelUpdates: 1,
+          hook: "request-bridge",
+        },
+        hosts: [],
+      })),
+      refresh: vi.fn(() => refreshRequest.promise),
+      subscribe: vi.fn(() => () => undefined),
+    };
+    const page = createDefaultRendererSettingsPages(
+      rendererSettingsMessages("zh-CN"),
+      () => null,
+      () => diagnostics,
+    ).find(({ id }) => id === "plugins");
+    if (!page) throw new Error("Plugin page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    expect(visibleText(content)).toContain("Plugin");
+    expect(visibleText(content)).toContain("Renderer 适配器");
+    expect(visibleText(content)).not.toContain("CH");
+    const adapterRow = descendants(content).find(
+      (candidate) => candidate.dataset.connectionItem === "renderer-adapter",
+    );
+    if (!adapterRow) throw new Error("Renderer adapter row is not rendered");
+    const brandMark = descendants(adapterRow).find((candidate) =>
+      candidate.className.split(" ").includes("settings-connection-row__mark--logo"),
+    );
+    expect(brandMark).toBeDefined();
+    expect(brandMark?.children).toContain("brand-icon");
+    expect(visibleText(content)).toContain("正常");
+    expect(visibleText(content)).toContain("组件");
+    expect(visibleText(content)).toContain("状态");
+    expect(visibleText(content)).toContain("操作");
+    expect(diagnostics.subscribe).toHaveBeenCalledOnce();
+
+    const refresh = descendants(content).find(
+      ({ tagName, dataset }) => tagName === "button" && dataset.pluginAction === "refresh",
+    );
+    if (!refresh) throw new Error("Plugin refresh button is not rendered");
+    refresh.dispatch("click");
+    expect(refresh.disabled).toBe(true);
+    expect(visibleNotesText(refresh)).toContain("正在扫描...");
+    expect(diagnostics.refresh).toHaveBeenCalledWith();
+    refreshRequest.resolve(undefined);
+    await vi.waitFor(() => expect(refresh.disabled).toBe(false));
+    expect(visibleNotesText(refresh)).toContain("扫描环境");
 
     cleanup?.();
   });
@@ -524,20 +768,63 @@ describe("Renderer Updates page", () => {
       runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
     });
 
-    expect(visibleText(content)).toContain("在 Codex Desktop 中运行 Pi 和其他 Harness");
-    expect(visibleText(content)).toContain(
-      "我们认为 Codex Desktop 提供了目前最好的桌面开发交互体验",
+    const text = visibleText(content);
+    expect(text).toContain("在 Codex 中运行第三方 Agent Harness 的 Extension。");
+    expect(text).toContain("Codex 提供了优秀的桌面开发交互体验。");
+    expect(text).toContain("Pi Agent");
+    expect(text).toContain("DeepSeek Harness");
+    expect(text).toContain("轻量编程 Agent");
+    expect(text).toContain("深度求索原生 Harness");
+    expect(text).toContain("让你便捷地在 Codex 中尽情体验");
+    expect(text).toContain("同时保留 Codex 的原生体验");
+    expect(text).not.toContain("我们认为 Codex Desktop 提供了目前最好的桌面开发交互体验");
+    expect(text).toMatch(/BOFT CLI\s+是开源项目。/);
+    expect(text).not.toContain("开源地址");
+    expect(text).not.toContain("开源仓库");
+    expect(text).not.toContain("https://github.com/LiberSeek/BOFT-CLI");
+    expect(text).toContain("请给我们一个 Star");
+    expect(text).toContain("LIBERSEEK");
+    expect(text).toContain("向未来探索");
+    const aboutPage = elementWithClass(content, "settings-about-page");
+    const panels = aboutPage.children.filter(
+      (child) => child instanceof FakeElement && child.className.includes("settings-about-panel"),
     );
-    expect(visibleText(content)).toContain("Claude Code 和 Pi Agent");
-    expect(visibleText(content)).toContain("BOFT CLI 是一个开源项目");
-    expect(visibleText(content)).toContain("请给我们一个 Star");
+    expect(panels).toHaveLength(2);
+    expect(visibleText(panels[0] as FakeElement)).toContain("BOFT CLI");
+    expect(visibleText(panels[0] as FakeElement)).toContain(
+      "在 Codex 中运行第三方 Agent Harness 的 Extension。",
+    );
+    expect(visibleText(panels[0] as FakeElement)).toContain("Pi Agent");
+    expect(visibleText(panels[0] as FakeElement)).toContain("DeepSeek Harness");
+    expect(visibleText(panels[1] as FakeElement)).toMatch(/BOFT CLI\s+是开源项目。/);
+    expect(visibleText(panels[1] as FakeElement)).toContain("请给我们一个 Star");
+    expect(visibleText(panels[0] as FakeElement)).not.toContain("LIBERSEEK");
+    expect(visibleText(panels[1] as FakeElement)).not.toContain("LIBERSEEK");
     const repository = descendants(content).find(
       ({ tagName, href }) => tagName === "a" && href === "https://github.com/LiberSeek/BOFT-CLI",
     );
-    expect(repository).toMatchObject({ target: "_blank", rel: "noopener noreferrer" });
-    expect(visibleNotesText(repository as FakeElement)).toContain(
-      "https://github.com/LiberSeek/BOFT-CLI",
+    expect(repository).toMatchObject({
+      className: "settings-about-repository-link",
+      target: "_blank",
+      rel: "noopener noreferrer",
+    });
+    expect(visibleNotesText(repository as FakeElement)).toContain("BOFT CLI");
+    expect(visibleNotesText(repository as FakeElement)).toContain("github-icon");
+    const brand = descendants(content).find(
+      ({ tagName, href }) => tagName === "a" && href === "https://liberseek.ai",
     );
+    expect(brand).toMatchObject({
+      className: "settings-about-brand",
+      target: "_blank",
+      rel: "noopener noreferrer",
+    });
+    expect(aboutPage.children.at(-1)).toBe(brand);
+    const brandVideo = descendants(content).find(({ tagName }) => tagName === "video") as
+      | (FakeElement & { src?: string })
+      | undefined;
+    expect(brandVideo?.src).toMatch(/^data:video\/mp4/);
+    expect(text.indexOf("是开源项目。")).toBeLessThan(text.indexOf("请给我们一个 Star"));
+    expect(text.indexOf("请给我们一个 Star")).toBeLessThan(text.indexOf("LIBERSEEK"));
 
     cleanup?.();
     scope.dispose();

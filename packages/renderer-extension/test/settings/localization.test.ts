@@ -50,10 +50,22 @@ describe("Renderer settings localization", () => {
     expect(chinese.updateDownloadFromReleases).toBe("前往 GitHub Releases 下载");
     expect(chinese.updateDownloadWindowsInstaller).toBe("下载 Windows 安装包");
     expect(chinese.pageLabels.about).toBe("关于");
-    expect(chinese.aboutTagline).toBe("在 Codex Desktop 中运行 Pi 和其他 Harness");
-    expect(chinese.aboutParagraphs).toHaveLength(3);
+    expect(chinese.aboutTagline).toBe("在 Codex 中运行第三方 Agent Harness 的 Extension。");
+    expect(chinese.aboutLead).toBe("Codex 提供了优秀的桌面开发交互体验。");
+    expect(chinese.aboutAgents).toHaveLength(2);
+    expect(chinese.aboutAgents[0]).toMatchObject({ name: "Pi Agent" });
+    expect(chinese.aboutAgents[1]).toMatchObject({ name: "DeepSeek Harness" });
+    expect(chinese.aboutClosingParagraphs).toHaveLength(2);
     expect(chinese.aboutStarCallout).toContain("请给我们一个 Star");
-    expect(chinese.aboutRepository).toBe("开源仓库");
+    expect(chinese.aboutOpenSourceAfter).toBe("是开源项目。");
+    expect(english.aboutOpenSourceAfter).toBe("is an open-source project.");
+    expect(chinese.aboutBrand).toBe("LIBERSEEK");
+    expect(chinese.aboutBrandTagline).toBe("向未来探索");
+    expect(english.aboutTagline).toBe(
+      "An Extension for running third-party Agent Harnesses in Codex.",
+    );
+    expect(english.aboutLead).toBe("Codex provides an excellent desktop development experience.");
+    expect(english.aboutBrandTagline).toBe("Explore toward the future");
     expect(Object.keys(chinese.pageLabels)).toEqual(Object.keys(english.pageLabels));
     expect(Object.isFrozen(english)).toBe(true);
     expect(Object.isFrozen(chinese.pageLabels)).toBe(true);
@@ -64,6 +76,6 @@ describe("Renderer settings localization", () => {
       createDefaultRendererSettingsPages(rendererSettingsMessages("zh-CN")).map(
         ({ label }) => label,
       ),
-    ).toEqual(["连接", "更新", "关于"]);
+    ).toEqual(["Agents", "Plugin", "更新", "关于"]);
   });
 });

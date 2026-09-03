@@ -1,16 +1,30 @@
 :host {
-  --settings-bg: #181818;
-  --settings-sidebar: #1c1c1c;
+  /* Inherit Codex Desktop color-scheme; light-dark() tracks the host page. */
+  --settings-bg: light-dark(#ffffff, #181818);
+  --settings-sidebar: light-dark(#f4f4f5, #1c1c1c);
   --settings-panel: transparent;
-  --settings-text: #f5f5f5;
-  --settings-muted: #a1a1a1;
-  --settings-border: rgb(255 255 255 / 10%);
-  --settings-divider: rgb(255 255 255 / 10%);
-  --settings-hover: rgb(255 255 255 / 6%);
-  --settings-active: rgb(51 156 255 / 12%);
+  --settings-text: light-dark(#171717, #f5f5f5);
+  --settings-muted: light-dark(#737373, #a1a1a1);
+  --settings-border: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 10%));
+  --settings-divider: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 10%));
+  --settings-hover: light-dark(rgb(15 23 42 / 5%), rgb(255 255 255 / 6%));
+  --settings-active: light-dark(rgb(51 156 255 / 14%), rgb(51 156 255 / 12%));
   --settings-focus: #339cff;
+  --settings-elevated: light-dark(#ffffff, #2c2c2e);
+  --settings-inset: light-dark(rgb(15 23 42 / 4%), rgb(0 0 0 / 18%));
+  --settings-surface: light-dark(rgb(15 23 42 / 3%), rgb(255 255 255 / 2%));
+  --settings-surface-strong: light-dark(rgb(15 23 42 / 6%), rgb(255 255 255 / 6%));
+  --settings-mark: light-dark(#52525b, #d4d8de);
+  --settings-dialog-shadow: light-dark(
+    0 24px 64px rgb(15 23 42 / 16%),
+    0 24px 64px rgb(0 0 0 / 38%)
+  );
+  --settings-backdrop: light-dark(rgb(15 23 42 / 28%), rgb(0 0 0 / 52%));
+  --settings-segmented-shadow:
+    0 0 0 0.5px light-dark(rgb(15 23 42 / 6%), rgb(0 0 0 / 4%)),
+    0 3px 1px 0 light-dark(rgb(15 23 42 / 4%), rgb(0 0 0 / 4%)),
+    0 3px 8px 0 light-dark(rgb(15 23 42 / 10%), rgb(0 0 0 / 12%));
   color: var(--settings-text);
-  color-scheme: dark;
   font:
     14px/1.5 system-ui,
     -apple-system,
@@ -53,11 +67,11 @@ button {
   background: var(--settings-bg);
   border: 1px solid var(--settings-border);
   border-radius: 12px;
-  box-shadow: 0 24px 64px rgb(0 0 0 / 38%);
+  box-shadow: var(--settings-dialog-shadow);
 }
 
 .codexhost-settings-dialog::backdrop {
-  background: rgb(0 0 0 / 52%);
+  background: var(--settings-backdrop);
 }
 
 .settings-frame,
@@ -172,7 +186,7 @@ button {
 .settings-nav-section-label {
   min-height: 28px;
   padding: 7px 12px 3px;
-  color: #777;
+  color: var(--settings-muted);
   font-size: 12px;
   font-weight: 600;
   line-height: 18px;
@@ -194,6 +208,7 @@ button {
   padding: 10px 14px;
   color: var(--settings-text);
   font-size: 14px;
+  font-weight: 600;
   line-height: 21px;
   text-align: left;
   background: transparent;
@@ -232,21 +247,6 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.settings-nav-star-link {
-  margin-top: 0;
-  color: var(--settings-text);
-  text-decoration: none;
-}
-
-.settings-nav-star-link .codexhost-settings-icon {
-  color: #f5c542;
-}
-
-.settings-nav-star-link:hover {
-  color: #fff4bd;
-  background: rgb(245 197 66 / 8%);
 }
 
 .settings-icon-button {
@@ -349,7 +349,7 @@ button {
   height: 44px;
   flex: none;
   color: var(--settings-muted);
-  background: rgb(255 255 255 / 7%);
+  background: var(--settings-surface-strong);
   border-radius: 50%;
 }
 
@@ -360,8 +360,8 @@ button {
   font-size: 13px;
   font-weight: 500;
   line-height: 18px;
-  background: rgb(255 255 255 / 9%);
-  border: 1px solid rgb(255 255 255 / 6%);
+  background: var(--settings-surface-strong);
+  border: 1px solid var(--settings-border);
   border-radius: 6px;
 }
 
@@ -422,7 +422,7 @@ button {
   padding: 2px;
   border: 0;
   border-radius: 999px;
-  background: rgb(255 255 255 / 16%);
+  background: var(--settings-surface-strong);
   cursor: pointer;
   transition: background 120ms ease;
 }
@@ -462,72 +462,73 @@ button {
 }
 
 .settings-connections-content,
-.settings-connections-layout,
+.settings-plugins-content,
 .settings-connection-list,
 .settings-connection-rows {
   min-width: 0;
 }
 
-.settings-connections-layout {
+.settings-connections-content,
+.settings-plugins-content {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
-  align-items: start;
-  gap: 18px;
+  gap: 12px;
 }
 
-.settings-connection-list,
-.settings-connection-inspector {
+.settings-connection-list {
   overflow: hidden;
-  background: rgb(255 255 255 / 2%);
+  background: var(--settings-surface);
   border: 1px solid var(--settings-border);
   border-radius: 12px;
 }
 
-.settings-connection-host-strip {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 30px;
+.settings-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  min-width: 0;
-  gap: 6px;
-  padding: 12px;
-  border-bottom: 1px solid var(--settings-divider);
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px;
+  gap: 3px;
+  background: var(--settings-surface-strong);
+  border-radius: 10px;
 }
 
-.settings-connection-host-scroll {
-  display: none;
+.settings-segmented__item {
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 34px;
-  padding: 0;
+  min-height: 28px;
+  padding: 4px 14px;
   color: var(--settings-muted);
-  background: rgb(0 0 0 / 18%);
-  border: 1px solid var(--settings-border);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
   border-radius: 8px;
   cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-.settings-connection-host-strip[data-connection-host-overflow="true"]
-  .settings-connection-host-scroll {
-  display: inline-flex;
-}
-
-.settings-connection-host-strip:not([data-connection-host-overflow="true"]) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.settings-connection-host-scroll:hover:not(:disabled) {
+.settings-segmented__item:hover {
   color: var(--settings-text);
   background: var(--settings-hover);
 }
 
-.settings-connection-host-scroll:disabled {
-  cursor: default;
-  opacity: 0.35;
+.settings-segmented__item--selected,
+.settings-segmented__item[aria-selected="true"] {
+  color: var(--settings-text);
+  background: var(--settings-elevated);
+  box-shadow: var(--settings-segmented-shadow);
 }
 
-.settings-connection-host-scroll:focus-visible,
-.settings-connection-host-tab:focus-visible,
+.settings-segmented__item:focus-visible,
 .settings-connection-row:focus-visible,
 .settings-connection-install-link:focus-visible,
 .settings-connection-view-error:focus-visible {
@@ -535,62 +536,14 @@ button {
   outline-offset: 1px;
 }
 
-.settings-connection-host-tabs {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 6px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
-  touch-action: pan-x;
-}
-
-.settings-connection-host-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.settings-connection-host-tab {
-  display: inline-flex;
-  align-items: center;
-  height: 34px;
-  min-width: max-content;
-  flex: none;
-  padding: 0 11px;
-  color: var(--settings-muted);
-  font: inherit;
-  font-size: 12px;
-  line-height: 18px;
-  white-space: nowrap;
-  background: rgb(0 0 0 / 18%);
-  border: 1px solid var(--settings-border);
-  border-radius: 8px;
-  cursor: pointer;
-  scroll-snap-align: start;
-}
-
-.settings-connection-host-tab:hover {
-  color: var(--settings-text);
-  background: var(--settings-hover);
-}
-
-.settings-connection-host-tab[aria-selected="true"] {
-  color: #e8f3ff;
-  font-weight: 600;
-  background: var(--settings-active);
-  border-color: rgb(51 156 255 / 50%);
-}
-
 .settings-connection-table-header,
 .settings-connection-row {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(92px, auto) 108px;
+  /* Component : Status : Actions = 4 : 3 : 3 */
+  grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 3fr);
   align-items: center;
   min-width: 0;
-  gap: 14px;
+  column-gap: 16px;
 }
 
 .settings-connection-table-header {
@@ -602,19 +555,24 @@ button {
   line-height: 16px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: rgb(255 255 255 / 2%);
+  background: var(--settings-surface);
   border-bottom: 1px solid var(--settings-divider);
+}
+
+.settings-connection-rows > .settings-connection-row,
+.settings-connection-rows > .settings-connection-block {
+  border-bottom: 1px solid var(--settings-divider);
+}
+
+.settings-connection-rows > .settings-connection-row:last-child,
+.settings-connection-rows > .settings-connection-block:last-child {
+  border-bottom: 0;
 }
 
 .settings-connection-row {
   min-height: 64px;
   padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid var(--settings-divider);
-}
-
-.settings-connection-row:last-child {
-  border-bottom: 0;
 }
 
 .settings-connection-row:hover {
@@ -650,10 +608,10 @@ button {
   width: 28px;
   height: 28px;
   flex: none;
-  color: #d4d8de;
+  color: var(--settings-mark);
   font-size: 10px;
   font-weight: 700;
-  background: rgb(255 255 255 / 6%);
+  background: var(--settings-surface-strong);
   border-radius: 7px;
 }
 
@@ -669,10 +627,15 @@ button {
   max-height: 22px;
 }
 
+.settings-connection-table-header > :last-child {
+  text-align: end;
+}
+
 .settings-connection-row__status {
   display: inline-flex;
   align-items: center;
   width: fit-content;
+  max-width: 100%;
   gap: 6px;
   color: var(--settings-muted);
   font-size: 12px;
@@ -749,23 +712,13 @@ button {
   box-shadow: inset 0 -2px 0 0 var(--settings-focus);
 }
 
-.settings-connection-row__group-toggle {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  color: var(--settings-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.settings-connection-row__group-toggle:hover {
-  color: var(--settings-text);
-  background: var(--settings-hover);
+.settings-connection-inline-detail {
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+  padding: 14px 12px 16px;
+  border-top: 1px solid var(--settings-divider);
+  background: var(--settings-inset);
 }
 
 .settings-connection-group-divider {
@@ -779,6 +732,12 @@ button {
   /* No border-top here: the row immediately above already carries its own
      border-bottom (it is no longer :last-child once this divider follows
      it), so adding one here would double the separator line. */
+}
+
+.settings-connection-group-divider[data-connection-drag-over="true"] {
+  color: var(--settings-focus);
+  background: rgb(51 156 255 / 8%);
+  border-radius: 6px;
 }
 
 .settings-connection-group-more[data-connection-drag-over="true"] {
@@ -949,7 +908,7 @@ button {
   display: grid;
   gap: 7px;
   padding: 12px;
-  background: rgb(0 0 0 / 18%);
+  background: var(--settings-inset);
   border: 1px solid var(--settings-border);
   border-radius: 9px;
 }
@@ -997,7 +956,7 @@ button {
   margin: 0;
   padding: 11px;
   overflow: auto;
-  color: #e3e5e8;
+  color: var(--settings-text);
   font:
     10px/16px ui-monospace,
     "SFMono-Regular",
@@ -1006,7 +965,7 @@ button {
     monospace;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  background: rgb(0 0 0 / 28%);
+  background: var(--settings-inset);
   border: 1px solid var(--settings-border);
   border-radius: 9px;
 }
@@ -1027,7 +986,7 @@ button {
 
 .settings-connection-state-summary {
   padding: 14px;
-  background: rgb(255 255 255 / 3%);
+  background: var(--settings-surface);
   border: 1px solid var(--settings-border);
   border-radius: 10px;
 }
@@ -1058,9 +1017,21 @@ button {
   line-height: 19px;
 }
 
+.settings-about-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-sizing: border-box;
+  min-height: min(620px, calc(100vh - 200px));
+  max-width: 720px;
+}
+
+.settings-about-page > .settings-section-label {
+  padding-bottom: 10px;
+}
+
 .settings-about-panel {
   display: grid;
-  max-width: 720px;
   gap: 18px;
   padding: 28px;
   background: rgb(255 255 255 / 2%);
@@ -1088,7 +1059,77 @@ button {
   gap: 12px;
 }
 
-.settings-about-copy p,
+.settings-about-lead,
+.settings-about-extension,
+.settings-about-closing p,
+.settings-about-copy p {
+  margin: 0;
+  color: var(--settings-muted);
+  font-size: 13px;
+  line-height: 21px;
+}
+
+.settings-about-lead {
+  color: var(--settings-text);
+  font-weight: 500;
+}
+
+.settings-about-agents {
+  display: grid;
+  gap: 10px;
+  margin: 2px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-about-agent {
+  display: grid;
+  gap: 4px;
+  padding-left: 2px;
+}
+
+.settings-about-agent-name {
+  color: var(--settings-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.settings-about-agent-name::before {
+  content: "· ";
+  color: var(--settings-muted);
+  font-weight: 600;
+}
+
+.settings-about-agent-description {
+  display: block;
+  padding-left: 0.85em;
+  color: var(--settings-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.settings-about-closing {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-about-repository {
+  gap: 10px;
+}
+
+.settings-about-open-source {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35em;
+  margin: 0;
+  color: var(--settings-muted);
+  font-size: 13px;
+  line-height: 21px;
+}
+
 .settings-about-repository p {
   margin: 0;
   color: var(--settings-muted);
@@ -1097,46 +1138,80 @@ button {
 }
 
 .settings-about-star-callout {
-  margin: 2px 0;
+  margin: 4px 0 0;
   color: #f5c542;
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
 }
 
-.settings-about-repository {
-  display: grid;
-  gap: 10px;
-  padding-top: 18px;
-  border-top: 1px solid var(--settings-divider);
+.settings-about-repository-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #7cb8ff;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
 }
 
-.settings-about-repository-link {
-  display: flex;
-  align-items: center;
-  width: fit-content;
-  min-width: 0;
-  max-width: 100%;
-  gap: 8px;
-  color: #7cb8ff;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
+.settings-about-repository-link .codexhost-settings-icon {
+  display: block;
+  flex: none;
 }
 
 .settings-about-repository-link:hover {
   text-decoration: underline;
 }
 
-.settings-about-repository-link code {
-  min-width: 0;
+.settings-about-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 12px;
+  color: inherit;
+  opacity: 0.9;
+  text-decoration: none;
+  transition: opacity 160ms ease;
+}
+
+.settings-about-brand:hover {
+  opacity: 1;
+}
+
+.settings-about-brand-video {
+  width: 40px;
+  height: 40px;
+  flex: none;
   overflow: hidden;
+  object-fit: cover;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+}
+
+.settings-about-brand-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.settings-about-brand-name {
+  color: var(--settings-text);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 18px;
+}
+
+.settings-about-brand-tagline {
   color: var(--settings-muted);
-  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
-  font-weight: 400;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  line-height: 16px;
 }
 
 .settings-page-error {
@@ -1193,6 +1268,32 @@ button {
   border-radius: 8px;
 }
 
+/* Soft status copy (unavailable / request failure) should not sit in a framed card. */
+.settings-update-panel[data-update-state="unavailable"],
+.settings-update-panel[data-update-state="failed"],
+.settings-update-panel[data-update-state="error"] {
+  padding: 4px 0 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.settings-update-panel__status-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-update-panel__status-row .settings-update-actions {
+  flex: none;
+}
+
+.settings-update-panel__status-row .settings-update-panel__head {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .settings-update-panel__head {
   display: flex;
   align-items: center;
@@ -1204,20 +1305,24 @@ button {
   color: var(--settings-muted);
 }
 
-.settings-update-panel[data-update-state="available"] .codexhost-settings-icon,
-.settings-update-panel[data-update-state="downloading"] .codexhost-settings-icon,
-.settings-update-panel[data-update-state="installing"] .codexhost-settings-icon,
-.settings-update-panel[data-update-state="restarting"] .codexhost-settings-icon {
+.settings-update-panel[data-update-state="available"] .settings-update-panel__head .codexhost-settings-icon,
+.settings-update-panel[data-update-state="downloading"] .settings-update-panel__head .codexhost-settings-icon,
+.settings-update-panel[data-update-state="installing"] .settings-update-panel__head .codexhost-settings-icon,
+.settings-update-panel[data-update-state="restarting"] .settings-update-panel__head .codexhost-settings-icon {
   color: #4aa3f0;
 }
 
-.settings-update-panel[data-update-state="current"] .codexhost-settings-icon {
+.settings-update-panel[data-update-state="current"] .settings-update-panel__head .codexhost-settings-icon {
   color: #4ade80;
 }
 
-.settings-update-panel[data-update-state="failed"] .codexhost-settings-icon,
-.settings-update-panel[data-update-state="error"] .codexhost-settings-icon {
+.settings-update-panel[data-update-state="failed"] .settings-update-panel__head .codexhost-settings-icon,
+.settings-update-panel[data-update-state="error"] .settings-update-panel__head .codexhost-settings-icon {
   color: #ef4444;
+}
+
+.settings-update-panel[data-update-state="unavailable"] .settings-update-panel__head .codexhost-settings-icon {
+  color: var(--settings-muted);
 }
 
 .settings-update-panel__title {
@@ -1354,7 +1459,7 @@ button {
   padding: 8px 12px;
   color: var(--settings-muted);
   border-left: 3px solid var(--settings-focus);
-  background: rgb(255 255 255 / 4%);
+  background: var(--settings-surface);
 }
 
 .settings-update-notes hr {
@@ -1385,7 +1490,7 @@ button {
 
 .settings-update-notes :not(pre) > code {
   padding: 1px 5px;
-  background: rgb(255 255 255 / 8%);
+  background: var(--settings-surface-strong);
   border-radius: 4px;
 }
 
@@ -1395,7 +1500,7 @@ button {
   padding: 10px 12px;
   overflow-x: auto;
   overflow-y: hidden;
-  background: rgb(0 0 0 / 28%);
+  background: var(--settings-inset);
   border-radius: 6px;
 }
 
@@ -1515,14 +1620,29 @@ button {
 
 .settings-command-button--secondary,
 .settings-update-link {
-  color: var(--settings-text);
+  color: var(--settings-muted);
   background: transparent;
   border-color: var(--settings-border);
 }
 
-.settings-command-button:hover,
-.settings-update-link:hover {
+.settings-command-button--secondary .codexhost-settings-icon,
+.settings-update-link .codexhost-settings-icon {
+  color: var(--settings-muted);
+}
+
+.settings-command-button:hover:not(.settings-command-button--secondary) {
   filter: brightness(1.08);
+}
+
+.settings-command-button--secondary:hover,
+.settings-update-link:hover {
+  color: var(--settings-text);
+  background: var(--settings-hover);
+}
+
+.settings-command-button--secondary:hover .codexhost-settings-icon,
+.settings-update-link:hover .codexhost-settings-icon {
+  color: var(--settings-text);
 }
 
 .settings-command-button:focus-visible,
@@ -1584,10 +1704,6 @@ button {
     border-radius: 10px;
   }
 
-  .settings-nav-star-link {
-    margin-top: 0;
-  }
-
   .settings-page__content {
     width: calc(100% - 40px);
   }
@@ -1621,14 +1737,6 @@ button {
     width: 100%;
   }
 
-  .settings-connections-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .settings-connection-inspector {
-    position: static;
-  }
-
   .settings-status-row__detail {
     grid-column: 1 / -1;
     margin: -8px 0 0 58px;
@@ -1637,6 +1745,7 @@ button {
 
 @media (forced-colors: active) {
   :host,
+  :host([data-theme="light"]),
   :host([data-theme="dark"]) {
     --settings-bg: Canvas;
     --settings-sidebar: Canvas;
@@ -1648,6 +1757,11 @@ button {
     --settings-hover: Highlight;
     --settings-active: Highlight;
     --settings-focus: Highlight;
+    --settings-elevated: Canvas;
+    --settings-inset: Canvas;
+    --settings-surface: Canvas;
+    --settings-surface-strong: Canvas;
+    --settings-mark: CanvasText;
   }
 }
 

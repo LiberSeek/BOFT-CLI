@@ -11,7 +11,7 @@ import {
   DEFAULT_RENDERER_SETTINGS_MESSAGES,
   type RendererSettingsMessages,
 } from "./localization.js";
-import { CODEXHOST_GITHUB_REPOSITORY_URL, createDefaultRendererSettingsRegistry } from "./pages.js";
+import { createDefaultRendererSettingsRegistry } from "./pages.js";
 
 export const SETTINGS_SHELL_ATTRIBUTE = "data-codexhost-settings-shell";
 
@@ -39,6 +39,26 @@ export function isRendererSettingsDialogSupported(
   return typeof dialog.showModal === "function" && typeof dialog.close === "function";
 }
 
+/** Resolve light/dark from the host document's color-scheme (Codex Desktop theme). */
+export function resolveRendererSettingsTheme(
+  ownerDocument: Document = document,
+): "light" | "dark" {
+  try {
+    const scheme = ownerDocument.defaultView
+      ?.getComputedStyle(ownerDocument.documentElement)
+      .colorScheme.toLowerCase();
+    if (scheme?.includes("dark") && !scheme.includes("light")) return "dark";
+    if (scheme?.includes("light") && !scheme.includes("dark")) return "light";
+  } catch {
+    // Fall through when computed style is unavailable (tests / detached docs).
+  }
+  return "dark";
+}
+
+function applyRendererSettingsTheme(root: HTMLElement, ownerDocument: Document): void {
+  root.dataset.theme = resolveRendererSettingsTheme(ownerDocument);
+}
+
 function setActiveNavigation(
   buttons: ReadonlyMap<string, HTMLButtonElement>,
   activePageId: string,
@@ -63,7 +83,7 @@ export function mountRendererSettingsShell(
   const root = ownerDocument.createElement("div");
   root.setAttribute(SETTINGS_SHELL_ATTRIBUTE, "v1");
   root.lang = messages.locale;
-  root.dataset.theme = "dark";
+  applyRendererSettingsTheme(root, ownerDocument);
   const shadow = root.attachShadow({ mode: "open" });
   const style = ownerDocument.createElement("style");
   style.textContent = settingsCss;
@@ -199,18 +219,6 @@ export function mountRendererSettingsShell(
     navigationButtons.set(definition.id, button);
     navigation.append(button);
   }
-  const starLink = ownerDocument.createElement("a");
-  starLink.className = "settings-nav-button settings-nav-star-link";
-  starLink.href = CODEXHOST_GITHUB_REPOSITORY_URL;
-  starLink.target = "_blank";
-  starLink.rel = "noopener noreferrer";
-  starLink.setAttribute("aria-label", messages.starOnGitHub);
-  starLink.title = messages.starOnGitHub;
-  starLink.append(createRendererSettingsIcon("star", 17));
-  const starLabel = ownerDocument.createElement("span");
-  starLabel.textContent = messages.starOnGitHub;
-  starLink.append(starLabel);
-  navigation.append(starLink);
   const supported = isRendererSettingsDialogSupported(dialog);
   const focusActiveNavigation = (): void => {
     navigationButtons.get(navigationState.activePageId)?.focus();
@@ -267,6 +275,7 @@ export function mountRendererSettingsShell(
     openSettings(nextOpener, pageId = resolvedRegistry.defaultPageId) {
       if (disposed || !supported || !resolvedRegistry.getPage(pageId)) return false;
       lifecycleGeneration += 1;
+      applyRendererSettingsTheme(root, ownerDocument);
       opener = nextOpener?.isConnected ? nextOpener : null;
       activatePage(pageId);
       try {

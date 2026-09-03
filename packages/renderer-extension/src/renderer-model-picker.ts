@@ -13,15 +13,19 @@ import {
   RENDERER_MODEL_PICKER_MODEL_MENU_MAX_HEIGHT,
 } from "./renderer-model-picker-positioning.js";
 import {
+  applyRendererPickerPopoverSurface,
+  PICKER_POPOVER_BACKGROUND,
+  PICKER_POPOVER_CLASS,
+} from "./renderer-picker-popover-style.js";
+import {
   ensureRendererTriggerChipStyle,
   TRIGGER_CHIP_CLASS,
 } from "./renderer-trigger-chip-style.js";
 
-const MENU_CLASSES =
-  "fixed z-50 overflow-hidden rounded-xl bg-token-dropdown-background/90 text-token-foreground shadow-lg backdrop-blur-xl";
+const MENU_CLASSES = `fixed z-50 overflow-hidden ${PICKER_POPOVER_CLASS}`;
 
 const SEARCH_INPUT_CLASSES =
-  "mb-1 w-full shrink-0 rounded-lg border border-token-border bg-token-dropdown-background/95 px-2 py-1.5 text-sm text-token-foreground outline-none placeholder:text-token-text-tertiary disabled:cursor-not-allowed disabled:opacity-40";
+  "mb-1 w-full shrink-0 rounded-lg px-2 py-1.5 text-sm outline-none placeholder:text-token-text-tertiary disabled:cursor-not-allowed disabled:opacity-40";
 
 const OPTION_CLASSES =
   "flex w-full cursor-interaction items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-token-foreground outline-none enabled:hover:bg-token-list-hover-background enabled:active:bg-token-foreground/15 disabled:cursor-not-allowed disabled:opacity-40";
@@ -321,7 +325,7 @@ export function mountRendererModelPicker(
   menu.style.inset = "auto";
   menu.style.margin = "0";
   menu.style.padding = "4px";
-  menu.style.border = "0";
+  applyRendererPickerPopoverSurface(menu);
   trigger.setAttribute("aria-controls", menu.id);
 
   const modelButton = document.createElement("button");
@@ -344,9 +348,9 @@ export function mountRendererModelPicker(
   modelMenu.style.inset = "auto";
   modelMenu.style.margin = "0";
   modelMenu.style.padding = "4px";
-  modelMenu.style.border = "0";
   modelMenu.style.maxHeight = `min(${RENDERER_MODEL_PICKER_MODEL_MENU_MAX_HEIGHT}px, 60vh)`;
   modelMenu.style.overflowY = "auto";
+  applyRendererPickerPopoverSurface(modelMenu);
   modelButton.setAttribute("aria-controls", modelMenu.id);
 
   const options = new Map<string, ModelOptionControl>();
@@ -364,7 +368,7 @@ export function mountRendererModelPicker(
   searchHeader.style.zIndex = "2";
   searchHeader.style.margin = "-4px";
   searchHeader.style.padding = "4px";
-  searchHeader.style.backgroundColor = "Canvas";
+  searchHeader.style.backgroundColor = PICKER_POPOVER_BACKGROUND;
   const searchEmpty = document.createElement("div");
   searchEmpty.dataset.codexhostModelSearchEmpty = "true";
   searchEmpty.textContent = "No matching models";

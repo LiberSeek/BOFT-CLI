@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import { partitionAgentsByInstallStatus } from "../src/agent-group-preference.js";
 import { isNativeModelControlCandidate } from "../src/renderer-composer-dom.js";
 import {
   rendererAgentMenuPlacement,
   rendererAgentPickerView,
+  rendererAgentTrailingSlot,
 } from "../src/renderer-agent-picker.js";
+import type { ExternalRendererAgent } from "../src/agent-selection-state.js";
 
 describe("Renderer Agent picker presentation", () => {
   it("normalizes viewport coordinates against the Codex window zoom", () => {
@@ -99,6 +102,38 @@ describe("Renderer Agent picker presentation", () => {
       downloadVisible: { pi: false },
       errorVisible: { pi: true },
     });
+  });
+
+  it("keeps the trailing ✓ and error/install actions mutually exclusive", () => {
+    expect(
+      rendererAgentTrailingSlot({ selected: true, showInstall: false, showError: false }),
+    ).toEqual({ checkVisible: true, actionVisible: false });
+    expect(
+      rendererAgentTrailingSlot({ selected: true, showInstall: false, showError: true }),
+    ).toEqual({ checkVisible: false, actionVisible: true });
+    expect(
+      rendererAgentTrailingSlot({ selected: true, showInstall: true, showError: false }),
+    ).toEqual({ checkVisible: false, actionVisible: true });
+    expect(
+      rendererAgentTrailingSlot({ selected: false, showInstall: false, showError: true }),
+    ).toEqual({ checkVisible: false, actionVisible: true });
+  });
+
+  it("partitions picker Main/More candidates with installed Agents first", () => {
+    const availability: Partial<Record<ExternalRendererAgent, "ready" | "notInstalled">> = {
+      pi: "notInstalled",
+      "claude-code": "ready",
+      grok: "notInstalled",
+      omp: "ready",
+    };
+    expect(
+      partitionAgentsByInstallStatus(
+        (
+          ["pi", "claude-code", "grok", "omp"] as const satisfies readonly ExternalRendererAgent[]
+        ).map((agent) => ({ agent })),
+        (agent) => availability[agent] !== "notInstalled",
+      ).map((entry) => entry.agent),
+    ).toEqual(["claude-code", "omp", "pi", "grok"]);
   });
 
   it("does not treat a first-load check as a connection error", () => {

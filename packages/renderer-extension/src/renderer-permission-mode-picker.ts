@@ -17,12 +17,15 @@ import {
 } from "./renderer-harness-localization.js";
 import type { RendererSettingsLocale } from "./settings/localization.js";
 import {
+  applyRendererPickerPopoverSurface,
+  PICKER_POPOVER_CLASS,
+} from "./renderer-picker-popover-style.js";
+import {
   ensureRendererTriggerChipStyle,
   TRIGGER_CHIP_CLASS,
 } from "./renderer-trigger-chip-style.js";
 
-const MENU_CLASSES =
-  "fixed z-50 overflow-hidden rounded-lg bg-token-dropdown-background/95 text-token-foreground shadow-lg ring-[0.5px] ring-token-border backdrop-blur-xl";
+const MENU_CLASSES = `fixed z-50 overflow-hidden ${PICKER_POPOVER_CLASS}`;
 
 const OPTION_CLASSES =
   "flex w-full cursor-interaction items-start gap-2 rounded-md px-2 py-2 text-left text-sm text-token-foreground outline-none enabled:hover:bg-token-list-hover-background enabled:active:bg-token-foreground/15 disabled:cursor-not-allowed disabled:opacity-40";
@@ -194,6 +197,7 @@ export function mountRendererPermissionModePicker(
   menu.style.padding = "4px";
   menu.style.maxHeight = "min(420px, 70vh)";
   menu.style.overflowY = "auto";
+  applyRendererPickerPopoverSurface(menu);
   trigger.setAttribute("aria-controls", menu.id);
 
   const options = new Map<string, PermissionModeOptionControl>();

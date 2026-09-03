@@ -8,6 +8,11 @@ declare module "*.svg" {
   export default dataUrl;
 }
 
+declare module "*.mp4" {
+  const dataUrl: string;
+  export default dataUrl;
+}
+
 declare module "*.css" {
   const cssText: string;
   export default cssText;

@@ -1,4 +1,4 @@
-import { createRendererSettingsBrandIcon, createRendererSettingsIcon } from "./icons.js";
+import { createRendererSettingsBrandIcon } from "./icons.js";
 import {
   DEFAULT_RENDERER_SETTINGS_MESSAGES,
   type RendererSettingsMessages,
@@ -138,6 +138,10 @@ export function mountRendererSettingsTrigger(
   ownerDocument: Document = document,
   messages: RendererSettingsMessages = DEFAULT_RENDERER_SETTINGS_MESSAGES,
 ): RendererSettingsTriggerControl {
+  const updateLabelText = messages.pageLabels.updates;
+  let updateAvailable = false;
+  let brandExpanded = false;
+
   const root = ownerDocument.createElement("div");
   root.setAttribute(SETTINGS_TRIGGER_ATTRIBUTE, triggerId);
   root.style.display = "inline-flex";
@@ -145,10 +149,17 @@ export function mountRendererSettingsTrigger(
   root.style.justifyContent = "center";
   root.style.alignSelf = "center";
   root.style.flex = "0 0 auto";
+  root.style.gap = "0";
   root.style.marginRight = "0";
   root.style.color = "inherit";
   root.style.pointerEvents = "auto";
+  root.style.borderRadius = "8px";
+  root.style.transition = "background 120ms ease, gap 160ms ease";
   root.style.setProperty("-webkit-app-region", "no-drag");
+
+  const labelFontSize = "13px";
+  const labelFontWeight = "600";
+  const labelLineHeight = "20px";
 
   const button = ownerDocument.createElement("button");
   button.type = "button";
@@ -160,8 +171,8 @@ export function mountRendererSettingsTrigger(
   button.style.alignItems = "center";
   button.style.justifyContent = "center";
   button.style.height = "28px";
-  button.style.padding = "0 12px";
-  button.style.gap = "6px";
+  button.style.padding = "0 6px";
+  button.style.gap = "0";
   button.style.border = "0";
   button.style.borderRadius = "8px";
   button.style.background = "transparent";
@@ -169,15 +180,49 @@ export function mountRendererSettingsTrigger(
   button.style.cursor = available ? "pointer" : "not-allowed";
   button.style.opacity = available ? "1" : "0.5";
   button.style.outlineOffset = "2px";
+  button.style.font = "inherit";
+  button.style.transition = "padding 160ms ease, gap 160ms ease";
   button.style.setProperty("-webkit-app-region", "no-drag");
-  button.append(createRendererSettingsBrandIcon(24));
+
+  const iconWrap = ownerDocument.createElement("span");
+  iconWrap.style.position = "relative";
+  iconWrap.style.display = "inline-flex";
+  iconWrap.style.alignItems = "center";
+  iconWrap.style.justifyContent = "center";
+  iconWrap.style.flex = "0 0 auto";
+  iconWrap.style.width = "24px";
+  iconWrap.style.height = "24px";
+  iconWrap.append(createRendererSettingsBrandIcon(24));
+
+  const updateDot = ownerDocument.createElement("span");
+  updateDot.setAttribute("aria-hidden", "true");
+  updateDot.style.position = "absolute";
+  updateDot.style.top = "-1px";
+  updateDot.style.right = "-1px";
+  updateDot.style.width = "8px";
+  updateDot.style.height = "8px";
+  updateDot.style.borderRadius = "999px";
+  updateDot.style.background = "#ef4444";
+  updateDot.style.boxShadow = "0 0 0 1.5px var(--color-background, #ffffff)";
+  updateDot.style.display = "none";
+  iconWrap.append(updateDot);
+  button.append(iconWrap);
 
   const brandLabel = ownerDocument.createElement("span");
   brandLabel.textContent = "BOFT CLI";
-  brandLabel.style.fontSize = "13px";
-  brandLabel.style.fontWeight = "600";
-  brandLabel.style.lineHeight = "1";
+  brandLabel.style.display = "inline-flex";
+  brandLabel.style.alignItems = "center";
+  brandLabel.style.maxWidth = "0";
+  brandLabel.style.height = labelLineHeight;
+  brandLabel.style.overflow = "hidden";
+  brandLabel.style.opacity = "0";
+  brandLabel.style.fontFamily = "inherit";
+  brandLabel.style.fontSize = labelFontSize;
+  brandLabel.style.fontWeight = labelFontWeight;
+  brandLabel.style.lineHeight = labelLineHeight;
+  brandLabel.style.letterSpacing = "normal";
   brandLabel.style.whiteSpace = "nowrap";
+  brandLabel.style.transition = "max-width 160ms ease, opacity 120ms ease";
   button.append(brandLabel);
 
   const updateButton = ownerDocument.createElement("button");
@@ -186,77 +231,153 @@ export function mountRendererSettingsTrigger(
   updateButton.setAttribute("aria-label", messages.updateAvailable);
   updateButton.setAttribute("aria-haspopup", "dialog");
   updateButton.title = messages.updateAvailable;
-  updateButton.style.display = "none";
+  updateButton.textContent = updateLabelText;
+  updateButton.style.display = "inline-flex";
   updateButton.style.alignItems = "center";
   updateButton.style.justifyContent = "center";
   updateButton.style.height = "28px";
-  updateButton.style.padding = "0 10px";
-  updateButton.style.gap = "6px";
-  updateButton.style.border = "1px solid #1d4ed8";
-  updateButton.style.borderRadius = "7px";
-  updateButton.style.background = "#2563eb";
-  updateButton.style.color = "#ffffff";
+  updateButton.style.maxWidth = "0";
+  updateButton.style.padding = "0";
+  updateButton.style.margin = "0";
+  updateButton.style.overflow = "hidden";
+  updateButton.style.opacity = "0";
+  updateButton.style.border = "0";
+  updateButton.style.borderRadius = "6px";
+  updateButton.style.background = "transparent";
+  updateButton.style.color = "#2563eb";
   updateButton.style.cursor = available ? "pointer" : "not-allowed";
-  updateButton.style.opacity = available ? "1" : "0.5";
-  updateButton.style.boxShadow = "0 1px 2px rgba(15, 23, 42, 0.18)";
+  updateButton.style.font = "inherit";
+  updateButton.style.fontFamily = "inherit";
+  updateButton.style.fontSize = labelFontSize;
+  updateButton.style.fontWeight = labelFontWeight;
+  updateButton.style.lineHeight = labelLineHeight;
+  updateButton.style.letterSpacing = "normal";
+  updateButton.style.whiteSpace = "nowrap";
   updateButton.style.outlineOffset = "2px";
+  updateButton.style.pointerEvents = "none";
+  updateButton.style.transition =
+    "max-width 160ms ease, opacity 120ms ease, padding 160ms ease, color 120ms ease, background 120ms ease";
   updateButton.style.setProperty("-webkit-app-region", "no-drag");
-  updateButton.append(createRendererSettingsIcon("updates", 15));
 
-  const updateLabel = ownerDocument.createElement("span");
-  updateLabel.textContent = messages.pageLabels.updates;
-  updateLabel.style.fontSize = "12px";
-  updateLabel.style.fontWeight = "600";
-  updateLabel.style.lineHeight = "1";
-  updateLabel.style.whiteSpace = "nowrap";
-  updateButton.append(updateLabel);
+  const syncBrandExpansion = (): void => {
+    const showUpdateAction = brandExpanded && updateAvailable && !button.disabled;
+    if (brandExpanded && !button.disabled) {
+      root.style.gap = "2px";
+      root.style.background = "rgba(127, 127, 127, 0.16)";
+      button.style.padding = "0 8px 0 6px";
+      button.style.gap = "6px";
+      brandLabel.style.maxWidth = "96px";
+      brandLabel.style.opacity = "1";
+    } else {
+      root.style.gap = "0";
+      root.style.background = "transparent";
+      button.style.padding = "0 6px";
+      button.style.gap = "0";
+      brandLabel.style.maxWidth = "0";
+      brandLabel.style.opacity = "0";
+    }
 
-  const onPointerEnter = (): void => {
-    if (!button.disabled) button.style.background = "rgba(127, 127, 127, 0.16)";
+    if (showUpdateAction) {
+      updateButton.style.maxWidth = "64px";
+      updateButton.style.padding = "0 8px 0 4px";
+      updateButton.style.opacity = "1";
+      updateButton.style.pointerEvents = "auto";
+    } else {
+      updateButton.style.maxWidth = "0";
+      updateButton.style.padding = "0";
+      updateButton.style.opacity = "0";
+      updateButton.style.pointerEvents = "none";
+      updateButton.style.color = "#2563eb";
+      updateButton.style.background = "transparent";
+    }
   };
-  const onPointerLeave = (): void => {
-    button.style.background = "transparent";
+
+  const applyUpdateAvailable = (nextAvailable: boolean): void => {
+    updateAvailable = nextAvailable;
+    root.toggleAttribute("data-update-available", updateAvailable);
+    updateDot.style.display = updateAvailable ? "block" : "none";
+    syncBrandExpansion();
+  };
+
+  const onRootPointerEnter = (): void => {
+    brandExpanded = true;
+    syncBrandExpansion();
+  };
+  const onRootPointerLeave = (): void => {
+    brandExpanded = false;
+    syncBrandExpansion();
+  };
+  const onBrandFocus = (): void => {
+    brandExpanded = true;
+    syncBrandExpansion();
+  };
+  const onBrandBlur = (): void => {
+    if (root.matches(":hover") || updateButton.matches(":focus-visible")) return;
+    brandExpanded = false;
+    syncBrandExpansion();
   };
   const onClick = (event: MouseEvent): void => {
     event.stopPropagation();
     if (!button.disabled) onOpen(button);
   };
   const onUpdatePointerEnter = (): void => {
-    if (!updateButton.disabled) {
-      updateButton.style.background = "#1d4ed8";
-      updateButton.style.boxShadow = "0 2px 4px rgba(15, 23, 42, 0.22)";
-    }
+    if (updateButton.disabled || updateButton.style.pointerEvents === "none") return;
+    updateButton.style.color = "#1d4ed8";
+    updateButton.style.background = "rgba(37, 99, 235, 0.14)";
   };
   const onUpdatePointerLeave = (): void => {
-    updateButton.style.background = "#2563eb";
-    updateButton.style.boxShadow = "0 1px 2px rgba(15, 23, 42, 0.18)";
+    updateButton.style.color = "#2563eb";
+    updateButton.style.background = "transparent";
+  };
+  const onUpdateFocus = (): void => {
+    brandExpanded = true;
+    syncBrandExpansion();
+    if (!updateButton.disabled) {
+      updateButton.style.color = "#1d4ed8";
+      updateButton.style.background = "rgba(37, 99, 235, 0.14)";
+    }
+  };
+  const onUpdateBlur = (): void => {
+    updateButton.style.color = "#2563eb";
+    updateButton.style.background = "transparent";
+    if (root.matches(":hover") || button.matches(":focus-visible")) return;
+    brandExpanded = false;
+    syncBrandExpansion();
   };
   const onUpdateClick = (event: MouseEvent): void => {
     event.stopPropagation();
-    if (!updateButton.disabled) onOpen(updateButton, "updates");
+    if (!updateButton.disabled && updateAvailable) onOpen(updateButton, "updates");
   };
-  button.addEventListener("pointerenter", onPointerEnter);
-  button.addEventListener("pointerleave", onPointerLeave);
+  root.addEventListener("pointerenter", onRootPointerEnter);
+  root.addEventListener("pointerleave", onRootPointerLeave);
+  button.addEventListener("focus", onBrandFocus);
+  button.addEventListener("blur", onBrandBlur);
   button.addEventListener("click", onClick);
   updateButton.addEventListener("pointerenter", onUpdatePointerEnter);
   updateButton.addEventListener("pointerleave", onUpdatePointerLeave);
+  updateButton.addEventListener("focus", onUpdateFocus);
+  updateButton.addEventListener("blur", onUpdateBlur);
   updateButton.addEventListener("click", onUpdateClick);
   root.append(button, updateButton);
+  applyUpdateAvailable(updateAvailable);
 
   return {
     root,
     button,
     updateButton,
-    setUpdateAvailable(updateAvailable) {
-      root.toggleAttribute("data-update-available", updateAvailable);
-      updateButton.style.display = updateAvailable ? "inline-flex" : "none";
+    setUpdateAvailable(nextAvailable) {
+      applyUpdateAvailable(nextAvailable);
     },
     dispose() {
-      button.removeEventListener("pointerenter", onPointerEnter);
-      button.removeEventListener("pointerleave", onPointerLeave);
+      root.removeEventListener("pointerenter", onRootPointerEnter);
+      root.removeEventListener("pointerleave", onRootPointerLeave);
+      button.removeEventListener("focus", onBrandFocus);
+      button.removeEventListener("blur", onBrandBlur);
       button.removeEventListener("click", onClick);
       updateButton.removeEventListener("pointerenter", onUpdatePointerEnter);
       updateButton.removeEventListener("pointerleave", onUpdatePointerLeave);
+      updateButton.removeEventListener("focus", onUpdateFocus);
+      updateButton.removeEventListener("blur", onUpdateBlur);
       updateButton.removeEventListener("click", onUpdateClick);
       root.remove();
     },

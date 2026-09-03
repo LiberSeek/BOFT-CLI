@@ -12,7 +12,11 @@ import {
   type RendererSettingsPageMountContext,
   type RendererSettingsPageRegistry,
 } from "./core.js";
-import { createRendererSettingsIcon, type RendererSettingsIconName } from "./icons.js";
+import {
+  createRendererSettingsGitHubIcon,
+  createRendererSettingsIcon,
+  type RendererSettingsIconName,
+} from "./icons.js";
 import {
   DEFAULT_RENDERER_SETTINGS_MESSAGES,
   type RendererSettingsMessages,
@@ -21,6 +25,7 @@ import {
   createConnectionsSettingsPage,
   type RendererConnectionDiagnostics,
 } from "./connections-page.js";
+import { createPluginsSettingsPage } from "./plugins-page.js";
 import { createReleaseNotesElement } from "./release-notes.js";
 
 export type {
@@ -33,10 +38,13 @@ import {
   RendererUpdateRequestTimeoutError,
   runBoundedRendererUpdateRequest,
 } from "./update-request.js";
+import liberseekLogoVideoUrl from "../assets/logo-animated.mp4";
 
 export const CODEXHOST_GITHUB_REPOSITORY_URL = "https://github.com/LiberSeek/BOFT-CLI";
 export const CODEXHOST_RELEASES_LATEST_URL = `${CODEXHOST_GITHUB_REPOSITORY_URL}/releases/latest`;
 export const CODEXHOST_NPM_MANUAL_UPDATE_COMMAND = "npm install -g @liberseek/boft-cli@latest";
+export const LIBERSEEK_WEBSITE_URL = "https://liberseek.ai";
+export const LIBERSEEK_LOGO_VIDEO_URL = liberseekLogoVideoUrl;
 
 interface RendererUserAgentData {
   readonly platform?: string;
@@ -63,7 +71,12 @@ function windowsInstallerDownloadUrl(window: Window | null | undefined, version:
   return `https://github.com/LiberSeek/BOFT-CLI/releases/download/v${version}/boft-cli-${version}-windows-${architecture}.exe`;
 }
 
-export const DEFAULT_RENDERER_SETTINGS_PAGE_IDS = ["connections", "updates", "about"] as const;
+export const DEFAULT_RENDERER_SETTINGS_PAGE_IDS = [
+  "connections",
+  "plugins",
+  "updates",
+  "about",
+] as const;
 
 export type DefaultRendererSettingsPageId = (typeof DEFAULT_RENDERER_SETTINGS_PAGE_IDS)[number];
 
@@ -95,6 +108,17 @@ function createPanelActions(document: Document, ...buttons: readonly HTMLElement
   actions.className = "settings-update-actions";
   actions.append(...buttons);
   return actions;
+}
+
+function createPanelStatusRow(
+  document: Document,
+  head: HTMLElement,
+  ...buttons: readonly HTMLElement[]
+): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "settings-update-panel__status-row";
+  row.append(createPanelActions(document, ...buttons), head);
+  return row;
 }
 
 function installationLabel(
@@ -149,47 +173,101 @@ function aboutPage(messages: RendererSettingsMessages): RendererSettingsPageDefi
     icon: "about",
     mount(context: RendererSettingsPageMountContext) {
       const document = context.content.ownerDocument;
+      const page = document.createElement("div");
+      page.className = "settings-about-page";
+
       const heading = document.createElement("div");
       heading.className = "settings-section-label";
       heading.textContent = messages.pageLabels.about;
 
-      const panel = document.createElement("section");
-      panel.className = "settings-about-panel";
+      const introPanel = document.createElement("section");
+      introPanel.className = "settings-about-panel";
       const product = document.createElement("strong");
       product.className = "settings-about-product";
       product.textContent = "BOFT CLI";
       const tagline = document.createElement("strong");
       tagline.className = "settings-about-tagline";
       tagline.textContent = messages.aboutTagline;
-      const introduction = document.createElement("div");
-      introduction.className = "settings-about-copy";
-      for (const paragraphText of messages.aboutParagraphs) {
+      const story = document.createElement("div");
+      story.className = "settings-about-copy";
+      const lead = document.createElement("p");
+      lead.className = "settings-about-lead";
+      lead.textContent = messages.aboutLead;
+      const extensionIntro = document.createElement("p");
+      extensionIntro.className = "settings-about-extension";
+      extensionIntro.textContent = messages.aboutExtensionIntro;
+      const agents = document.createElement("ul");
+      agents.className = "settings-about-agents";
+      for (const agent of messages.aboutAgents) {
+        const item = document.createElement("li");
+        item.className = "settings-about-agent";
+        const name = document.createElement("strong");
+        name.className = "settings-about-agent-name";
+        name.textContent = agent.name;
+        const description = document.createElement("span");
+        description.className = "settings-about-agent-description";
+        description.textContent = agent.description;
+        item.append(name, description);
+        agents.append(item);
+      }
+      const closing = document.createElement("div");
+      closing.className = "settings-about-closing";
+      for (const paragraphText of messages.aboutClosingParagraphs) {
         const paragraph = document.createElement("p");
         paragraph.textContent = paragraphText;
-        introduction.append(paragraph);
+        closing.append(paragraph);
       }
-      const starCallout = document.createElement("p");
-      starCallout.className = "settings-about-star-callout";
-      starCallout.textContent = messages.aboutStarCallout;
-      const repositorySection = document.createElement("div");
-      repositorySection.className = "settings-about-repository";
+      story.append(lead, extensionIntro, agents, closing);
+      introPanel.append(product, tagline, story);
+
+      const repositoryPanel = document.createElement("section");
+      repositoryPanel.className = "settings-about-panel settings-about-repository";
       const openSource = document.createElement("p");
-      openSource.textContent = messages.aboutOpenSource;
+      openSource.className = "settings-about-open-source";
       const repository = document.createElement("a");
       repository.className = "settings-about-repository-link";
       repository.href = CODEXHOST_GITHUB_REPOSITORY_URL;
       repository.target = "_blank";
       repository.rel = "noopener noreferrer";
-      const repositoryUrl = document.createElement("code");
-      repositoryUrl.textContent = CODEXHOST_GITHUB_REPOSITORY_URL;
-      repository.append(
-        createRendererSettingsIcon("external-link", 14),
-        messages.aboutRepository,
-        repositoryUrl,
-      );
-      repositorySection.append(openSource, repository);
-      panel.append(product, tagline, introduction, starCallout, repositorySection);
-      context.content.append(heading, panel);
+      const repositoryLabel = document.createElement("span");
+      repositoryLabel.textContent = "BOFT CLI";
+      repository.append(createRendererSettingsGitHubIcon(14), repositoryLabel);
+      const openSourceAfter = document.createElement("span");
+      openSourceAfter.textContent = messages.aboutOpenSourceAfter;
+      openSource.append(repository, openSourceAfter);
+      const starCallout = document.createElement("p");
+      starCallout.className = "settings-about-star-callout";
+      starCallout.textContent = messages.aboutStarCallout;
+      repositoryPanel.append(openSource, starCallout);
+
+      const brand = document.createElement("a");
+      brand.className = "settings-about-brand";
+      brand.href = LIBERSEEK_WEBSITE_URL;
+      brand.target = "_blank";
+      brand.rel = "noopener noreferrer";
+      brand.setAttribute("aria-label", messages.aboutBrand);
+      const brandVideo = document.createElement("video");
+      brandVideo.className = "settings-about-brand-video";
+      brandVideo.src = LIBERSEEK_LOGO_VIDEO_URL;
+      brandVideo.autoplay = true;
+      brandVideo.loop = true;
+      brandVideo.muted = true;
+      brandVideo.playsInline = true;
+      brandVideo.preload = "metadata";
+      brandVideo.setAttribute("aria-hidden", "true");
+      const brandCopy = document.createElement("div");
+      brandCopy.className = "settings-about-brand-copy";
+      const brandName = document.createElement("span");
+      brandName.className = "settings-about-brand-name";
+      brandName.textContent = messages.aboutBrand;
+      const brandTagline = document.createElement("span");
+      brandTagline.className = "settings-about-brand-tagline";
+      brandTagline.textContent = messages.aboutBrandTagline;
+      brandCopy.append(brandName, brandTagline);
+      brand.append(brandVideo, brandCopy);
+
+      page.append(heading, introPanel, repositoryPanel, brand);
+      context.content.append(page);
       return undefined;
     },
   });
@@ -395,8 +473,18 @@ function updatesPage(
       ): void => {
         panel.dataset.updateState = viewPhase;
         panel.replaceChildren();
-        panel.append(createPanelHead(document, viewPhase, message));
+        const head = createPanelHead(document, viewPhase, message);
         setManualFallback(viewPhase === "failed");
+        if (viewPhase === "failed") {
+          const retry = document.createElement("button");
+          retry.type = "button";
+          retry.className = "settings-command-button settings-command-button--secondary";
+          retry.append(createRendererSettingsIcon("refresh", 16), messages.updateRetry);
+          retry.addEventListener("click", () => void load());
+          panel.append(createPanelStatusRow(document, head, retry));
+        } else {
+          panel.append(head);
+        }
         if (
           status?.phase === "downloading" &&
           status.totalBytes !== undefined &&
@@ -415,14 +503,6 @@ function updatesPage(
           );
           detail.textContent = `${percent}% · ${formatUpdateBytes(status.downloadedBytes)} / ${formatUpdateBytes(status.totalBytes)}`;
           panel.append(progress, detail);
-        }
-        if (viewPhase === "failed") {
-          const retry = document.createElement("button");
-          retry.type = "button";
-          retry.className = "settings-command-button";
-          retry.append(createRendererSettingsIcon("refresh", 16), messages.updateRetry);
-          retry.addEventListener("click", () => void load());
-          panel.append(createPanelActions(document, retry));
         }
       };
 
@@ -482,33 +562,20 @@ function updatesPage(
         panel.dataset.updateState = view;
         panel.replaceChildren();
         setManualFallback(Boolean(result.error) || actionableStatus !== null);
-        if (result.error || !result.updateAvailable || windows || actionableStatus) {
-          panel.append(
-            createPanelHead(
-              document,
-              view,
-              actionableStatus
-                ? (statusMessage(actionableStatus, messages) ?? messages.updateFailed)
-                : result.error
-                  ? messages.updateFailed
-                  : result.updateAvailable
-                    ? messages.updateWindowsManualRequired
-                    : messages.updateUpToDate,
-            ),
-          );
-        }
-        if (actionableStatus?.error) {
-          const error = document.createElement("p");
-          error.className = "settings-update-error";
-          error.textContent = actionableStatus.error;
-          panel.append(error);
-        }
-        if (result.error) {
-          const error = document.createElement("p");
-          error.className = "settings-update-error";
-          error.textContent = result.error;
-          panel.append(error);
-        }
+        const head =
+          result.error || !result.updateAvailable || windows || actionableStatus
+            ? createPanelHead(
+                document,
+                view,
+                actionableStatus
+                  ? (statusMessage(actionableStatus, messages) ?? messages.updateFailed)
+                  : result.error
+                    ? messages.updateFailed
+                    : result.updateAvailable
+                      ? messages.updateWindowsManualRequired
+                      : messages.updateUpToDate,
+              )
+            : null;
         const buttons: HTMLElement[] = [];
         if (!windows && result.updateAvailable && result.installationAvailable) {
           const update = document.createElement("button");
@@ -526,7 +593,25 @@ function updatesPage(
           retry.addEventListener("click", () => void load());
           buttons.push(retry);
         }
-        if (buttons.length > 0) panel.append(createPanelActions(document, ...buttons));
+        if (head && buttons.length > 0) {
+          panel.append(createPanelStatusRow(document, head, ...buttons));
+        } else if (head) {
+          panel.append(head);
+        } else if (buttons.length > 0) {
+          panel.append(createPanelActions(document, ...buttons));
+        }
+        if (actionableStatus?.error) {
+          const error = document.createElement("p");
+          error.className = "settings-update-error";
+          error.textContent = actionableStatus.error;
+          panel.append(error);
+        }
+        if (result.error) {
+          const error = document.createElement("p");
+          error.className = "settings-update-error";
+          error.textContent = result.error;
+          panel.append(error);
+        }
         notes.replaceChildren();
         if (result.releaseNotes) {
           notes.append(createReleaseNotesElement(document, result.releaseNotes));
@@ -569,6 +654,7 @@ export function createDefaultRendererSettingsPages(
 ): readonly RendererSettingsPageDefinition[] {
   return Object.freeze([
     createConnectionsSettingsPage(messages, getDiagnostics),
+    createPluginsSettingsPage(messages, getDiagnostics),
     updatesPage(messages, getUpdateClient),
     aboutPage(messages),
   ]);

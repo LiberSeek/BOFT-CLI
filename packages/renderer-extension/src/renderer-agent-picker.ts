@@ -1,5 +1,6 @@
 import {
   getSharedAgentGroupPreferenceStore,
+  partitionAgentsByInstallStatus,
   type AgentGroupPreferenceStore,
 } from "./agent-group-preference.js";
 import type {
@@ -9,7 +10,9 @@ import type {
   RendererAgentAvailability,
 } from "./agent-selection-state.js";
 import { createRendererAgentIcon, RENDERER_AGENT_LABELS } from "./renderer-agent-icon.js";
+import { applyRendererPickerPopoverSurface } from "./renderer-picker-popover-style.js";
 import { requestConnectionsPageFocus } from "./settings/connections-page.js";
+import { createRendererSettingsIcon } from "./settings/icons.js";
 import {
   rendererSettingsMessages,
   resolveRendererSettingsLocale,
@@ -61,16 +64,18 @@ const AGENT_MENU_WIDTH = 200;
 // Below this many enabled Agents, the picker stays a flat list — grouping
 // only earns its keep once there are enough Harnesses to make scanning slow.
 const AGENT_GROUP_CTA_THRESHOLD = 5;
+// Shared size for Lucide chrome icons (More chevron + Settings gear).
+const PICKER_CHROME_ICON_SIZE_PX = 18;
 
 interface AgentOptionControl {
   button: HTMLButtonElement;
+  /** Trailing ✓ inside the option button (same row as icon + label). */
   check: HTMLElement;
-  // Shared 24x24 slot: renders as an Install ("+") action when the Agent is
-  // not installed, or a red error ("!") action once it has failed — the two
-  // are mutually exclusive since `RendererAgentAvailability` is a single
-  // enum value. The error mode has no error *details* to show inline (the
-  // picker only ever receives the coarse availability enum, not the full
-  // `CodexhostError`), so it links out to Settings → Connections instead.
+  // Overlays the trailing check slot as Install ("+") when not installed, or
+  // a red error ("!") once it has failed — mutually exclusive with a selected
+  // ✓ since `RendererAgentAvailability` is a single enum value. Error mode
+  // has no inline details (picker only gets the coarse enum), so it links
+  // out to Settings → Connections instead.
   action: HTMLButtonElement | null;
 }
 
@@ -82,6 +87,8 @@ export interface RendererAgentPickerControl {
   menu: HTMLElement;
   agents: readonly RendererAgent[];
   options: Partial<Record<RendererAgent, AgentOptionControl>>;
+  /** Re-apply Main/More order using the latest install availability. */
+  syncAvailability(availability: AgentAvailability): void;
   close(): void;
   dispose(): void;
 }
@@ -111,6 +118,23 @@ export function rendererAgentMenuPlacement(
   return {
     left,
     bottom: Math.max(8, viewportHeight - triggerRect.top / zoom + 6),
+  };
+}
+
+/**
+ * Trailing status slot is shared: selected ✓ vs install/error action.
+ * Action wins when both would apply (common during startup while a selected
+ * external Agent is still `error` / `notInstalled`).
+ */
+export function rendererAgentTrailingSlot(input: {
+  selected: boolean;
+  showInstall: boolean;
+  showError: boolean;
+}): { checkVisible: boolean; actionVisible: boolean } {
+  const actionVisible = input.showInstall || input.showError;
+  return {
+    actionVisible,
+    checkVisible: input.selected && !actionVisible,
   };
 }
 
@@ -186,7 +210,9 @@ export function mountRendererAgentPicker(
   root.style.verticalAlign = "middle";
   root.style.width = "30px";
   root.style.height = "28px";
-  root.style.marginInline = "4px";
+  // Trailing-cluster spacing (Model / Agent / Send) is owned by
+  // `refreshTrailingClusterPlacement` so left/right gaps stay equal.
+  root.style.margin = "0";
   root.style.color = "inherit";
 
   const trigger = document.createElement("button");
@@ -202,14 +228,14 @@ export function mountRendererAgentPicker(
   trigger.style.padding = "0";
   trigger.style.border = "0";
   trigger.style.borderRadius = "6px";
-  trigger.style.background = "rgba(127, 127, 127, 0.08)";
+  trigger.style.background = "transparent";
   trigger.style.color = "inherit";
   trigger.style.cursor = "pointer";
   trigger.addEventListener("pointerenter", () => {
     if (!trigger.disabled) trigger.style.background = "rgba(127, 127, 127, 0.16)";
   });
   trigger.addEventListener("pointerleave", () => {
-    trigger.style.background = "rgba(127, 127, 127, 0.08)";
+    trigger.style.background = "transparent";
   });
 
   const iconSlot = document.createElement("span");
@@ -243,15 +269,11 @@ export function mountRendererAgentPicker(
   menu.style.inset = "auto";
   menu.style.width = `${AGENT_MENU_WIDTH}px`;
   menu.style.padding = "4px";
-  menu.style.border = "0";
-  menu.style.borderRadius = "6px";
-  menu.style.background = "Canvas";
-  menu.style.color = "CanvasText";
-  menu.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.28)";
   menu.style.boxSizing = "border-box";
   menu.style.overflowX = "hidden";
   menu.style.overflowY = "auto";
   menu.style.zIndex = "2147483647";
+  applyRendererPickerPopoverSurface(menu);
   trigger.setAttribute("aria-controls", menu.id);
 
   const options: Partial<Record<RendererAgent, AgentOptionControl>> = {};
@@ -320,9 +342,12 @@ export function mountRendererAgentPicker(
     const check = document.createElement("span");
     check.textContent = "\u2713";
     check.setAttribute("aria-hidden", "true");
+    check.style.display = "inline-flex";
+    check.style.alignItems = "center";
+    check.style.justifyContent = "center";
     check.style.width = "24px";
+    check.style.height = "24px";
     check.style.flex = "none";
-    check.style.textAlign = "center";
     check.style.visibility = "hidden";
 
     const label = document.createElement("span");
@@ -332,7 +357,9 @@ export function mountRendererAgentPicker(
     label.style.overflow = "hidden";
     label.style.textOverflow = "ellipsis";
     label.style.whiteSpace = "nowrap";
-    button.append(createRendererAgentIcon(agent), label);
+    // Icon + label + ✓ share one button so selection reads as a single row
+    // (same pattern as the model / permission pickers).
+    button.append(createRendererAgentIcon(agent), label, check);
     button.addEventListener("click", () => {
       const selected = button.getAttribute("aria-pressed") === "true";
       close();
@@ -346,8 +373,13 @@ export function mountRendererAgentPicker(
         : (() => {
             const control = document.createElement("button");
             control.type = "button";
+            // Overlay the trailing check slot — install/error never share a
+            // selected row with ✓, and nesting a button inside the option
+            // button is invalid HTML.
             control.style.position = "absolute";
-            control.style.inset = "0";
+            control.style.top = "50%";
+            control.style.right = "8px";
+            control.style.transform = "translateY(-50%)";
             control.style.display = "inline-flex";
             control.style.alignItems = "center";
             control.style.justifyContent = "center";
@@ -359,6 +391,12 @@ export function mountRendererAgentPicker(
             control.style.borderRadius = "4px";
             control.style.background = "transparent";
             control.style.cursor = "pointer";
+            // Hidden until the first render pass decides install/error — otherwise
+            // an empty absolute button sits on top of the ✓ during mount.
+            control.style.visibility = "hidden";
+            control.style.pointerEvents = "none";
+            control.disabled = true;
+            control.setAttribute("aria-hidden", "true");
             control.addEventListener("pointerenter", () => {
               if (!control.disabled) control.style.background = "rgba(127, 127, 127, 0.16)";
             });
@@ -383,18 +421,10 @@ export function mountRendererAgentPicker(
           })();
     options[agent] = { button, check, action };
     const row = document.createElement("div");
-    row.style.display = "flex";
-    row.style.alignItems = "center";
-    row.style.gap = "2px";
-    const actionSlot = document.createElement("span");
-    actionSlot.style.position = "relative";
-    actionSlot.style.display = "inline-block";
-    actionSlot.style.width = "24px";
-    actionSlot.style.height = "24px";
-    actionSlot.style.flex = "none";
-    actionSlot.append(check);
-    if (action) actionSlot.append(action);
-    row.append(actionSlot, button);
+    row.style.position = "relative";
+    row.style.display = "block";
+    row.append(button);
+    if (action) row.append(action);
     rowsByAgent.set(agent, row);
   }
 
@@ -412,16 +442,16 @@ export function mountRendererAgentPicker(
   moreToggle.type = "button";
   moreToggle.style.display = "none";
   moreToggle.style.alignItems = "center";
-  moreToggle.style.gap = "6px";
+  moreToggle.style.gap = "8px";
   moreToggle.style.width = "100%";
-  moreToggle.style.height = "32px";
+  moreToggle.style.height = "36px";
   moreToggle.style.marginTop = "2px";
   moreToggle.style.padding = "0 8px";
   moreToggle.style.border = "0";
   moreToggle.style.borderRadius = "4px";
   moreToggle.style.background = "transparent";
   moreToggle.style.color = "inherit";
-  moreToggle.style.font = "500 12px/1 system-ui, sans-serif";
+  moreToggle.style.font = "500 13px/1 system-ui, sans-serif";
   moreToggle.style.opacity = "0.72";
   moreToggle.style.cursor = "pointer";
   moreToggle.addEventListener("pointerenter", () => {
@@ -432,66 +462,108 @@ export function mountRendererAgentPicker(
   });
   const moreArrow = document.createElement("span");
   moreArrow.setAttribute("aria-hidden", "true");
-  moreArrow.style.width = "12px";
+  moreArrow.style.display = "inline-flex";
+  moreArrow.style.alignItems = "center";
+  moreArrow.style.justifyContent = "center";
+  moreArrow.style.width = `${PICKER_CHROME_ICON_SIZE_PX}px`;
+  moreArrow.style.height = `${PICKER_CHROME_ICON_SIZE_PX}px`;
   moreArrow.style.flex = "none";
-  moreArrow.textContent = "▸";
+  moreArrow.style.color = "currentColor";
+  const setMoreArrow = (open: boolean): void => {
+    moreArrow.replaceChildren(
+      createRendererSettingsIcon(open ? "chevron-down" : "chevron-right", PICKER_CHROME_ICON_SIZE_PX),
+    );
+  };
+  setMoreArrow(false);
   const moreLabel = document.createElement("span");
+  moreLabel.style.display = "inline-flex";
+  moreLabel.style.alignItems = "center";
+  moreLabel.style.lineHeight = `${PICKER_CHROME_ICON_SIZE_PX}px`;
   moreToggle.append(moreArrow, moreLabel);
 
   const morePanel = document.createElement("div");
   morePanel.style.display = "none";
   morePanel.style.flexDirection = "column";
   morePanel.style.gap = "2px";
-  morePanel.style.paddingLeft = "8px";
+  // Keep More rows flush with Main — no nested indent once expanded.
   const moreRows = document.createElement("div");
   moreRows.style.display = "flex";
   moreRows.style.flexDirection = "column";
   moreRows.style.gap = "2px";
-  const manageLink = document.createElement("button");
-  manageLink.type = "button";
-  manageLink.textContent = `${groupMessages.pickerManageLink} →`;
-  manageLink.style.display = "flex";
-  manageLink.style.width = "100%";
-  manageLink.style.height = "28px";
-  manageLink.style.marginTop = "2px";
-  manageLink.style.padding = "0 12px";
-  manageLink.style.border = "0";
-  manageLink.style.borderRadius = "4px";
-  manageLink.style.background = "transparent";
-  manageLink.style.color = "#6d9fff";
-  manageLink.style.font = "500 11px/1 system-ui, sans-serif";
-  manageLink.style.cursor = "pointer";
-  manageLink.addEventListener("click", () => openConnectionsSettings(trigger));
+  const createSettingsAction = (
+    labelText: string,
+    options: { initiallyHidden?: boolean; bordered?: boolean } = {},
+  ): HTMLButtonElement => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.style.display = options.initiallyHidden ? "none" : "flex";
+    button.style.alignItems = "center";
+    button.style.gap = "8px";
+    button.style.width = "100%";
+    button.style.height = "36px";
+    button.style.marginTop = "2px";
+    button.style.padding = "0 8px";
+    button.style.border = "0";
+    if (options.bordered) {
+      button.style.borderWidth = "1px 0 0 0";
+      button.style.borderStyle = "solid";
+      button.style.borderColor = "rgba(127, 127, 127, 0.16)";
+      button.style.borderRadius = "0";
+    } else {
+      button.style.borderRadius = "4px";
+    }
+    button.style.background = "transparent";
+    button.style.color = "inherit";
+    button.style.font = "500 13px/1 system-ui, sans-serif";
+    button.style.opacity = "0.72";
+    button.style.cursor = "pointer";
+    const icon = document.createElement("span");
+    icon.setAttribute("aria-hidden", "true");
+    icon.style.display = "inline-flex";
+    icon.style.alignItems = "center";
+    icon.style.justifyContent = "center";
+    icon.style.width = `${PICKER_CHROME_ICON_SIZE_PX}px`;
+    icon.style.height = `${PICKER_CHROME_ICON_SIZE_PX}px`;
+    icon.style.flex = "none";
+    icon.style.color = "currentColor";
+    icon.append(createRendererSettingsIcon("settings", PICKER_CHROME_ICON_SIZE_PX));
+    const label = document.createElement("span");
+    label.textContent = labelText;
+    label.style.display = "inline-flex";
+    label.style.alignItems = "center";
+    label.style.lineHeight = `${PICKER_CHROME_ICON_SIZE_PX}px`;
+    button.append(icon, label);
+    button.addEventListener("pointerenter", () => {
+      button.style.background = "rgba(127, 127, 127, 0.1)";
+    });
+    button.addEventListener("pointerleave", () => {
+      button.style.background = "transparent";
+    });
+    button.addEventListener("click", () => openConnectionsSettings(trigger));
+    return button;
+  };
+
+  // Shared layout with the no-More CTA: gear + label, muted inherit color, no trailing arrow.
+  const manageLink = createSettingsAction(groupMessages.pickerManageLink);
   morePanel.append(moreRows, manageLink);
 
-  const cta = document.createElement("button");
-  cta.type = "button";
-  cta.style.display = "none";
-  cta.style.alignItems = "center";
-  cta.style.gap = "6px";
-  cta.style.width = "100%";
-  cta.style.height = "32px";
-  cta.style.marginTop = "2px";
-  cta.style.padding = "0 8px";
-  cta.style.borderWidth = "1px 0 0 0";
-  cta.style.borderStyle = "solid";
-  cta.style.borderColor = "rgba(127, 127, 127, 0.16)";
-  cta.style.background = "transparent";
-  cta.style.color = "inherit";
-  cta.style.font = "500 12px/1 system-ui, sans-serif";
-  cta.style.opacity = "0.72";
-  cta.style.cursor = "pointer";
-  cta.textContent = `⚙ ${groupMessages.pickerHideUnusedAgentsCta} →`;
-  cta.addEventListener("pointerenter", () => {
-    cta.style.background = "rgba(127, 127, 127, 0.1)";
+  const cta = createSettingsAction(groupMessages.pickerHideUnusedAgentsCta, {
+    initiallyHidden: true,
+    bordered: true,
   });
-  cta.addEventListener("pointerleave", () => {
-    cta.style.background = "transparent";
-  });
-  cta.addEventListener("click", () => openConnectionsSettings(trigger));
 
+  let latestAvailability: AgentAvailability = {};
   let mainAgents: RendererAgent[] = [...enabledAgents];
   let moreAgents: RendererAgent[] = [];
+  const isInstalled = (agent: ExternalRendererAgent): boolean =>
+    latestAvailability[agent] !== "notInstalled";
+  const partitionExternal = (agents: readonly RendererAgent[]): RendererAgent[] =>
+    partitionAgentsByInstallStatus(
+      agents
+        .filter((agent): agent is ExternalRendererAgent => agent !== "codex")
+        .map((agent) => ({ agent })),
+      isInstalled,
+    ).map((entry) => entry.agent);
   const regroup = (): void => {
     const enabledSet = new Set(enabledAgents);
     const seen = new Set<RendererAgent>();
@@ -524,8 +596,12 @@ export function mountRendererAgentPicker(
       nextMain.push(agent);
     }
 
-    mainAgents = nextMain;
-    moreAgents = nextMore;
+    // Within each section, installed Agents stay ahead of uninstalled ones.
+    // Codex remains pinned at the front of Main.
+    const mainExternal = partitionExternal(nextMain);
+    const moreExternal = partitionExternal(nextMore);
+    mainAgents = enabledSet.has("codex") ? ["codex", ...mainExternal] : mainExternal;
+    moreAgents = moreExternal;
     mainGroup.replaceChildren(
       ...mainAgents
         .map((agent) => rowsByAgent.get(agent))
@@ -542,7 +618,7 @@ export function mountRendererAgentPicker(
     morePanel.style.display = showMoreGroup && moreOpen ? "flex" : "none";
     cta.style.display = showCta ? "flex" : "none";
     moreLabel.textContent = `${groupMessages.pickerMoreAgentsLabel} (${moreAgents.length})`;
-    moreArrow.textContent = moreOpen ? "▾" : "▸";
+    setMoreArrow(moreOpen);
   };
   moreToggle.addEventListener("click", () => {
     moreOpen = !moreOpen;
@@ -611,6 +687,10 @@ export function mountRendererAgentPicker(
     menu,
     agents: [...enabledAgents],
     options,
+    syncAvailability(availability) {
+      latestAvailability = availability;
+      regroup();
+    },
     close,
     dispose() {
       close();
@@ -634,6 +714,7 @@ export function renderRendererAgentPicker(
   switching: boolean,
   availability: AgentAvailability = {},
 ): RendererAgentPickerView {
+  control.syncAvailability(availability);
   const view = rendererAgentPickerView(
     state,
     adapterState,
@@ -669,17 +750,21 @@ export function renderRendererAgentPicker(
     option.button.style.background = selected ? "rgba(127, 127, 127, 0.16)" : "transparent";
     option.button.style.cursor = option.button.disabled ? "not-allowed" : "pointer";
     option.button.style.opacity = option.button.disabled && !selected ? "0.5" : "1";
-    option.check.style.visibility = selected ? "visible" : "hidden";
     if (option.action) {
       const externalAgent = agent as ExternalRendererAgent;
       const showInstall = view.downloadVisible[externalAgent] === true;
       const showError = view.errorVisible[externalAgent] === true;
-      const visible = showInstall || showError;
+      const { checkVisible, actionVisible } = rendererAgentTrailingSlot({
+        selected,
+        showInstall,
+        showError,
+      });
+      option.check.style.visibility = checkVisible ? "visible" : "hidden";
       option.action.hidden = false;
-      option.action.disabled = !visible;
+      option.action.disabled = !actionVisible;
       option.action.style.display = "inline-flex";
-      option.action.style.visibility = visible ? "visible" : "hidden";
-      option.action.style.pointerEvents = visible ? "auto" : "none";
+      option.action.style.visibility = actionVisible ? "visible" : "hidden";
+      option.action.style.pointerEvents = actionVisible ? "auto" : "none";
       if (showError) {
         option.action.dataset.mode = "error";
         option.action.textContent = "!";
@@ -699,7 +784,9 @@ export function renderRendererAgentPicker(
         option.action.setAttribute("aria-label", label);
         option.action.title = label;
       }
-      option.action.setAttribute("aria-hidden", String(!visible));
+      option.action.setAttribute("aria-hidden", String(!actionVisible));
+    } else {
+      option.check.style.visibility = selected ? "visible" : "hidden";
     }
   }
   return view;

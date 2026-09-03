@@ -31,8 +31,32 @@ export interface AgentGroupPreferenceStore {
     section: AgentGroupSection,
     beforeAgent?: ExternalRendererAgent | null,
   ): void;
+  /**
+   * Quietly rewrite order + sections when the caller has already computed a
+   * display-normalized list (e.g. installed-before-uninstalled). Persists but
+   * does not notify subscribers — the caller is expected to already be
+   * rendering `entries`.
+   */
+  reconcileOrder(entries: readonly AgentGroupEntry[]): void;
   resetToDefault(): void;
   subscribe(listener: () => void): () => void;
+}
+
+/**
+ * Stable-partition `entries` into installed agents first, then uninstalled,
+ * preserving relative order within each bucket. Used by Connections and the
+ * Agent picker so the two surfaces never mix install states.
+ */
+export function partitionAgentsByInstallStatus<T extends { agent: ExternalRendererAgent }>(
+  entries: readonly T[],
+  isInstalled: (agent: ExternalRendererAgent) => boolean,
+): T[] {
+  const installed: T[] = [];
+  const uninstalled: T[] = [];
+  for (const entry of entries) {
+    (isInstalled(entry.agent) ? installed : uninstalled).push(entry);
+  }
+  return [...installed, ...uninstalled];
 }
 
 export const AGENT_GROUP_PREFERENCE_STORAGE_KEY = "codexhost.agentGroupPreference.v1";
@@ -151,6 +175,32 @@ export function createAgentGroupPreferenceStore(
       sections.set(agent, section);
       persist();
       notify();
+    },
+    reconcileOrder(entries) {
+      const nextOrder: ExternalRendererAgent[] = [];
+      const nextSections = new Map<ExternalRendererAgent, AgentGroupSection>();
+      const seen = new Set<ExternalRendererAgent>();
+      for (const entry of entries) {
+        if (!EXTERNAL_AGENTS.includes(entry.agent) || seen.has(entry.agent)) continue;
+        seen.add(entry.agent);
+        nextOrder.push(entry.agent);
+        nextSections.set(entry.agent, entry.section);
+      }
+      for (const agent of EXTERNAL_AGENTS) {
+        if (seen.has(agent)) continue;
+        nextOrder.push(agent);
+        nextSections.set(agent, sections.get(agent) ?? "main");
+      }
+      const unchanged =
+        nextOrder.length === order.length &&
+        nextOrder.every(
+          (agent, index) =>
+            agent === order[index] && (nextSections.get(agent) ?? "main") === (sections.get(agent) ?? "main"),
+        );
+      if (unchanged) return;
+      order = nextOrder;
+      sections = nextSections;
+      persist();
     },
     resetToDefault() {
       order = [...EXTERNAL_AGENTS];

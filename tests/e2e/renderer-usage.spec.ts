@@ -269,7 +269,7 @@ test("renders the Usage popover in Chinese when the settings locale is Chinese",
   await expect(popover).toBeVisible();
   await expect(popover).toContainText("用量");
   await expect(popover).toContainText("上下文");
-  await expect(popover).toContainText("最近缓存命中率");
+  await expect(popover).toContainText("缓存命中率");
   await expect(popover).toContainText("缓存读取");
   await expect(popover).toContainText("缓存写入");
   await expect(popover).toContainText("Token 总数");

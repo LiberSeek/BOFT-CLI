@@ -66,7 +66,7 @@ const ENGLISH_USAGE_MESSAGES: RendererUsageMessages = Object.freeze({
 const CHINESE_USAGE_MESSAGES: RendererUsageMessages = Object.freeze({
   usage: "用量",
   context: "上下文",
-  latestCacheHit: "最近缓存命中率",
+  latestCacheHit: "缓存命中率",
   outputSpeed: "输出速度",
   cacheRead: "缓存读取",
   cacheWrite: "缓存写入",
@@ -291,11 +291,7 @@ function renderDetails(
     );
   }
   if (usage?.cacheHitRatePercent !== undefined) {
-    addDetailRow(
-      popover,
-      messages.latestCacheHit,
-      formatRendererCacheHitRate(usage.cacheHitRatePercent),
-    );
+    addDetailRow(popover, messages.latestCacheHit, `${decimal(usage.cacheHitRatePercent, 1)}%`);
   }
   if (usage?.outputTokensPerSecond !== undefined) {
     addDetailRow(

@@ -14,7 +14,7 @@ describe("Renderer Usage localization", () => {
     expect(rendererUsageMessages("zh-CN")).toMatchObject({
       usage: "用量",
       context: "上下文",
-      latestCacheHit: "最近缓存命中率",
+      latestCacheHit: "缓存命中率",
       inputOutput: "输入 / 输出",
       sessionCostEstimate: "会话费用估算",
     });
