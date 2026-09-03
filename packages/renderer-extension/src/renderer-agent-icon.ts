@@ -1,6 +1,8 @@
 import codexAgentIconUrl from "./assets/codex-agent.png";
 import grokAgentIconUrl from "./assets/grok-agent.png";
+import antigravityAgentIconUrl from "./assets/antigravity-agent.svg";
 import ompAgentIconUrl from "./assets/omp-agent.svg";
+import openCodeAgentIconUrl from "./assets/opencode-agent.png";
 import type { RendererAgent } from "./agent-selection-state.js";
 
 export const RENDERER_AGENT_LABELS: Record<RendererAgent, string> = {
@@ -8,8 +10,10 @@ export const RENDERER_AGENT_LABELS: Record<RendererAgent, string> = {
   pi: "Pi",
   "claude-code": "Claude Code",
   "deepseek-harness": "DeepSeek Harness",
+  opencode: "OpenCode",
   grok: "Grok",
   omp: "Oh My Pi",
+  antigravity: "Antigravity CLI",
 };
 
 const PI_PATHS = [
@@ -81,6 +85,17 @@ export function createRendererAgentIcon(
       "0 0 23.16 17.04",
     );
   }
+  if (agent === "opencode") {
+    const image = ownerDocument.createElement("img");
+    image.src = openCodeAgentIconUrl;
+    image.alt = "";
+    image.draggable = false;
+    image.style.width = `${size}px`;
+    image.style.height = `${size}px`;
+    image.style.objectFit = "contain";
+    image.style.flex = "none";
+    return image;
+  }
   if (agent === "omp") {
     const image = ownerDocument.createElement("img");
     image.src = ompAgentIconUrl;
@@ -90,6 +105,17 @@ export function createRendererAgentIcon(
     image.style.height = `${size}px`;
     image.style.objectFit = "contain";
     image.style.borderRadius = "22.37%";
+    image.style.flex = "none";
+    return image;
+  }
+  if (agent === "antigravity") {
+    const image = ownerDocument.createElement("img");
+    image.src = antigravityAgentIconUrl;
+    image.alt = "";
+    image.draggable = false;
+    image.style.width = `${size}px`;
+    image.style.height = `${size}px`;
+    image.style.objectFit = "contain";
     image.style.flex = "none";
     return image;
   }

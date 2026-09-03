@@ -4,6 +4,7 @@ mod active_update;
 mod compatibility;
 mod desktop_attachment;
 mod installation_layout;
+mod native_harness_broker;
 mod runtime_instance;
 #[cfg(target_os = "linux")]
 mod secure_storage;
@@ -50,6 +51,7 @@ use desktop_attachment::{
     endpoint_ready, publish_runtime_descriptor, stop_stale_launcher, wait_for_host_chain,
 };
 use installation_layout::InstalledResources;
+use native_harness_broker::run_native_harness_broker_cli;
 use runtime_instance::{
     StartupObservation, StartupState, classify_startup, default_descriptor_path, read_descriptor,
     remove_matching_descriptor,
@@ -120,7 +122,7 @@ impl Error for UnmanagedDesktopConflict {}
 
 fn usage() {
     eprintln!(
-        "usage:\n  codexhost\n  codexhost inspect [--custom-install <absolute-directory>]\n  codexhost launch [--shim <absolute-file>] [--node <absolute-file>] [--host-runtime <absolute-file>] [--desktop-controller <absolute-file>] [--renderer <absolute-file>] [--pi <absolute-file>] [--custom-install <absolute-directory>]\n  codexhost delegate --help\n  codexhost harness inspect ...\n  codexhost delegate start ...\n  codexhost thread send|cancel|read|wait|list ..."
+        "usage:\n  codexhost\n  codexhost inspect [--custom-install <absolute-directory>]\n  codexhost launch [--shim <absolute-file>] [--node <absolute-file>] [--host-runtime <absolute-file>] [--desktop-controller <absolute-file>] [--renderer <absolute-file>] [--pi <absolute-file>] [--custom-install <absolute-directory>]\n  codexhost broker install|status|stop|uninstall\n  codexhost delegate --help\n  codexhost harness inspect ...\n  codexhost delegate start ...\n  codexhost thread send|cancel|read|wait|list ..."
     );
 }
 
@@ -418,8 +420,8 @@ fn desktop_controller_command(
     let mut command = Command::new(&options.node);
     command
         .arg(node_entrypoint_path(&options.desktop_controller))
-        .arg("--inspector-endpoint")
-        .arg(&control.inspector_endpoint)
+        .arg("--renderer-cdp-endpoint")
+        .arg(&control.renderer_cdp_endpoint)
         .arg("--renderer")
         .arg(&options.renderer_extension)
         .arg("--default-agent")
@@ -1033,7 +1035,7 @@ fn launch(
         let result = supervise_desktop(
             &installation,
             &options,
-            std::slice::from_ref(&control.inspector_argument),
+            &control.renderer_cdp_arguments,
             &environment,
             &control,
             &descriptor_path,
@@ -1124,7 +1126,7 @@ fn launch(
     supervise_desktop(
         &installation,
         &options,
-        std::slice::from_ref(&control.inspector_argument),
+        &control.renderer_cdp_arguments,
         &environment,
         &control,
         &descriptor_path,
@@ -1158,6 +1160,7 @@ fn run(arguments: &[String]) -> Result<(), Box<dyn Error>> {
             inspect(custom_install_root.as_deref())
         }
         Some("launch") => launch(parse_launch_options(&arguments[1..])?, false),
+        Some("broker") => run_native_harness_broker_cli(&arguments[1..]),
         Some("harness") | Some("delegate") | Some("thread") => run_delegation_cli(arguments),
         _ => {
             usage();
@@ -1411,15 +1414,18 @@ mod tests {
 
     fn runtime_control() -> RuntimeControl {
         RuntimeControl {
-            inspector_endpoint: "http://127.0.0.1:43123".into(),
-            inspector_argument: "--inspect=127.0.0.1:43123".into(),
+            renderer_cdp_endpoint: "http://127.0.0.1:43123".into(),
+            renderer_cdp_arguments: [
+                "--remote-debugging-address=127.0.0.1".into(),
+                "--remote-debugging-port=43123".into(),
+            ],
             attachment_port: 43124,
             nonce: "0123456789abcdef0123456789abcdef".into(),
         }
     }
 
     #[test]
-    fn production_controller_uses_private_node_and_loopback_inspector() {
+    fn production_controller_uses_private_node_and_loopback_renderer_cdp() {
         let options = resolved_options();
         let command = desktop_controller_command(&options, &runtime_control(), &[]);
         assert_eq!(command.get_program(), "/opt/node");
@@ -1427,7 +1433,7 @@ mod tests {
             command.get_args().collect::<Vec<_>>(),
             [
                 "/opt/desktop-controller.mjs",
-                "--inspector-endpoint",
+                "--renderer-cdp-endpoint",
                 "http://127.0.0.1:43123",
                 "--renderer",
                 "/opt/renderer-extension.js",
@@ -1441,26 +1447,26 @@ mod tests {
         );
 
         let control = allocate_runtime_control().expect("ephemeral runtime control");
-        assert!(control.inspector_endpoint.starts_with("http://127.0.0.1:"));
-        let inspector_port = control
-            .inspector_endpoint
-            .rsplit(':')
-            .next()
-            .expect("Inspector endpoint port")
-            .parse::<u16>()
-            .expect("numeric Inspector endpoint port");
-        assert_ne!(inspector_port, control.attachment_port);
         assert!(
             control
-                .inspector_argument
-                .to_string_lossy()
-                .starts_with("--inspect=127.0.0.1:")
+                .renderer_cdp_endpoint
+                .starts_with("http://127.0.0.1:")
         );
-        assert!(
-            !control
-                .inspector_argument
-                .to_string_lossy()
-                .contains("remote-debugging")
+        let renderer_cdp_port = control
+            .renderer_cdp_endpoint
+            .rsplit(':')
+            .next()
+            .expect("Renderer CDP endpoint port")
+            .parse::<u16>()
+            .expect("numeric Renderer CDP endpoint port");
+        assert_ne!(renderer_cdp_port, control.attachment_port);
+        assert_eq!(
+            control.renderer_cdp_arguments[0].to_string_lossy(),
+            "--remote-debugging-address=127.0.0.1"
+        );
+        assert_eq!(
+            control.renderer_cdp_arguments[1].to_string_lossy(),
+            format!("--remote-debugging-port={renderer_cdp_port}")
         );
         let environment = desktop_environment(
             &options,

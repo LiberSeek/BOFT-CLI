@@ -121,6 +121,30 @@ describe("Renderer draft Agent controller", () => {
     expect(agents.get(composer).agent).toBe("claude-code");
   });
 
+  it("keeps OpenCode Model and Thinking selection scoped to its draft", async () => {
+    const composer = {};
+    const agents = controller();
+    const model = harnessModelRefSchema.parse({
+      id: "opencode-model-v1.WyJwcm92aWRlci0xIiwibW9kZWwtMSJd",
+    });
+    const thinkingOptionId = harnessThinkingOptionIdSchema.parse("ocv.aGlnaA");
+
+    await agents.switchAgent(composer, "opencode", {
+      applyAgent: () => true,
+      clearPrewarm: async () => undefined,
+    });
+    agents.setExternalModel(composer, "opencode", model);
+    agents.setExternalThinkingOption(composer, "opencode", thinkingOptionId);
+
+    expect(agents.get(composer)).toMatchObject({
+      agent: "opencode",
+      openCodeModel: model,
+      openCodeThinkingOptionId: thinkingOptionId,
+    });
+    expect(agents.modelForAgent(composer, "opencode")).toEqual(model);
+    expect(agents.thinkingOptionForAgent(composer, "opencode")).toBe(thinkingOptionId);
+  });
+
   it("uses the same draft lifecycle for explicitly enabled Claude Code", async () => {
     const composer = {};
     const agents = new DraftAgentController<object>({
@@ -447,6 +471,27 @@ describe("Renderer draft Agent controller", () => {
     expect(agents.permissionModeForAgent(newDefault, "claude-code")).toBeUndefined();
     expect(agents.thinkingOptionForAgent(newDefault, "pi")).toBeUndefined();
     expect(agents.thinkingOptionForAgent(newDefault, "claude-code")).toBeUndefined();
+  });
+
+  it("keeps an Antigravity effort selection so the carrier can encode it", () => {
+    const draft = {};
+    const agents = controller();
+    const effort = harnessThinkingOptionIdSchema.parse("low");
+    const model = harnessModelRefSchema.parse({ id: "gemini-3.1-pro" });
+    agents.mount(draft, ["default"]);
+    agents.setExternalModel(draft, "antigravity", model);
+    agents.setExternalThinkingOption(draft, "antigravity", effort);
+
+    // Without this the composer builds a carrier with no effort and the first
+    // Turn runs without --effort.
+    expect(agents.thinkingOptionForAgent(draft, "antigravity")).toBe(effort);
+    expect(agents.get(draft)).toMatchObject({
+      antigravityModel: model,
+      antigravityThinkingOptionId: effort,
+    });
+
+    agents.setExternalThinkingOption(draft, "antigravity", undefined);
+    expect(agents.thinkingOptionForAgent(draft, "antigravity")).toBeUndefined();
   });
 
   it("applies the target Agent before clearing stale prewarm", async () => {
