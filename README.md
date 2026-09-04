@@ -64,7 +64,7 @@ https://github.com/user-attachments/assets/c48192d7-23ff-4f6e-b61a-6345a655bb76
 > 支持 macOS、Windows 和 [x64/ARM64 Linux](docs/linux.zh-CN.md)。
 
 ```bash
-npm install --global @liberseek/boft-cli
+npm install -g @liberseek/boft-cli
 boft
 ```
 
@@ -184,7 +184,7 @@ BOFT CLI 会为目标 Harness 创建独立的 Native Session。委派会话将�
 在 SSH 远程主机上执行：
 
 ```bash
-npm install --global @liberseek/boft-cli
+npm install -g @liberseek/boft-cli
 boft remote install
 boft remote start
 boft remote status

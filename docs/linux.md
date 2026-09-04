@@ -3,7 +3,7 @@
 BOFT CLI supports x64 and ARM64 Linux through the npm package. Install the official ChatGPT App matching the current architecture first, then install BOFT CLI:
 
 ```bash
-npm install --global @liberseek/boft-cli
+npm install -g @liberseek/boft-cli
 boft
 ```
 

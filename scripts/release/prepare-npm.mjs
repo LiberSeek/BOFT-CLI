@@ -687,7 +687,7 @@ ${NPM_PACKAGE_DESCRIPTION}
 ## Install
 
 \`\`\`bash
-npm install --global ${NPM_PACKAGE_NAME}@${version}
+npm install -g ${NPM_PACKAGE_NAME}@${version}
 \`\`\`
 
 Do not install this package directly. npm selects it through the optional dependencies of \`${NPM_PACKAGE_NAME}\`.
@@ -726,7 +726,7 @@ The \`codexhost\` command launches the packaged Rust launcher with:
 - This npm package does **not** embed a private Node.js runtime.
 - On macOS, \`remote install\` manages the current-user Aqua Harness broker; it never asks for a Keychain password or copies Claude credentials.
 - Installer packages (DMG/EXE) remain the zero-dependency desktop distribution path.
-- Prefer \`npm install --global ${NPM_PACKAGE_NAME}\` over installing the monorepo root.
+- Prefer \`npm install -g ${NPM_PACKAGE_NAME}\` over installing the monorepo root.
 `;
 }
 

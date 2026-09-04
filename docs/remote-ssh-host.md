@@ -16,7 +16,7 @@ Windows is supported as the client. A Windows machine is not currently supported
 ## Install on the SSH host
 
 ```bash
-npm install --global @liberseek/boft-cli
+npm install -g @liberseek/boft-cli
 boft remote install
 boft remote start
 boft remote status
