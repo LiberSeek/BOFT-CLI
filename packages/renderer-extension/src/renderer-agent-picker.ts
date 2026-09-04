@@ -438,15 +438,32 @@ export function mountRendererAgentPicker(
   mainGroup.style.gap = "2px";
 
   let moreOpen = false;
+  const applyMutedChromeHover = (button: HTMLButtonElement): void => {
+    button.addEventListener("pointerenter", () => {
+      button.style.background = "rgba(127, 127, 127, 0.1)";
+    });
+    button.addEventListener("pointerleave", () => {
+      button.style.background = "transparent";
+    });
+  };
+  const moreRow = document.createElement("div");
+  moreRow.dataset.codexhostAgentMore = "row";
+  moreRow.style.position = "relative";
+  moreRow.style.display = "none";
+  moreRow.style.width = "100%";
+  moreRow.style.marginTop = "2px";
+  moreRow.style.minWidth = "0";
   const moreToggle = document.createElement("button");
   moreToggle.type = "button";
-  moreToggle.style.display = "none";
+  moreToggle.dataset.codexhostAgentMore = "toggle";
+  moreToggle.setAttribute("aria-expanded", "false");
+  moreToggle.style.display = "flex";
   moreToggle.style.alignItems = "center";
   moreToggle.style.gap = "8px";
   moreToggle.style.width = "100%";
   moreToggle.style.height = "36px";
-  moreToggle.style.marginTop = "2px";
-  moreToggle.style.padding = "0 8px";
+  // Trailing 40px matches the Agent row's 8px padding + 24px action slot + 8px.
+  moreToggle.style.padding = "0 40px 0 8px";
   moreToggle.style.border = "0";
   moreToggle.style.borderRadius = "4px";
   moreToggle.style.background = "transparent";
@@ -454,12 +471,7 @@ export function mountRendererAgentPicker(
   moreToggle.style.font = "500 13px/1 system-ui, sans-serif";
   moreToggle.style.opacity = "0.72";
   moreToggle.style.cursor = "pointer";
-  moreToggle.addEventListener("pointerenter", () => {
-    moreToggle.style.background = "rgba(127, 127, 127, 0.1)";
-  });
-  moreToggle.addEventListener("pointerleave", () => {
-    moreToggle.style.background = "transparent";
-  });
+  applyMutedChromeHover(moreToggle);
   const moreArrow = document.createElement("span");
   moreArrow.setAttribute("aria-hidden", "true");
   moreArrow.style.display = "inline-flex";
@@ -471,17 +483,67 @@ export function mountRendererAgentPicker(
   moreArrow.style.color = "currentColor";
   const setMoreArrow = (open: boolean): void => {
     moreArrow.replaceChildren(
-      createRendererSettingsIcon(open ? "chevron-down" : "chevron-right", PICKER_CHROME_ICON_SIZE_PX),
+      createRendererSettingsIcon(
+        open ? "chevron-up" : "chevron-right",
+        PICKER_CHROME_ICON_SIZE_PX,
+      ),
     );
   };
   setMoreArrow(false);
   const moreLabel = document.createElement("span");
   moreLabel.style.display = "inline-flex";
   moreLabel.style.alignItems = "center";
+  moreLabel.style.minWidth = "0";
+  moreLabel.style.flex = "1 1 auto";
+  moreLabel.style.overflow = "hidden";
+  moreLabel.style.textOverflow = "ellipsis";
+  moreLabel.style.whiteSpace = "nowrap";
   moreLabel.style.lineHeight = `${PICKER_CHROME_ICON_SIZE_PX}px`;
   moreToggle.append(moreArrow, moreLabel);
+  const moreSettings = document.createElement("button");
+  moreSettings.type = "button";
+  moreSettings.dataset.codexhostAgentMore = "settings";
+  moreSettings.setAttribute("aria-label", groupMessages.pickerManageLink);
+  moreSettings.title = groupMessages.pickerManageLink;
+  // Same trailing slot as the Agent install "+" action (24×24, 8px from the right).
+  moreSettings.style.position = "absolute";
+  moreSettings.style.top = "50%";
+  moreSettings.style.right = "8px";
+  moreSettings.style.transform = "translateY(-50%)";
+  moreSettings.style.display = "inline-flex";
+  moreSettings.style.alignItems = "center";
+  moreSettings.style.justifyContent = "center";
+  moreSettings.style.width = "24px";
+  moreSettings.style.height = "24px";
+  moreSettings.style.flex = "none";
+  moreSettings.style.padding = "0";
+  moreSettings.style.border = "0";
+  moreSettings.style.borderRadius = "4px";
+  moreSettings.style.background = "transparent";
+  moreSettings.style.color = "inherit";
+  moreSettings.style.opacity = "0.72";
+  moreSettings.style.cursor = "pointer";
+  const moreSettingsIcon = document.createElement("span");
+  moreSettingsIcon.setAttribute("aria-hidden", "true");
+  moreSettingsIcon.style.display = "inline-flex";
+  moreSettingsIcon.style.alignItems = "center";
+  moreSettingsIcon.style.justifyContent = "center";
+  moreSettingsIcon.style.width = `${PICKER_CHROME_ICON_SIZE_PX}px`;
+  moreSettingsIcon.style.height = `${PICKER_CHROME_ICON_SIZE_PX}px`;
+  moreSettingsIcon.style.color = "currentColor";
+  moreSettingsIcon.append(createRendererSettingsIcon("settings", PICKER_CHROME_ICON_SIZE_PX));
+  moreSettings.append(moreSettingsIcon);
+  applyMutedChromeHover(moreSettings);
+  moreSettings.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openConnectionsSettings(trigger);
+  });
+  moreRow.append(moreToggle, moreSettings);
 
   const morePanel = document.createElement("div");
+  morePanel.id = `${composerId}-agent-more`;
+  morePanel.dataset.codexhostAgentMore = "panel";
+  moreToggle.setAttribute("aria-controls", morePanel.id);
   morePanel.style.display = "none";
   morePanel.style.flexDirection = "column";
   morePanel.style.gap = "2px";
@@ -490,6 +552,7 @@ export function mountRendererAgentPicker(
   moreRows.style.display = "flex";
   moreRows.style.flexDirection = "column";
   moreRows.style.gap = "2px";
+  morePanel.append(moreRows);
   const createSettingsAction = (
     labelText: string,
     options: { initiallyHidden?: boolean; bordered?: boolean } = {},
@@ -533,19 +596,10 @@ export function mountRendererAgentPicker(
     label.style.alignItems = "center";
     label.style.lineHeight = `${PICKER_CHROME_ICON_SIZE_PX}px`;
     button.append(icon, label);
-    button.addEventListener("pointerenter", () => {
-      button.style.background = "rgba(127, 127, 127, 0.1)";
-    });
-    button.addEventListener("pointerleave", () => {
-      button.style.background = "transparent";
-    });
+    applyMutedChromeHover(button);
     button.addEventListener("click", () => openConnectionsSettings(trigger));
     return button;
   };
-
-  // Shared layout with the no-More CTA: gear + label, muted inherit color, no trailing arrow.
-  const manageLink = createSettingsAction(groupMessages.pickerManageLink);
-  morePanel.append(moreRows, manageLink);
 
   const cta = createSettingsAction(groupMessages.pickerHideUnusedAgentsCta, {
     initiallyHidden: true,
@@ -614,8 +668,9 @@ export function mountRendererAgentPicker(
     );
     const showMoreGroup = moreAgents.length > 0;
     const showCta = !showMoreGroup && enabledAgents.length > AGENT_GROUP_CTA_THRESHOLD;
-    moreToggle.style.display = showMoreGroup ? "flex" : "none";
+    moreRow.style.display = showMoreGroup ? "block" : "none";
     morePanel.style.display = showMoreGroup && moreOpen ? "flex" : "none";
+    moreToggle.setAttribute("aria-expanded", String(showMoreGroup && moreOpen));
     cta.style.display = showCta ? "flex" : "none";
     moreLabel.textContent = `${groupMessages.pickerMoreAgentsLabel} (${moreAgents.length})`;
     setMoreArrow(moreOpen);
@@ -627,7 +682,9 @@ export function mountRendererAgentPicker(
   regroup();
   const unsubscribeGroup = groupPreference.subscribe(regroup);
 
-  menu.append(mainGroup, moreToggle, morePanel, cta);
+  // More Agents sit above the toggle so the extra list expands upward.
+  // Settings lives on the toggle row, not as a trailing item after expand.
+  menu.append(mainGroup, morePanel, moreRow, cta);
   root.append(trigger, menu);
 
   const onTriggerClick = (): void => {
