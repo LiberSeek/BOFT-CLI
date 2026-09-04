@@ -4,7 +4,7 @@ import { iconDimensions, readIcon } from "../../scripts/release/macos/assets.mjs
 
 describe("macOS install artwork", () => {
   it("uses the multi-size launcher icon as its source", () => {
-    expect(iconDimensions(readIcon())).toEqual([
+    expect(iconDimensions(readIcon()).toSorted((left, right) => left.width - right.width)).toEqual([
       { width: 16, height: 16 },
       { width: 24, height: 24 },
       { width: 32, height: 32 },

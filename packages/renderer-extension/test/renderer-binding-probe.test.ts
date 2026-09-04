@@ -767,8 +767,8 @@ describe("Renderer Composer DOM behavior", () => {
     };
     Object.assign(voice, { parentElement: toolbar });
     Object.assign(send, { parentElement: toolbar });
-    const modelRoot = { parentElement: toolbar, nextElementSibling: send };
-    const agentRoot = { parentElement: toolbar, nextElementSibling: send };
+    const modelRoot = { parentElement: toolbar, nextElementSibling: send, style: {} };
+    const agentRoot = { parentElement: toolbar, nextElementSibling: send, style: {} };
     const control = {
       composer: { querySelectorAll: () => [] },
       sendButton: send,
@@ -793,6 +793,8 @@ describe("Renderer Composer DOM behavior", () => {
 
     expect(insertBefore).toHaveBeenCalledWith(modelRoot, voice);
     expect(insertBefore).toHaveBeenCalledWith(agentRoot, voice);
+    expect(modelRoot.style).toMatchObject({ marginInlineStart: "0", marginInlineEnd: "4px" });
+    expect(agentRoot.style).toMatchObject({ marginInlineStart: "0", marginInlineEnd: "4px" });
   });
 
   it("re-places model and agent pickers before the pause button", () => {
@@ -815,8 +817,8 @@ describe("Renderer Composer DOM behavior", () => {
     };
     Object.assign(pause, { parentElement: toolbar });
     Object.assign(send, { parentElement: toolbar });
-    const modelRoot = { parentElement: toolbar, nextElementSibling: send };
-    const agentRoot = { parentElement: toolbar, nextElementSibling: send };
+    const modelRoot = { parentElement: toolbar, nextElementSibling: send, style: {} };
+    const agentRoot = { parentElement: toolbar, nextElementSibling: send, style: {} };
     const control = {
       composer: { querySelectorAll: () => [] },
       sendButton: send,
@@ -841,6 +843,8 @@ describe("Renderer Composer DOM behavior", () => {
 
     expect(insertBefore).toHaveBeenCalledWith(modelRoot, pause);
     expect(insertBefore).toHaveBeenCalledWith(agentRoot, pause);
+    expect(modelRoot.style).toMatchObject({ marginInlineStart: "0", marginInlineEnd: "4px" });
+    expect(agentRoot.style).toMatchObject({ marginInlineStart: "0", marginInlineEnd: "4px" });
   });
 
   it("freezes only on a non-composing Enter without Shift", () => {
