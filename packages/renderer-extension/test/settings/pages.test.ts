@@ -811,7 +811,7 @@ describe("Renderer Updates page", () => {
     expect(visibleNotesText(repository as FakeElement)).toContain("BOFT CLI");
     expect(visibleNotesText(repository as FakeElement)).toContain("github-icon");
     const brand = descendants(content).find(
-      ({ tagName, href }) => tagName === "a" && href === "https://liberseek.ai",
+      ({ tagName, href }) => tagName === "a" && href === "https://supply.boft.ai",
     );
     expect(brand).toMatchObject({
       className: "settings-about-brand",
