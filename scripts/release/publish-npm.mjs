@@ -89,8 +89,32 @@ export function npmPublishCommand(entry, { dryRun, provenance, registry, tag }) 
   return { command: "npm", args };
 }
 
+export function publishedNpmVersionExists(packageName, version, registry) {
+  const args = ["view", `${packageName}@${version}`, "version", "--json"];
+  if (registry) args.push("--registry", registry);
+  const result = spawnSync("npm", args, {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  if (result.status !== 0) return false;
+  const output = result.stdout.trim();
+  if (!output) return false;
+  try {
+    return JSON.parse(output) === version;
+  } catch {
+    return output.replaceAll('"', "") === version;
+  }
+}
+
 export function publishNpmPlan(plan, options) {
   for (const entry of plan) {
+    if (
+      !options.dryRun &&
+      publishedNpmVersionExists(entry.packageName, entry.version, options.registry)
+    ) {
+      console.log(`skipping ${entry.packageName}@${entry.version} (already published)`);
+      continue;
+    }
     const command = npmPublishCommand(entry, options);
     console.log(
       `${options.dryRun ? "checking" : "publishing"} ${entry.packageName}@${entry.version}`,
