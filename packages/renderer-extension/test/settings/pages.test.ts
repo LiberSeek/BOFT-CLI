@@ -8,10 +8,6 @@ vi.mock("../../src/settings/icons.js", () => ({
   isRendererSettingsIconName: () => true,
 }));
 
-vi.mock("../../src/assets/logo-animated.mp4", () => ({
-  default: "data:video/mp4;base64,AAAA",
-}));
-
 import { createAgentGroupPreferenceStore } from "../../src/agent-group-preference.js";
 import { RendererSettingsPageScope } from "../../src/settings/core.js";
 import { createConnectionsSettingsPage } from "../../src/settings/connections-page.js";
@@ -822,7 +818,7 @@ describe("Renderer Updates page", () => {
     const brandVideo = descendants(content).find(({ tagName }) => tagName === "video") as
       | (FakeElement & { src?: string })
       | undefined;
-    expect(brandVideo?.src).toMatch(/^data:video\/mp4/);
+    expect(brandVideo?.src).toBe("https://liberseek.ai/assets/icon.mp4");
     expect(text.indexOf("是开源项目。")).toBeLessThan(text.indexOf("请给我们一个 Star"));
     expect(text.indexOf("请给我们一个 Star")).toBeLessThan(text.indexOf("LIBERSEEK"));
 
