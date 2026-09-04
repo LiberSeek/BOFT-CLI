@@ -17,12 +17,7 @@ describe("Renderer settings foundation", () => {
 
     expect(pages.map(({ id }) => id)).toEqual(DEFAULT_RENDERER_SETTINGS_PAGE_IDS);
     expect(pages.map(({ label }) => label)).toEqual(["Agents", "Plugin", "Updates", "About"]);
-    expect(pages.map(({ icon }) => icon)).toEqual([
-      "connections",
-      "plugins",
-      "updates",
-      "about",
-    ]);
+    expect(pages.map(({ icon }) => icon)).toEqual(["connections", "plugins", "updates", "about"]);
     expect(registry.defaultPageId).toBe("connections");
     expect(Object.isFrozen(pages)).toBe(true);
     expect(pages.every((page) => Object.isFrozen(page))).toBe(true);

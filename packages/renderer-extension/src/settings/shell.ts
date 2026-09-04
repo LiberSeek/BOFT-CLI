@@ -40,9 +40,7 @@ export function isRendererSettingsDialogSupported(
 }
 
 /** Resolve light/dark from the host document's color-scheme (Codex Desktop theme). */
-export function resolveRendererSettingsTheme(
-  ownerDocument: Document = document,
-): "light" | "dark" {
+export function resolveRendererSettingsTheme(ownerDocument: Document = document): "light" | "dark" {
   try {
     const scheme = ownerDocument.defaultView
       ?.getComputedStyle(ownerDocument.documentElement)

@@ -195,7 +195,8 @@ export function createAgentGroupPreferenceStore(
         nextOrder.length === order.length &&
         nextOrder.every(
           (agent, index) =>
-            agent === order[index] && (nextSections.get(agent) ?? "main") === (sections.get(agent) ?? "main"),
+            agent === order[index] &&
+            (nextSections.get(agent) ?? "main") === (sections.get(agent) ?? "main"),
         );
       if (unchanged) return;
       order = nextOrder;

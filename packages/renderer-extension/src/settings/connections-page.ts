@@ -381,8 +381,7 @@ function createConnectionBlock(
   const action = document.createElement("div");
   action.className = "settings-connection-row__action";
   action.setAttribute("role", "cell");
-  const canExpand =
-    item.error !== null || item.agentSnapshot?.availability === "notInstalled";
+  const canExpand = item.error !== null || item.agentSnapshot?.availability === "notInstalled";
   if (item.agentSnapshot?.availability === "notInstalled") {
     const install = document.createElement("a");
     install.className = "settings-connection-install-link";

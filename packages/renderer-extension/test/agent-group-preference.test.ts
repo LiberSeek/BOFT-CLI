@@ -52,9 +52,9 @@ describe("partitionAgentsByInstallStatus", () => {
       { agent: "pi", section: "more" },
       { agent: "omp", section: "more" },
     ];
-    expect(
-      partitionAgentsByInstallStatus(entries, () => true).map((entry) => entry.agent),
-    ).toEqual(["pi", "omp"]);
+    expect(partitionAgentsByInstallStatus(entries, () => true).map((entry) => entry.agent)).toEqual(
+      ["pi", "omp"],
+    );
     expect(
       partitionAgentsByInstallStatus(entries, () => false).map((entry) => entry.agent),
     ).toEqual(["pi", "omp"]);
@@ -91,8 +91,16 @@ describe("AgentGroupPreferenceStore.reconcileOrder", () => {
 
   it("no-ops when the requested order already matches", () => {
     const store = createAgentGroupPreferenceStore(memoryStorage());
-    const before = store.list().map((entry) => `${entry.agent}:${entry.section}`).join(",");
+    const before = store
+      .list()
+      .map((entry) => `${entry.agent}:${entry.section}`)
+      .join(",");
     store.reconcileOrder([...store.list()]);
-    expect(store.list().map((entry) => `${entry.agent}:${entry.section}`).join(",")).toBe(before);
+    expect(
+      store
+        .list()
+        .map((entry) => `${entry.agent}:${entry.section}`)
+        .join(","),
+    ).toBe(before);
   });
 });

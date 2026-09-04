@@ -263,14 +263,15 @@ describe("Renderer Connections page", () => {
     expect(
       descendants(content).filter(
         (candidate) =>
-          candidate.dataset.connectionItem !== undefined &&
-          candidate.dataset.connectionItem !== "",
+          candidate.dataset.connectionItem !== undefined && candidate.dataset.connectionItem !== "",
       ),
     ).toHaveLength(2);
     expect(visibleText(content)).not.toContain("Renderer 适配器");
     expect(visibleText(content)).not.toContain("CH");
     expect(
-      descendants(content).some((candidate) => candidate.dataset.connectionItem === "renderer-adapter"),
+      descendants(content).some(
+        (candidate) => candidate.dataset.connectionItem === "renderer-adapter",
+      ),
     ).toBe(false);
     expect(visibleText(content)).toContain("公司");
     expect(visibleText(content)).not.toContain("pi exited with code 1");
@@ -415,10 +416,7 @@ describe("Renderer Connections page", () => {
         candidate.dataset.connectionItem === "pi" ||
         candidate.dataset.connectionItem === "deepseek-harness",
     );
-    expect(agentRows.map((row) => row.dataset.connectionItem)).toEqual([
-      "pi",
-      "deepseek-harness",
-    ]);
+    expect(agentRows.map((row) => row.dataset.connectionItem)).toEqual(["pi", "deepseek-harness"]);
     expect(
       groupPreference
         .list()
@@ -820,8 +818,7 @@ describe("Renderer Updates page", () => {
     });
     expect(aboutPage.children.at(-1)).toBe(brand);
     const brandVideo = descendants(content).find(({ tagName }) => tagName === "video") as
-      | (FakeElement & { src?: string })
-      | undefined;
+      (FakeElement & { src?: string }) | undefined;
     expect(brandVideo?.src).toMatch(/^data:video\/mp4/);
     expect(text.indexOf("是开源项目。")).toBeLessThan(text.indexOf("请给我们一个 Star"));
     expect(text.indexOf("请给我们一个 Star")).toBeLessThan(text.indexOf("LIBERSEEK"));

@@ -483,10 +483,7 @@ export function mountRendererAgentPicker(
   moreArrow.style.color = "currentColor";
   const setMoreArrow = (open: boolean): void => {
     moreArrow.replaceChildren(
-      createRendererSettingsIcon(
-        open ? "chevron-up" : "chevron-right",
-        PICKER_CHROME_ICON_SIZE_PX,
-      ),
+      createRendererSettingsIcon(open ? "chevron-up" : "chevron-right", PICKER_CHROME_ICON_SIZE_PX),
     );
   };
   setMoreArrow(false);

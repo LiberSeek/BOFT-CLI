@@ -1305,23 +1305,39 @@ button {
   color: var(--settings-muted);
 }
 
-.settings-update-panel[data-update-state="available"] .settings-update-panel__head .codexhost-settings-icon,
-.settings-update-panel[data-update-state="downloading"] .settings-update-panel__head .codexhost-settings-icon,
-.settings-update-panel[data-update-state="installing"] .settings-update-panel__head .codexhost-settings-icon,
-.settings-update-panel[data-update-state="restarting"] .settings-update-panel__head .codexhost-settings-icon {
+.settings-update-panel[data-update-state="available"]
+  .settings-update-panel__head
+  .codexhost-settings-icon,
+.settings-update-panel[data-update-state="downloading"]
+  .settings-update-panel__head
+  .codexhost-settings-icon,
+.settings-update-panel[data-update-state="installing"]
+  .settings-update-panel__head
+  .codexhost-settings-icon,
+.settings-update-panel[data-update-state="restarting"]
+  .settings-update-panel__head
+  .codexhost-settings-icon {
   color: #4aa3f0;
 }
 
-.settings-update-panel[data-update-state="current"] .settings-update-panel__head .codexhost-settings-icon {
+.settings-update-panel[data-update-state="current"]
+  .settings-update-panel__head
+  .codexhost-settings-icon {
   color: #4ade80;
 }
 
-.settings-update-panel[data-update-state="failed"] .settings-update-panel__head .codexhost-settings-icon,
-.settings-update-panel[data-update-state="error"] .settings-update-panel__head .codexhost-settings-icon {
+.settings-update-panel[data-update-state="failed"]
+  .settings-update-panel__head
+  .codexhost-settings-icon,
+.settings-update-panel[data-update-state="error"]
+  .settings-update-panel__head
+  .codexhost-settings-icon {
   color: #ef4444;
 }
 
-.settings-update-panel[data-update-state="unavailable"] .settings-update-panel__head .codexhost-settings-icon {
+.settings-update-panel[data-update-state="unavailable"]
+  .settings-update-panel__head
+  .codexhost-settings-icon {
   color: var(--settings-muted);
 }
 
