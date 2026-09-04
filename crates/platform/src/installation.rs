@@ -365,6 +365,70 @@ pub fn discover_desktop_managed_codex_cli() -> Result<PathBuf, PlatformError> {
     })
 }
 
+#[cfg(target_os = "windows")]
+const CODE_MODE_HOST_FILE: &str = "codex-code-mode-host.exe";
+
+/// Official `codex.exe` looks for `codex-code-mode-host.exe` beside the running
+/// CLI. Desktop may also resolve it beside `CODEX_CLI_PATH` (the Shim).
+///
+/// WindowsApps binaries are not runnable from a normal process, so the Shim
+/// uses the Desktop-managed cache copy of `codex.exe`. That cache often omits
+/// the host sidecar that still sits next to the packaged CLI.
+#[cfg(target_os = "windows")]
+pub(crate) fn ensure_windows_code_mode_host(
+    installation: &DesktopInstallation,
+    shim_path: &Path,
+) -> Result<(), PlatformError> {
+    stage_code_mode_host(
+        &installation.packaged_codex_cli,
+        &installation.executable_codex_cli,
+    )?;
+    stage_code_mode_host(&installation.executable_codex_cli, shim_path)
+}
+
+#[cfg(target_os = "windows")]
+fn stage_code_mode_host(
+    packaged_codex_cli: &Path,
+    executable_codex_cli: &Path,
+) -> Result<(), PlatformError> {
+    let runnable_dir = executable_codex_cli.parent().ok_or_else(|| {
+        PlatformError::Invalid("runnable Codex CLI has no parent directory".into())
+    })?;
+    let destination = runnable_dir.join(CODE_MODE_HOST_FILE);
+    if destination.is_file() {
+        return Ok(());
+    }
+    let source = find_code_mode_host_source(packaged_codex_cli, runnable_dir).ok_or_else(|| {
+        PlatformError::NotFound(format!(
+            "Codex command host '{CODE_MODE_HOST_FILE}' is missing; copy it next to '{}'",
+            executable_codex_cli.display()
+        ))
+    })?;
+    if source == destination {
+        return Ok(());
+    }
+    std::fs::copy(&source, &destination)?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn find_code_mode_host_source(packaged_codex_cli: &Path, runnable_dir: &Path) -> Option<PathBuf> {
+    let packaged_host = packaged_codex_cli.parent()?.join(CODE_MODE_HOST_FILE);
+    if packaged_host.is_file() {
+        return Some(packaged_host);
+    }
+    let cache_root = runnable_dir.parent()?;
+    let mut entries = cache_root.read_dir().ok()?;
+    entries.find_map(|entry| {
+        let entry = entry.ok()?;
+        if !entry.file_type().ok()?.is_dir() {
+            return None;
+        }
+        let host = entry.path().join(CODE_MODE_HOST_FILE);
+        host.is_file().then_some(host)
+    })
+}
+
 #[cfg(all(test, target_os = "windows"))]
 mod desktop_managed_cli_tests {
     use std::fs;
@@ -419,6 +483,75 @@ mod desktop_managed_cli_tests {
         assert!(candidate.is_none());
 
         fs::remove_dir_all(root).expect("remove containment fixture");
+    }
+
+    #[test]
+    fn stages_code_mode_host_beside_the_runnable_cli_when_the_cache_omits_it() {
+        let root = crate::temporary_directory("code-mode-host-stage");
+        let packaged = root.join("package/resources/codex.exe");
+        let cached = root.join("OpenAI/Codex/bin/cache-build/codex.exe");
+        fs::create_dir_all(packaged.parent().expect("packaged parent")).expect("create package");
+        fs::create_dir_all(cached.parent().expect("cache parent")).expect("create cache");
+        fs::write(&packaged, b"packaged").expect("write packaged CLI");
+        fs::write(&cached, b"cached").expect("write cached CLI");
+        let host = packaged
+            .parent()
+            .expect("packaged parent")
+            .join("codex-code-mode-host.exe");
+        fs::write(&host, b"host").expect("write packaged host");
+
+        super::stage_code_mode_host(&packaged, &cached).expect("stage host");
+
+        let staged = cached
+            .parent()
+            .expect("cache parent")
+            .join("codex-code-mode-host.exe");
+        assert_eq!(fs::read(&staged).expect("read staged host"), b"host");
+
+        super::stage_code_mode_host(&packaged, &cached).expect("idempotent stage");
+        assert_eq!(fs::read(&staged).expect("read staged host"), b"host");
+
+        fs::remove_dir_all(root).expect("remove host stage fixture");
+    }
+
+    #[test]
+    fn reports_a_missing_packaged_code_mode_host() {
+        let root = crate::temporary_directory("code-mode-host-missing");
+        let packaged = root.join("package/resources/codex.exe");
+        let cached = root.join("OpenAI/Codex/bin/cache-build/codex.exe");
+        fs::create_dir_all(packaged.parent().expect("packaged parent")).expect("create package");
+        fs::create_dir_all(cached.parent().expect("cache parent")).expect("create cache");
+        fs::write(&packaged, b"packaged").expect("write packaged CLI");
+        fs::write(&cached, b"cached").expect("write cached CLI");
+
+        let error =
+            super::stage_code_mode_host(&packaged, &cached).expect_err("missing packaged host");
+        assert!(error.to_string().contains("codex-code-mode-host.exe"));
+
+        fs::remove_dir_all(root).expect("remove missing host fixture");
+    }
+
+    #[test]
+    fn stages_code_mode_host_from_a_sibling_desktop_cache() {
+        let root = crate::temporary_directory("code-mode-host-sibling-cache");
+        let packaged = root.join("package/resources/codex.exe");
+        let cached = root.join("OpenAI/Codex/bin/new-build/codex.exe");
+        let older = root.join("OpenAI/Codex/bin/old-build");
+        fs::create_dir_all(packaged.parent().expect("packaged parent")).expect("create package");
+        fs::create_dir_all(cached.parent().expect("cache parent")).expect("create cache");
+        fs::create_dir_all(&older).expect("create older cache");
+        fs::write(&packaged, b"packaged").expect("write packaged CLI");
+        fs::write(&cached, b"cached").expect("write cached CLI");
+        fs::write(older.join("codex-code-mode-host.exe"), b"older-host").expect("write older host");
+
+        super::stage_code_mode_host(&packaged, &cached).expect("stage host from sibling cache");
+        let staged = cached
+            .parent()
+            .expect("cache parent")
+            .join("codex-code-mode-host.exe");
+        assert_eq!(fs::read(&staged).expect("read staged host"), b"older-host");
+
+        fs::remove_dir_all(root).expect("remove sibling cache fixture");
     }
 }
 

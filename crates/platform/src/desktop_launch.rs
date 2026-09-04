@@ -297,6 +297,7 @@ pub fn launch_desktop(
             "Windows packaged Desktop requires AppX activation",
         ));
     }
+    super::installation::ensure_windows_code_mode_host(installation, shim_path)?;
     let DesktopIdentity::WindowsPackage {
         appx_activation, ..
     } = &installation.identity

@@ -31,6 +31,15 @@ fn windows_error(context: &str, error: windows::core::Error) -> PlatformError {
     PlatformError::Invalid(format!("{context}: {error}"))
 }
 
+/// `IPackageDebugSettings::DisableDebugging` returns
+/// `HRESULT_FROM_WIN32(ERROR_NOT_FOUND)` (`0x80070490`) when the package is no
+/// longer registered for debugging. Activation itself can clear that
+/// registration after the resume helper runs.
+fn is_appx_debug_already_cleared(error: &windows::core::Error) -> bool {
+    const ELEMENT_NOT_FOUND: u32 = 0x8007_0490;
+    error.code().0 as u32 == ELEMENT_NOT_FOUND
+}
+
 struct ComApartment {
     uninitialize: bool,
 }
@@ -108,9 +117,14 @@ impl PackageEnvironment {
 
     fn disable(&mut self) -> Result<(), PlatformError> {
         if self.armed {
-            unsafe { self.settings.DisableDebugging(&self.package_full_name) }.map_err(
-                |error| windows_error("cannot remove the temporary AppX environment", error),
-            )?;
+            if let Err(error) = unsafe { self.settings.DisableDebugging(&self.package_full_name) } {
+                if !is_appx_debug_already_cleared(&error) {
+                    return Err(windows_error(
+                        "cannot remove the temporary AppX environment",
+                        error,
+                    ));
+                }
+            }
             self.armed = false;
         }
         Ok(())
@@ -478,10 +492,19 @@ mod tests {
     use std::process::Command;
 
     use super::{
-        ActivatedProcessGuard, WindowsDesktopProcess, quote_windows_argument,
-        resume_packaged_application, supervise_desktop, windows_command_line,
-        windows_environment_block,
+        ActivatedProcessGuard, WindowsDesktopProcess, is_appx_debug_already_cleared,
+        quote_windows_argument, resume_packaged_application, supervise_desktop,
+        windows_command_line, windows_environment_block,
     };
+
+    #[test]
+    fn treats_element_not_found_as_already_cleared_appx_debug_state() {
+        let not_found = windows::core::Error::from(windows::core::HRESULT(0x8007_0490_u32 as i32));
+        let access_denied =
+            windows::core::Error::from(windows::core::HRESULT(0x8007_0005_u32 as i32));
+        assert!(is_appx_debug_already_cleared(&not_found));
+        assert!(!is_appx_debug_already_cleared(&access_denied));
+    }
 
     #[test]
     fn quotes_packaged_activation_arguments() {
