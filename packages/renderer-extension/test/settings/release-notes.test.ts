@@ -76,7 +76,7 @@ describe("Release notes Markdown", () => {
         "### npm",
         "",
         "```bash",
-        "npm install -g @liberseek/boft-cli",
+        "npm install --global @liberseek/boft-cli",
         "boft",
         "```",
       ].join("\n"),
@@ -94,13 +94,13 @@ describe("Release notes Markdown", () => {
     expect(visibleText(root)).toContain("本次发布");
     expect(visibleText(root)).not.toContain("##");
     expect(visibleText(root)).not.toContain("- 新增");
-    expect(visibleText(root)).toContain("npm install -g @liberseek/boft-cli");
+    expect(visibleText(root)).toContain("npm install --global @liberseek/boft-cli");
 
     const list = descendants(root).find((element) => element.tagName === "ul");
     expect(list?.children).toHaveLength(2);
     const code = descendants(root).find((element) => element.tagName === "code");
     expect(code?.className).toBe("language-bash");
-    expect(code?.textContent).toBe("npm install -g @liberseek/boft-cli\nboft");
+    expect(code?.textContent).toBe("npm install --global @liberseek/boft-cli\nboft");
   });
 
   it("preserves authored line breaks within bilingual paragraphs", () => {

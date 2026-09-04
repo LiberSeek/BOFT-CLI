@@ -47,7 +47,7 @@ import liberseekLogoVideoUrl from "../assets/logo-animated.mp4";
 
 export const CODEXHOST_GITHUB_REPOSITORY_URL = "https://github.com/LiberSeek/BOFT-CLI";
 export const CODEXHOST_RELEASES_LATEST_URL = `${CODEXHOST_GITHUB_REPOSITORY_URL}/releases/latest`;
-export const CODEXHOST_NPM_MANUAL_UPDATE_COMMAND = "npm install -g @liberseek/boft-cli@latest";
+export const CODEXHOST_NPM_MANUAL_UPDATE_COMMAND = "npm install --global @liberseek/boft-cli@latest";
 export const LIBERSEEK_WEBSITE_URL = "https://supply.boft.ai";
 // Codex Desktop CSP allows media-src data: but not arbitrary https hosts.
 export const LIBERSEEK_LOGO_VIDEO_URL = liberseekLogoVideoUrl;

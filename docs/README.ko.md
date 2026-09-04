@@ -57,7 +57,7 @@ https://github.com/user-attachments/assets/c48192d7-23ff-4f6e-b61a-6345a655bb76
 > macOS, Windows 및 [x64/ARM64 Linux](linux.md)를 지원합니다.
 
 ```bash
-npm install -g @liberseek/boft-cli
+npm install --global @liberseek/boft-cli
 boft
 ```
 
@@ -174,7 +174,7 @@ Codex Desktop의 기본 SSH 작업 공간을 통해 SSH를 통해 다른 개발 
 SSH 원격 Host에서 실행하세요:
 
 ```bash
-npm install -g @liberseek/boft-cli
+npm install --global @liberseek/boft-cli
 boft remote install
 boft remote start
 boft remote status

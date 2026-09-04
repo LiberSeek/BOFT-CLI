@@ -833,7 +833,7 @@ describe("Renderer Updates page", () => {
     ).toBeUndefined();
     expect(client.startUpdate).not.toHaveBeenCalled();
     if (installation === "npm") {
-      expect(visibleText(content)).toContain("npm install -g @liberseek/boft-cli@latest");
+      expect(visibleText(content)).toContain("npm install --global @liberseek/boft-cli@latest");
     } else {
       const link = descendants(content).find(
         ({ tagName, href }) =>
