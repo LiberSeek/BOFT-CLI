@@ -30,6 +30,7 @@ export interface RendererConnectionAgentSnapshot {
   readonly agent: ExternalRendererAgent;
   readonly availability: RendererAgentAvailability;
   readonly error: CodexhostError | null;
+  readonly webUiAvailable?: true;
 }
 
 export interface RendererConnectionHostSnapshot {
@@ -46,6 +47,7 @@ export interface RendererConnectionSnapshot {
 export interface RendererConnectionDiagnostics {
   snapshot(): RendererConnectionSnapshot;
   refresh(): Promise<void>;
+  openWebUi?(hostId: string, agent: ExternalRendererAgent): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
 
@@ -58,6 +60,7 @@ interface ConnectionListItem {
   readonly availability: ConnectionAvailability;
   readonly error: CodexhostError | null;
   readonly agentSnapshot?: RendererConnectionAgentSnapshot;
+  readonly openWebUi?: () => Promise<void>;
 }
 
 function connectionStatusLabel(
@@ -276,7 +279,40 @@ function createInlineErrorDetail(
     return body;
   }
 
-  if (!item.error) return body;
+  if (!item.error) {
+    if (item.openWebUi) {
+      const status = document.createElement("div");
+      status.className = "settings-connection-state-summary";
+      const title = document.createElement("strong");
+      title.textContent = connectionStatusLabel(item.availability, messages);
+      const description = document.createElement("p");
+      description.textContent =
+        item.availability === "ready"
+          ? messages.connectionReadyDescription
+          : messages.connectionUnavailableDescription;
+      status.append(title, description);
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "settings-command-button settings-command-button--secondary";
+      open.dataset.connectionAction = "open-web-ui";
+      open.append(
+        messages.connectionOpenHarnessWeb,
+        createRendererSettingsIcon("external-link", 14),
+      );
+      open.addEventListener("click", () => {
+        if (open.disabled) return;
+        open.disabled = true;
+        void item
+          .openWebUi?.()
+          .catch(() => undefined)
+          .finally(() => {
+            open.disabled = false;
+          });
+      });
+      body.append(status, open);
+    }
+    return body;
+  }
 
   const summary = document.createElement("div");
   summary.className = "settings-connection-error-summary";
@@ -381,7 +417,10 @@ function createConnectionBlock(
   const action = document.createElement("div");
   action.className = "settings-connection-row__action";
   action.setAttribute("role", "cell");
-  const canExpand = item.error !== null || item.agentSnapshot?.availability === "notInstalled";
+  const canExpand =
+    item.error !== null ||
+    item.agentSnapshot?.availability === "notInstalled" ||
+    item.openWebUi !== undefined;
   if (item.agentSnapshot?.availability === "notInstalled") {
     const install = document.createElement("a");
     install.className = "settings-connection-install-link";
@@ -405,12 +444,6 @@ function createConnectionBlock(
     action.append(viewError);
   }
 
-  row.addEventListener("click", (event) => {
-    const target = event.target as Element | null;
-    if (target?.closest?.("a")) return;
-    if (!canExpand) return;
-    toggleExpand();
-  });
   row.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     if (!canExpand) return;
@@ -431,16 +464,31 @@ function createConnectionBlock(
   if (expanded && canExpand) {
     block.append(createInlineErrorDetail(document, item, hostId, messages));
   }
+  // Expand from the connectionItem container; ignore nested action controls.
+  block.addEventListener("click", (event) => {
+    const target = event.target as Element | null;
+    if (target?.closest?.("a, button")) return;
+    if (!canExpand) return;
+    toggleExpand();
+  });
   return { block, row };
 }
 
-function connectionItems(host: RendererConnectionHostSnapshot): ConnectionListItem[] {
+function connectionItems(
+  host: RendererConnectionHostSnapshot,
+  diagnostics: RendererConnectionDiagnostics | null,
+): ConnectionListItem[] {
   return host.agents.map((agent): ConnectionListItem => ({
     key: agent.agent,
     name: RENDERER_AGENT_LABELS[agent.agent],
     availability: agent.availability,
     error: agent.availability === "notInstalled" ? null : agent.error,
     agentSnapshot: agent,
+    ...(host.hostId === "local" && agent.webUiAvailable && diagnostics?.openWebUi
+      ? {
+          openWebUi: () => diagnostics.openWebUi?.(host.hostId, agent.agent) ?? Promise.resolve(),
+        }
+      : {}),
   }));
 }
 
@@ -631,7 +679,7 @@ export function createConnectionsSettingsPage(
         rows.id = panelId;
         rows.dataset.connectionHost = selectedHost.hostId;
         rows.setAttribute("role", "rowgroup");
-        const items = connectionItems(selectedHost);
+        const items = connectionItems(selectedHost, diagnostics);
         if (expandedItemKey && !items.some((item) => item.key === expandedItemKey)) {
           expandedItemKey = null;
         }

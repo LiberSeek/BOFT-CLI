@@ -1661,6 +1661,13 @@ button {
   color: var(--settings-text);
 }
 
+.settings-command-button:disabled,
+.settings-command-button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
+}
+
 .settings-command-button:focus-visible,
 .settings-update-link:focus-visible {
   outline: 2px solid var(--settings-focus);

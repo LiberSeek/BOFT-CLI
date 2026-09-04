@@ -50,6 +50,13 @@ describe("Renderer settings localization", () => {
     expect(chinese.updateDownloadFromReleases).toBe("前往 GitHub Releases 下载");
     expect(chinese.updateDownloadWindowsInstaller).toBe("下载 Windows 安装包");
     expect(chinese.pageLabels.about).toBe("关于");
+    expect(chinese.pageLabels["session-import"]).toBe("会话导入");
+    expect(chinese.sessionImportAvailabilityNote).toContain(
+      "当前仅支持导入 DeepSeek Harness Modern 会话",
+    );
+    expect(english.sessionImportAvailabilityNote).toContain(
+      "only DeepSeek Harness Modern sessions",
+    );
     expect(chinese.aboutTagline).toBe("在 Codex 中运行第三方 Agent Harness 的 Extension。");
     expect(chinese.aboutLead).toBe("Codex 提供了优秀的桌面开发交互体验。");
     expect(chinese.aboutAgents).toHaveLength(2);
@@ -76,6 +83,6 @@ describe("Renderer settings localization", () => {
       createDefaultRendererSettingsPages(rendererSettingsMessages("zh-CN")).map(
         ({ label }) => label,
       ),
-    ).toEqual(["Agents", "Plugin", "更新", "关于"]);
+    ).toEqual(["Agents", "Plugin", "会话导入", "更新", "关于"]);
   });
 });
