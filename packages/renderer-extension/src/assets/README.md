@@ -1,8 +1,8 @@
 # Renderer brand assets
 
-The LiberSeek animated mark used in the settings About page footer is served
-from `https://liberseek.ai/assets/icon.mp4`. Keeping it remote avoids embedding
-the video in the Renderer bundle.
+`logo-animated.mp4` is the LiberSeek animated mark used in the settings About
+page footer. It is bundled as a data URL because Codex Desktop CSP allows
+`media-src data:` but blocks remote `https:` media hosts.
 
 `codexhost-logo.png` is the 3:4 codexhost product logo used by the installer and
 application branding. `codexhost-icon.png` is its square crop used for the
