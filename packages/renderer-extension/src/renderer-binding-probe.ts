@@ -75,7 +75,10 @@ import {
   installRendererSidebarAgentIcons,
   installRendererSidebarExternalPinning,
 } from "./renderer-sidebar-agent-icons.js";
-import { routeRendererHarnessCommandSelection } from "./renderer-harness-command-claim.js";
+import {
+  rendererHarnessCommandExecutesDirectly,
+  routeRendererHarnessCommandSelection,
+} from "./renderer-harness-command-claim.js";
 import { installRendererSettingsLifecycle } from "./renderer-settings-lifecycle.js";
 import { openRendererThread } from "./renderer-fork-control.js";
 import type {
@@ -461,6 +464,7 @@ interface MountedComposer {
   accountCredits: AccountCreditsSnapshot | null;
   hostId: string | null;
   usageRequestGeneration: number;
+  commandRequestGeneration: number;
 }
 
 interface PendingComposerReplacement {
@@ -642,12 +646,14 @@ export function installRendererBindingProbe(
     getConnectionDiagnostics: () => connectionDiagnostics,
     getSessionImportClient: () => {
       const client = modelClientForHost("local");
-      const list = client?.listDeepSeekModernSessions;
-      const importSession = client?.importDeepSeekModernSession;
-      if (!list || !importSession) return null;
+      const sources = client?.listSessionImportSources;
+      const list = client?.listHarnessSessions;
+      const importSession = client?.importHarnessSession;
+      if (!sources || !list || !importSession) return null;
       return {
-        listDeepSeekModernSessions: (input) => list(input),
-        importDeepSeekModernSession: (input) => importSession(input),
+        listSessionImportSources: () => sources(),
+        listHarnessSessions: (input) => list(input),
+        importHarnessSession: (input) => importSession(input),
       };
     },
     openImportedThread: (threadId, signal) =>
@@ -766,27 +772,34 @@ export function installRendererBindingProbe(
   };
 
   const refreshCommands = async (mounted: MountedComposer): Promise<void> => {
-    const state = controller.get(mounted.composer);
-    const threadId = threadIdFromComposerModelTarget(mounted.modelTarget);
-    if (state.agent === "codex" || !threadId || !modelControl) {
-      mounted.control.harnessCommands.setCommands([]);
-      return;
-    }
+    const generation = ++mounted.commandRequestGeneration;
+    const agent = controller.get(mounted.composer).agent;
+    const hostId = threadIdFromComposerModelTarget(mounted.modelTarget)
+      ? mounted.hostId
+      : activeModelHostId();
+    const requestControl = modelControl;
+    const client = modelClientForHostFrom(requestControl, hostId);
+    mounted.control.harnessCommands.setCommands([]);
+    if (agent === "codex" || !client) return;
     try {
-      const catalog = await modelControl.inspectThreadCommands({ threadId });
+      const catalog = await client.inspectHarnessCommands({ harnessId: externalHarnessIds[agent] });
       if (
         disposed ||
         mountedByComposer.get(mounted.composer) !== mounted ||
-        threadIdFromComposerModelTarget(mounted.modelTarget) !== threadId ||
-        controller.get(mounted.composer).agent === "codex"
-      ) {
+        mounted.commandRequestGeneration !== generation ||
+        requestControl !== modelControl ||
+        (threadIdFromComposerModelTarget(mounted.modelTarget)
+          ? mounted.hostId
+          : activeModelHostId()) !== hostId ||
+        controller.get(mounted.composer).agent !== agent
+      )
         return;
-      }
-      mounted.control.harnessCommands.setCommands(catalog.commands);
+      mounted.control.harnessCommands.setCommands(
+        catalog.commands,
+        threadIdFromComposerModelTarget(mounted.modelTarget) !== null,
+      );
     } catch {
-      if (mountedByComposer.get(mounted.composer) === mounted) {
-        mounted.control.harnessCommands.setCommands([]);
-      }
+      // Keep the entry unavailable. Never open a Session as a catalog fallback.
     }
   };
 
@@ -811,7 +824,8 @@ export function installRendererBindingProbe(
 
   const selectCommand = (mounted: MountedComposer, command: HarnessCommandDescriptor): void => {
     const threadId = threadIdFromComposerModelTarget(mounted.modelTarget);
-    if (!threadId || !modelControl || controller.get(mounted.composer).agent === "codex") return;
+    if (!modelControl || controller.get(mounted.composer).agent === "codex") return;
+    if (!threadId && rendererHarnessCommandExecutesDirectly(command)) return;
     const editor = mounted.composer.querySelector<HTMLElement>(EDITOR_SELECTOR);
     if (
       routeRendererHarnessCommandSelection(editor, command, () => {
@@ -1066,6 +1080,7 @@ export function installRendererBindingProbe(
   };
 
   const loadExternalCatalog = async (mounted: MountedComposer): Promise<void> => {
+    void refreshCommands(mounted);
     const state = controller.get(mounted.composer);
     if (state.agent === "codex") return;
     const agent = state.agent;
@@ -1770,6 +1785,7 @@ export function installRendererBindingProbe(
       } else if (controller.get(mounted.composer).agent === "codex") {
         mounted.modelView = { status: "idle" };
         mounted.permissionModeView = { status: "idle" };
+        void refreshCommands(mounted);
       }
       sidebarAgentIcons.refresh();
       return switched;
@@ -2129,6 +2145,7 @@ export function installRendererBindingProbe(
       accountCredits: inherited?.accountCredits ?? null,
       hostId: inherited?.hostId ?? hostId,
       usageRequestGeneration: 0,
+      commandRequestGeneration: 0,
     };
     mountedByComposer.set(composer, mounted);
     if (isComposerModelWriteAllowed(modelTarget)) {
@@ -2553,7 +2570,10 @@ export function installRendererBindingProbe(
           }
         }
       }
-      for (const mounted of mountedByComposer.values()) renderMounted(mounted);
+      for (const mounted of mountedByComposer.values()) {
+        renderMounted(mounted);
+        void refreshCommands(mounted);
+      }
     },
     dispose() {
       if (disposed) return;
