@@ -68,10 +68,15 @@ export function createDeepSeekSessionImportSettingsPage(
     mount(context: RendererSettingsPageMountContext) {
       const document = context.content.ownerDocument;
       const header = document.createElement("div");
-      header.className = "settings-session-import-header";
+      header.className = "settings-connection-page-header";
+      const headingCopy = document.createElement("div");
       const heading = document.createElement("h2");
       heading.className = "settings-section-label";
       heading.textContent = messages.pageLabels["session-import"];
+      const description = document.createElement("p");
+      description.className = "settings-page-description";
+      description.textContent = messages.sessionImportDescription;
+      headingCopy.append(heading, description);
       const refresh = document.createElement("button");
       refresh.type = "button";
       refresh.className = "settings-command-button settings-command-button--secondary";
@@ -83,39 +88,39 @@ export function createDeepSeekSessionImportSettingsPage(
         );
       };
       setRefreshLabel(false);
-      header.append(heading, refresh);
+      header.append(headingCopy, refresh);
 
       const harness = document.createElement("div");
       harness.className = "settings-session-import-harness";
       const harnessLabel = document.createElement("span");
       harnessLabel.textContent = messages.sessionImportHarness;
       const harnessOptions = document.createElement("div");
-      harnessOptions.className = "settings-session-import-harness__options";
+      harnessOptions.className = "settings-segmented settings-session-import-harness__options";
       harnessOptions.dataset.sessionImportHarness = "selector";
       harnessOptions.setAttribute("role", "group");
       harnessOptions.setAttribute("aria-label", messages.sessionImportHarness);
       for (const agent of SESSION_IMPORT_HARNESSES) {
+        const selected = agent === "deepseek-harness";
         const option = document.createElement("button");
         option.type = "button";
-        option.className = "settings-session-import-harness__option";
+        option.className = selected
+          ? "settings-segmented__item settings-segmented__item--selected settings-session-import-harness__option"
+          : "settings-segmented__item settings-session-import-harness__option";
         option.dataset.sessionImportHarnessOption = agent;
         option.textContent = RENDERER_AGENT_LABELS[agent];
-        option.disabled = agent !== "deepseek-harness";
-        option.setAttribute("aria-pressed", agent === "deepseek-harness" ? "true" : "false");
+        option.disabled = !selected;
+        option.setAttribute("aria-pressed", selected ? "true" : "false");
         harnessOptions.append(option);
       }
       harness.append(harnessLabel, harnessOptions);
 
-      const description = document.createElement("p");
-      description.className = "settings-page-description";
-      description.textContent = messages.sessionImportDescription;
       const availabilityNote = document.createElement("p");
       availabilityNote.className =
         "settings-page-description settings-session-import-availability-note";
       availabilityNote.textContent = messages.sessionImportAvailabilityNote;
       const content = document.createElement("section");
       content.className = "settings-session-import-content";
-      context.content.append(header, harness, description, availabilityNote, content);
+      context.content.append(header, harness, availabilityNote, content);
 
       let candidates: readonly DeepSeekModernSessionCandidate[] = [];
       let importingId: string | null = null;

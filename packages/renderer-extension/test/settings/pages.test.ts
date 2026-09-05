@@ -1101,6 +1101,13 @@ describe("Renderer Session Import page", () => {
     expect(descendants(content).find(({ tagName }) => tagName === "h2")?.textContent).toBe(
       "会话导入",
     );
+    const header = elementWithClass(content, "settings-connection-page-header");
+    expect(visibleText(header)).toContain(
+      "会话将保留原始项目路径；若该文件夹尚未出现在 Codex 侧栏，请先将其添加为项目。原始历史仍由 Harness 管理。",
+    );
+    expect(visibleText(header)).not.toContain(
+      "当前仅支持导入 DeepSeek Harness Modern 会话；其他 Harness 的会话导入能力敬请期待。",
+    );
     expect(visibleText(content)).toContain(
       "当前仅支持导入 DeepSeek Harness Modern 会话；其他 Harness 的会话导入能力敬请期待。",
     );
@@ -1123,10 +1130,16 @@ describe("Renderer Session Import page", () => {
     expect(
       harnessOptions.filter(({ disabled }) => !disabled).map(({ textContent }) => textContent),
     ).toEqual(["DeepSeek Harness"]);
+    expect(harnessSelector.className.split(" ")).toContain("settings-segmented");
     expect(
       harnessOptions.find(({ attributes }) => attributes.get("aria-pressed") === "true")
         ?.textContent,
     ).toBe("DeepSeek Harness");
+    expect(
+      harnessOptions
+        .find(({ textContent }) => textContent === "DeepSeek Harness")
+        ?.className.split(" "),
+    ).toContain("settings-segmented__item--selected");
     for (const option of harnessOptions) option.dispatch("click");
     expect(client.listDeepSeekModernSessions).toHaveBeenCalledOnce();
     expect(client.importDeepSeekModernSession).not.toHaveBeenCalled();

@@ -522,10 +522,21 @@ button {
 }
 
 .settings-segmented__item--selected,
-.settings-segmented__item[aria-selected="true"] {
+.settings-segmented__item[aria-selected="true"],
+.settings-segmented__item[aria-pressed="true"] {
   color: var(--settings-text);
   background: var(--settings-elevated);
   box-shadow: var(--settings-segmented-shadow);
+}
+
+.settings-segmented__item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-segmented__item:disabled:hover {
+  color: var(--settings-muted);
+  background: transparent;
 }
 
 .settings-segmented__item:focus-visible,
@@ -1674,6 +1685,173 @@ button {
   outline-offset: 2px;
 }
 
+.settings-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.settings-session-import-harness {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-session-import-harness > span {
+  color: var(--settings-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.settings-session-import-harness__options {
+  width: 100%;
+}
+
+.settings-session-import-availability-note {
+  margin: 16px 0 20px;
+}
+
+.settings-session-import-content {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.settings-session-import-status {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 10px;
+  padding: 14px 16px;
+  color: var(--settings-muted);
+  background: var(--settings-surface);
+  border: 1px solid var(--settings-border);
+  border-radius: 12px;
+}
+
+.settings-session-import-status.is-error {
+  color: #fecaca;
+  background: rgb(239 68 68 / 7%);
+  border-color: rgb(239 68 68 / 20%);
+}
+
+.settings-session-import-list {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--settings-surface);
+  border: 1px solid var(--settings-border);
+  border-radius: 12px;
+}
+
+.settings-session-import-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--settings-divider);
+}
+
+.settings-session-import-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-session-import-row__copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.settings-session-import-row__copy strong {
+  color: var(--settings-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.settings-session-import-row__copy span,
+.settings-session-import-row__cwd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--settings-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.settings-session-import-row__cwd {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.settings-session-import-row__action {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+}
+
+.settings-session-import-running {
+  color: #f5c542;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.settings-session-import-recovery {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 16px;
+  background: var(--settings-surface);
+  border: 1px solid var(--settings-border);
+  border-radius: 12px;
+}
+
+.settings-session-import-recovery__copy {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-session-import-recovery__copy strong {
+  color: var(--settings-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.settings-session-import-recovery__copy p {
+  margin: 0;
+  color: var(--settings-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.settings-session-import-recovery__path {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.settings-session-import-recovery__path code {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  color: var(--settings-text);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .codexhost-settings-icon {
   display: block;
   flex: none;
@@ -1758,6 +1936,15 @@ button {
 
   .settings-connection-page-header > .settings-command-button {
     width: 100%;
+  }
+
+  .settings-session-import-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-session-import-row__action {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .settings-status-row__detail {
