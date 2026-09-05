@@ -5,6 +5,7 @@ import {
   rendererHarnessMessages,
   type RendererHarnessMessages,
 } from "./renderer-harness-localization.js";
+import { applyRendererPopoverChrome } from "./renderer-usage-control.js";
 import type { RendererSettingsLocale } from "./settings/localization.js";
 
 const CONTROL_ATTRIBUTE = "data-codexhost-harness-command-control";
@@ -169,11 +170,7 @@ export function mountRendererHarnessCommandControl(
   menu.style.maxHeight = "min(360px, calc(100vh - 16px))";
   menu.style.overflowY = "auto";
   menu.style.padding = "4px";
-  menu.style.border = "1px solid rgba(127, 127, 127, 0.24)";
-  menu.style.borderRadius = "10px";
-  menu.style.background = "Canvas";
-  menu.style.color = "CanvasText";
-  menu.style.boxShadow = "0 12px 32px rgba(0, 0, 0, 0.22)";
+  applyRendererPopoverChrome(menu);
   ownerDocument.body.append(menu);
 
   if (insertBefore?.parentElement === parent) parent.insertBefore(root, insertBefore);

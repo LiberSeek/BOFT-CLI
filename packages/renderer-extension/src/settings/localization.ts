@@ -174,7 +174,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   sessionImportRefresh: "Refresh",
   sessionImportRefreshing: "Loading local sessions...",
   sessionImportUnavailable:
-    "Session import requires a local, codexhost-managed DeepSeek Harness 0.1.2-rc.1 Modern runtime.",
+    "Session import requires a local, BOFT CLI-managed DeepSeek Harness 0.1.2-rc.1 Modern runtime.",
   sessionImportEmpty: "No local DeepSeek Harness sessions are available to import.",
   sessionImportLoadFailed: "Local sessions could not be loaded.",
   sessionImportFailed: "The session could not be imported.",
@@ -342,7 +342,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   sessionImportRefresh: "刷新",
   sessionImportRefreshing: "正在读取本地会话……",
   sessionImportUnavailable:
-    "会话导入仅支持本地、由 codexhost 管理的 DeepSeek Harness 0.1.2-rc.1 Modern 运行时。",
+    "会话导入仅支持本地、由 BOFT CLI 管理的 DeepSeek Harness 0.1.2-rc.1 Modern 运行时。",
   sessionImportEmpty: "没有可导入的本地 DeepSeek Harness 会话。",
   sessionImportLoadFailed: "无法读取本地会话。",
   sessionImportFailed: "无法导入该会话。",

@@ -1433,7 +1433,7 @@ describe("Renderer Session Import page", () => {
       runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
     });
 
-    expect(visibleText(content)).toContain("codexhost-managed DeepSeek Harness 0.1.2-rc.1");
+    expect(visibleText(content)).toContain("BOFT CLI-managed DeepSeek Harness 0.1.2-rc.1");
     expect(
       descendants(content).filter(({ dataset }) => dataset.sessionImportAction === "import"),
     ).toHaveLength(0);
