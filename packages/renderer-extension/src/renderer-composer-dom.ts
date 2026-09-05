@@ -495,7 +495,6 @@ function refreshTrailingClusterPlacement(control: ComposerAgentControl): void {
   const sendButton = control.sendButton;
   const modelRoot = control.modelPicker?.root;
   const agentRoot = control.root ?? control.picker?.root;
-  const commandRoot = control.harnessCommands?.root;
   if (!sendButton || !modelRoot || !agentRoot) return;
   const anchor = trailingActionAnchor(sendButton);
   const parent = anchor.parentElement;
@@ -506,20 +505,13 @@ function refreshTrailingClusterPlacement(control: ComposerAgentControl): void {
   if (
     modelRoot.parentElement === parent &&
     agentRoot.parentElement === parent &&
-    (!commandRoot || commandRoot.parentElement === parent) &&
     modelRoot.nextElementSibling === agentRoot &&
-    (!commandRoot || agentRoot.nextElementSibling === commandRoot) &&
-    (commandRoot
-      ? commandRoot.nextElementSibling === anchor
-      : agentRoot.nextElementSibling === anchor)
+    agentRoot.nextElementSibling === anchor
   ) {
     return;
   }
   parent.insertBefore(modelRoot, anchor);
   parent.insertBefore(agentRoot, anchor);
-  if (commandRoot) {
-    parent.insertBefore(commandRoot, anchor);
-  }
 }
 
 function refreshUsagePlacement(control: ComposerAgentControl): void {
@@ -529,13 +521,9 @@ function refreshUsagePlacement(control: ComposerAgentControl): void {
     if (control.usage) control.usage.anchor = null;
     return;
   }
-  const previousUsageParent = control.usage.root.parentElement;
-  const previousUsageNextSibling = control.usage.root.nextElementSibling;
   control.usage.place(anchor);
-  const usagePositionChanged =
-    previousUsageParent !== control.usage.root.parentElement ||
-    previousUsageNextSibling !== control.usage.root.nextElementSibling;
-  if (usagePositionChanged) control.harnessCommands?.placeBefore(control.usage.root);
+  // Commands sit immediately left of Usage, not in the Model/Agent/Send cluster.
+  control.harnessCommands?.placeBefore(control.usage.root);
 }
 
 // Deliberately independent of `refreshUsagePlacement`: Credits no longer
@@ -647,11 +635,10 @@ export function mountComposerAgentControl(
   );
   const credits = mountRendererCreditsControl(composerId);
 
-  const anchor = trailingActionAnchor(sendButton);
-  const toolbar = anchor.parentElement ?? sendButton.parentElement;
+  const toolbar = sendButton.parentElement;
   const harnessCommands = mountRendererHarnessCommandControl(
     toolbar ?? composer,
-    anchor,
+    trailingActionAnchor(sendButton),
     onSelectCommand,
   );
 
