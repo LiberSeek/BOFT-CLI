@@ -180,6 +180,12 @@ export const harnessSessionCapabilitiesSchema = z
       })
       .strict()
       .optional(),
+    input: z
+      .object({
+        image: z.boolean(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -325,6 +331,8 @@ const externalThreadInspectionSchema = z
     effectivePermissionModeId: harnessPermissionModeIdSchema.optional(),
     history: harnessHistoryCapabilitiesSchema,
     usage: threadUsageSnapshotSchema.optional(),
+    /** True when the thread is a read-only child thread materialized for a subagent. */
+    subagent: z.boolean().optional(),
     locked: z.literal(true),
   })
   .strict();
