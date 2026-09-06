@@ -32,6 +32,7 @@ import {
   type HostItemOutcome,
   type HostItemSnapshot,
   type HostSubagentState,
+  type HostTextInput,
   type HostThreadSnapshot,
   type HostUsage,
   type InteractionRespondAccepted,
@@ -613,7 +614,8 @@ class AntigravitySession implements HarnessSession {
       };
     }
     const text = command.input
-      .map(({ text: part }) => part)
+      .filter((part): part is HostTextInput => part.type === "text")
+      .map((part) => part.text)
       .join("\n")
       .trim();
     if (!text) {
@@ -1226,7 +1228,9 @@ class AntigravitySession implements HarnessSession {
       this.#history.append({
         nativeTurnRef,
         ...(outcome.checkpoint ? { checkpoint: outcome.checkpoint } : {}),
-        turnInput: active.command.input,
+        turnInput: active.command.input.filter(
+          (part): part is HostTextInput => part.type === "text",
+        ),
         items: active.completedItems.map((snapshot) => ({
           ...snapshot,
           item: active.subagents.snapshot(snapshot.item),
