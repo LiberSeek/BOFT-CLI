@@ -89,7 +89,8 @@ const CONTROLLER_STOP_GRACE: Duration = Duration::from_secs(1);
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 const DESKTOP_TREE_REFRESH_INTERVAL: Duration = Duration::from_millis(500);
 #[cfg(any(target_os = "windows", target_os = "linux"))]
-const UNMANAGED_DESKTOP_MESSAGE: &str = "Codex Desktop is already running outside codexhost; completely quit it before starting codexhost";
+const UNMANAGED_DESKTOP_MESSAGE: &str =
+    "Codex Desktop is already running outside BOFT CLI; completely quit it before starting boft";
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 fn desktop_tree_refresh_due(last_refresh: Instant, now: Instant) -> bool {
@@ -123,7 +124,7 @@ impl Error for UnmanagedDesktopConflict {}
 
 fn usage() {
     eprintln!(
-        "usage:\n  codexhost\n  codexhost inspect [--custom-install <absolute-directory>]\n  codexhost launch [--shim <absolute-file>] [--node <absolute-file>] [--host-runtime <absolute-file>] [--desktop-controller <absolute-file>] [--renderer <absolute-file>] [--pi <absolute-file>] [--custom-install <absolute-directory>]\n  codexhost broker install|status|stop|uninstall\n  codexhost delegate --help\n  codexhost harness inspect ...\n  codexhost delegate start ...\n  codexhost thread send|cancel|read|wait|list ..."
+        "usage:\n  boft\n  boft inspect [--custom-install <absolute-directory>]\n  boft launch [--shim <absolute-file>] [--node <absolute-file>] [--host-runtime <absolute-file>] [--desktop-controller <absolute-file>] [--renderer <absolute-file>] [--pi <absolute-file>] [--custom-install <absolute-directory>]\n  boft broker install|status|stop|uninstall\n  boft delegate --help\n  boft harness inspect ...\n  boft delegate start ...\n  boft thread send|cancel|read|wait|list ..."
     );
 }
 
@@ -626,7 +627,7 @@ fn should_stop_desktop_for_update(helper_started: bool) -> bool {
     match update_waiting_for_launcher_exit() {
         Ok(waiting) => waiting,
         Err(error) => {
-            eprintln!("codexhost launcher: pending update exit state could not be read: {error}");
+            eprintln!("boft launcher: pending update exit state could not be read: {error}");
             false
         }
     }
@@ -713,7 +714,7 @@ fn supervise_desktop(
     if !wait_for_host_chain(desktop_pid, options, Duration::from_secs(30))? {
         let _ = stop_desktop_controller(&mut controller);
         let _ = desktop.shutdown(Duration::from_secs(2));
-        return Err("Codex Desktop did not start the codexhost Host chain before timeout".into());
+        return Err("Codex Desktop did not start the BOFT CLI Host chain before timeout".into());
     }
     startup_trace("Host chain ready");
     let _runtime = publish_runtime_descriptor(descriptor_path, control)?;
@@ -725,7 +726,7 @@ fn supervise_desktop(
     loop {
         #[cfg(target_os = "macos")]
         if let Err(error) = start_pending_update(&mut started_update_request) {
-            eprintln!("codexhost launcher: pending update could not be started: {error}");
+            eprintln!("boft launcher: pending update could not be started: {error}");
         }
         #[cfg(target_os = "macos")]
         let helper_started = started_update_request.is_some();
@@ -734,7 +735,7 @@ fn supervise_desktop(
         if should_stop_desktop_for_update(helper_started) {
             if let Err(error) = stop_managed_desktop_for_update(&mut desktop, &mut controller) {
                 eprintln!(
-                    "codexhost launcher: managed Desktop could not be stopped for update: {error}"
+                    "boft launcher: managed Desktop could not be stopped for update: {error}"
                 );
             } else {
                 return Ok(());
@@ -802,7 +803,7 @@ fn supervise_desktop(
         let _ = stop_desktop_controller(&mut controller);
         let _ = desktop.kill();
         let _ = desktop.wait();
-        return Err("Codex Desktop did not start the codexhost Host chain before timeout".into());
+        return Err("Codex Desktop did not start the BOFT CLI Host chain before timeout".into());
     }
     startup_trace("Host chain ready");
     let _runtime = match publish_runtime_descriptor(descriptor_path, control) {
@@ -820,7 +821,7 @@ fn supervise_desktop(
         if should_stop_desktop_for_update(false) {
             if let Err(error) = stop_managed_desktop_for_update(&mut desktop, &mut controller) {
                 eprintln!(
-                    "codexhost launcher: managed Desktop could not be stopped for update: {error}"
+                    "boft launcher: managed Desktop could not be stopped for update: {error}"
                 );
             } else {
                 return Ok(());
@@ -1052,7 +1053,7 @@ fn launch(
             StartupState::CleanLaunch => {
                 if descriptor_present && control_endpoint_ready {
                     return Err(
-                        "codexhost control endpoint is still active without a live Desktop; retry after it exits"
+                        "BOFT CLI control endpoint is still active without a live Desktop; retry after it exits"
                             .into(),
                     );
                 }
@@ -1144,13 +1145,13 @@ fn launch(
                 stop_stale_launcher(descriptor)?;
                 let _ = remove_matching_descriptor(&descriptor_path, descriptor)?;
             } else if descriptor_present {
-                return Err("codexhost runtime descriptor is invalid; remove it after checking its ownership".into());
+                return Err("BOFT CLI runtime descriptor is invalid; remove it after checking its ownership".into());
             }
         }
         StartupState::Attach => unreachable!("no Desktop roots were observed"),
         StartupState::CleanLaunch if descriptor_present && control_endpoint_ready => {
             return Err(
-                "codexhost control endpoint is still active without a live Desktop; retry after it exits"
+                "BOFT CLI control endpoint is still active without a live Desktop; retry after it exits"
                     .into(),
             );
         }
@@ -1235,7 +1236,7 @@ fn main() -> ExitCode {
     match run(&arguments) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            let message = format!("codexhost launcher: {error}");
+            let message = format!("boft launcher: {error}");
             eprintln!("{message}");
             #[cfg(target_os = "windows")]
             if start_menu_launch {

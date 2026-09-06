@@ -79,7 +79,7 @@ pub(super) fn acquire_launcher_ownership(
         }
         thread::sleep(Duration::from_millis(100));
     }
-    Err("another codexhost Launcher did not become attachable before timeout".into())
+    Err("another BOFT CLI Launcher did not become attachable before timeout".into())
 }
 
 pub(super) fn endpoint_ready(port: u16, timeout: Duration) -> bool {
@@ -186,7 +186,7 @@ pub(super) fn stop_stale_launcher(descriptor: &RuntimeDescriptor) -> Result<(), 
     }
     if process_exists(descriptor.launcher_pid) {
         return Err(format!(
-            "stale codexhost launcher PID {} did not exit before timeout",
+            "stale BOFT CLI launcher PID {} did not exit before timeout",
             descriptor.launcher_pid
         )
         .into());

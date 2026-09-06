@@ -40,7 +40,6 @@
   <a href="#기능-상태">기능 상태</a> •
   <a href="#agent-간-협업">Agent 간 협업</a> •
   <a href="#원격-harness">원격 연결</a> •
-  <a href="#교류-그룹-참여">교류 그룹</a> •
   <a href="#개발">개발</a>
 </p>
 
@@ -48,8 +47,6 @@
 ## 인터페이스 미리보기
 
 앱을 전환하지 않고도 **Pi, Claude Code, OpenCode, OMP, Grok Build, DeepSeek Harness**를 하나의 Codex Desktop 창에서 바로 사용할 수 있습니다.
-
-https://github.com/user-attachments/assets/c48192d7-23ff-4f6e-b61a-6345a655bb76
 
 ### 인터페이스
 
@@ -81,7 +78,7 @@ boft
 xattr -dr com.apple.quarantine /Applications/codexhost.app
 ```
 
-그런 다음 `boft`를 다시 실행하세요. `codexhost`는 호환성 명령으로 계속 사용할 수 있습니다.
+그런 다음 `boft`를 다시 실행하세요. `codexhost`는 호환성 별칭으로 계속 사용할 수 있습니다.
 
 **Windows** - 휴대용/압축 해제 Codex Desktop
 
@@ -98,14 +95,6 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
 ### 상호작용 예시
 
 <table>
-  <tr>
-    <td colspan="2" valign="top">
-      <p><strong>전체 작업 화면</strong></p>
-      <div align="center">
-        <img width="90%" src="imgs/codexhost-full-workspace.png" alt="프로젝트 구조, 대화 영역 및 여러 Agent 선택기가 표시된 Codex Desktop의 BOFT CLI 전체 작업 화면">
-      </div>
-    </td>
-  </tr>
   <tr>
     <td width="50%" valign="top">
       <p><strong>Agent 및 Model 선택</strong></p>
@@ -221,27 +210,6 @@ BOFT CLI는 다른 방식을 사용합니다.
 
 </details>
 
-## 교류 그룹 참여
-
-<table align="center">
-  <tr>
-    <td>
-      <strong>교류 그룹 참여</strong><br />
-      <sub>BOFT CLI 사용법과 기능에 관심 있는 개발자는 QR 코드를 스캔해 위챗 그룹에 참여할 수 있습니다.</sub>
-      <ul>
-        <li><sub>설치 문제는 그룹에서 질문할 수 있습니다</sub></li>
-        <li><sub>기능 제안과 피드백</sub></li>
-        <li><sub>개발 관련 논의</sub></li>
-        <li><sub>버그는 <strong>issue</strong>로 제출해 주세요</sub></li>
-      </ul>
-      <sub><strong>함께 기여해 주세요.</strong></sub>
-    </td>
-    <td align="center">
-      <img width="230" alt="위챗 그룹 QR 코드" src="https://github.com/user-attachments/assets/e40b162e-a961-43ac-9728-af59890c4d72" />
-    </td>
-  </tr>
-</table>
-
 ## 개발
 
 환경 요구 사항: 공식 Codex Desktop, Node.js 22.19+ 또는 24, Rust.
@@ -270,3 +238,4 @@ Harness를 추가할 때는 코딩 Agent가 저장소의 [codexhost-add-harness 
 
 - 지속적인 지원을 보내 주신 [LINUX DO](https://linux.do/) 커뮤니티에 감사드립니다.
 - 멀티 Harness 통합 방식과 아키텍처에 영감을 주고 참고가 된 [Paseo](https://github.com/getpaseo/paseo) 프로젝트에 감사드립니다.
+- [Codexhost](https://github.com/BytePioneer-AI/codex-host) 프로젝트의 영감과 참고에 감사드립니다.

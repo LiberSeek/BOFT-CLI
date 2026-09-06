@@ -318,7 +318,7 @@ const desktopController = path.join(packageRoot, "app", "desktop-controller.mjs"
 const rendererExtension = path.join(packageRoot, "app", "renderer-extension.js");
 
 function fail(message) {
-  console.error(\`codexhost: \${message}\`);
+  console.error(\`boft: \${message}\`);
   process.exit(1);
 }
 
@@ -461,16 +461,16 @@ if (userArguments.length === 0) {
   console.log(
     [
       "usage:",
-      "  codexhost",
-      "  codexhost --version",
-      "  codexhost inspect",
-      "  codexhost launch [launcher options]",
-      "  codexhost remote install|start|stop|status|uninstall",
-      "  codexhost broker install|status|stop|uninstall",
-      "  codexhost delegate --help",
-      "  codexhost harness inspect ...",
-      "  codexhost delegate start ...",
-      "  codexhost thread send|cancel|read|wait|list ...",
+      "  boft",
+      "  boft --version",
+      "  boft inspect",
+      "  boft launch [launcher options]",
+      "  boft remote install|start|stop|status|uninstall",
+      "  boft broker install|status|stop|uninstall",
+      "  boft delegate --help",
+      "  boft harness inspect ...",
+      "  boft delegate start ...",
+      "  boft thread send|cancel|read|wait|list ...",
       "",
       "This npm package uses the current Node.js runtime and the packaged",
       "Rust launcher/shim. Codex Desktop must already be installed.",
@@ -479,7 +479,7 @@ if (userArguments.length === 0) {
   process.exit(0);
 } else {
   fail(
-    \`unknown command '\${userArguments[0]}'. Run 'codexhost --help' for usage.\`,
+    \`unknown command '\${userArguments[0]}'. Run 'boft --help' for usage.\`,
   );
 }
 
@@ -703,19 +703,19 @@ This package is platform-specific (\`os=${npmPackageOs(target).join(",")}\`, \`c
 ## Usage
 
 \`\`\`bash
-codexhost
-codexhost --version
-codexhost inspect
-codexhost launch
-codexhost remote install
-codexhost remote start
-codexhost remote stop
-codexhost remote status
-codexhost remote uninstall
-codexhost broker status
+boft
+boft --version
+boft inspect
+boft launch
+boft remote install
+boft remote start
+boft remote stop
+boft remote status
+boft remote uninstall
+boft broker status
 \`\`\`
 
-The \`codexhost\` command launches the packaged Rust launcher with:
+The \`boft\` command launches the packaged Rust launcher with:
 
 - the current Node.js executable as Host Runtime
 - packaged \`host-runtime\`, Desktop Controller, Renderer, and Shim binaries

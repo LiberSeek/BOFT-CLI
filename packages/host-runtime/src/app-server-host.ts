@@ -1408,8 +1408,8 @@ export class AppServerHost {
         deepLink: `codex://threads/${existing.childHostThreadId}`,
         status: existing.status,
         next: {
-          read: `codexhost thread read ${existing.childHostThreadId}`,
-          wait: `codexhost thread wait ${existing.childHostThreadId} --timeout-ms 30000`,
+          read: `boft thread read ${existing.childHostThreadId}`,
+          wait: `boft thread wait ${existing.childHostThreadId} --timeout-ms 30000`,
         },
       };
     }
@@ -1523,8 +1523,8 @@ export class AppServerHost {
             }
           : {}),
         next: {
-          read: `codexhost thread read ${threadId}`,
-          wait: `codexhost thread wait ${threadId} --timeout-ms 30000`,
+          read: `boft thread read ${threadId}`,
+          wait: `boft thread wait ${threadId} --timeout-ms 30000`,
         },
       };
     } catch (error) {
@@ -1586,8 +1586,8 @@ export class AppServerHost {
       harnessId: "codex",
       status: "running",
       next: {
-        read: `codexhost thread read ${input.threadId}`,
-        wait: `codexhost thread wait ${input.threadId} --timeout-ms 30000`,
+        read: `boft thread read ${input.threadId}`,
+        wait: `boft thread wait ${input.threadId} --timeout-ms 30000`,
       },
     };
   }

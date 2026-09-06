@@ -21,7 +21,7 @@ pub fn desktop_helper_proxy_environment() -> Vec<(OsString, OsString)> {
     let system = match crate::windows_proxy::static_proxy_settings() {
         Ok(settings) => settings,
         Err(_) => {
-            eprintln!("codexhost: could not read Windows helper proxy settings");
+            eprintln!("boft: could not read Windows helper proxy settings");
             None
         }
     };
@@ -41,13 +41,13 @@ pub fn proxy_environment() -> Vec<(OsString, OsString)> {
         Ok(settings) => {
             if settings.automatic_configuration {
                 eprintln!(
-                    "codexhost: automatic macOS proxy configuration cannot be represented in child-process environment variables"
+                    "boft: automatic macOS proxy configuration cannot be represented in child-process environment variables"
                 );
             }
             Some(proxy_settings(&settings))
         }
         Err(error) => {
-            eprintln!("codexhost: could not read macOS system proxy settings: {error}");
+            eprintln!("boft: could not read macOS system proxy settings: {error}");
             None
         }
     };

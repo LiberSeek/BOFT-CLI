@@ -69,13 +69,13 @@ function rejectUnknown(parsed: ReturnType<typeof options>, allowed: readonly str
 }
 
 export const DELEGATION_HELP = `usage:
-  codexhost harness inspect <harness> [--cwd <path>] [--refresh true|false]
-  codexhost delegate start --harness <id> --task <text> [--cwd <path>] [--model <opaque-ref>] [--thinking <option-id>] [--parent-thread <thread>] [--request-id <id>]
-  codexhost thread send <thread> --message <text>
-  codexhost thread cancel <thread>
-  codexhost thread read <thread> [--view result|messages] [--cursor <cursor>] [--limit <n>]
-  codexhost thread wait <thread> [--timeout-ms <n>] [--view result|messages] [--cursor <cursor>] [--limit <n>]
-  codexhost thread list [--cwd <path>] [--parent <thread>] [--limit <n>] [--cursor <cursor>] [--sort created-asc|created-desc|updated-asc|updated-desc|recency-asc|recency-desc]
+  boft harness inspect <harness> [--cwd <path>] [--refresh true|false]
+  boft delegate start --harness <id> --task <text> [--cwd <path>] [--model <opaque-ref>] [--thinking <option-id>] [--parent-thread <thread>] [--request-id <id>]
+  boft thread send <thread> --message <text>
+  boft thread cancel <thread>
+  boft thread read <thread> [--view result|messages] [--cursor <cursor>] [--limit <n>]
+  boft thread wait <thread> [--timeout-ms <n>] [--view result|messages] [--cursor <cursor>] [--limit <n>]
+  boft thread list [--cwd <path>] [--parent <thread>] [--limit <n>] [--cursor <cursor>] [--sort created-asc|created-desc|updated-asc|updated-desc|recency-asc|recency-desc]
 
 Thread identifiers accept a bare ID or codex://threads/<id>. Output is JSON by default.
 harness inspect returns the target Model catalog, default Model, Thinking options, and configuration capabilities without creating a Thread. Use opaque IDs exactly as returned.
@@ -97,7 +97,7 @@ HARNESS_NOT_FOUND: choose a Harness ID listed in error.details.validHarnessIds.
 THREAD_NOT_FOUND: verify the bare ID or codex:// deep link.
 THREAD_BUSY: wait for or cancel the active Turn before sending another message.
 PARENT_THREAD_AMBIGUOUS: pass --parent-thread explicitly.
-RUNTIME_UNREACHABLE: run inside the Host-provided environment and, for native Codex, allow local Runtime connections; codexhost never falls back to PATH or another Runtime.
+RUNTIME_UNREACHABLE: run inside the Host-provided environment and, for native Codex, allow local Runtime connections; boft never falls back to PATH or another Runtime.
 DELEGATION_FAILED: the target Session or initial task delivery failed and no successful child was published.
 INTERNAL_ERROR: retry after checking the Host Runtime diagnostics.
 `;
@@ -404,7 +404,7 @@ export async function runDelegationCli(input: {
     }
     throw new DelegationControlError(
       "INVALID_ARGUMENT",
-      "Unknown delegation command. Run 'codexhost delegate --help'.",
+      "Unknown delegation command. Run 'boft delegate --help'.",
     );
   } catch (error) {
     const normalized =

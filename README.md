@@ -40,7 +40,6 @@
   <a href="#功能状态">功能状态</a> •
   <a href="#跨-agent-协作">跨 Agent 协作</a> •
   <a href="#远程连接-harness">远程连接</a> •
-  <a href="#加入交流群">加入交流群</a> •
   <a href="#开发">开发</a>
 </p>
 
@@ -48,8 +47,6 @@
 ## 界面预览
 
 无需切换应用，**Pi、Claude Code、OpenCode、OMP、Grok Build 和 DeepSeek Harness** 都可以在同一个 Codex Desktop 窗口中直接使用。
-
-https://github.com/user-attachments/assets/c48192d7-23ff-4f6e-b61a-6345a655bb76
 
 ### 界面
 
@@ -89,21 +86,13 @@ xattr -dr com.apple.quarantine /Applications/codexhost.app
 [Environment]::SetEnvironmentVariable("CODEXHOST_INSTALL_ROOT", "D:\CodexPortable", "User")
 ```
 
-然后完全退出 Codex Desktop，重新打开终端并运行 `boft`。`codexhost` 仍可作为兼容命令使用。
+然后完全退出 Codex Desktop，重新打开终端并运行 `boft`。`codexhost` 仍可作为兼容别名使用。
 
 </details>
 
 ### 交互展示
 
 <table>
-  <tr>
-    <td colspan="2" valign="top">
-      <p><strong>完整工作界面</strong></p>
-      <div align="center">
-        <img width="90%" src="docs/imgs/codexhost-full-workspace.png" alt="Codex Desktop 中 codexhost 的完整工作界面，展示项目结构、对话区域和多个 Agent 选择器">
-      </div>
-    </td>
-  </tr>
   <tr>
     <td width="50%" valign="top">
       <p><strong>Agent 与 Model 选择</strong></p>
@@ -220,27 +209,6 @@ BOFT CLI 尽量不走这条路：
 
 </details>
 
-## 加入交流群
-
-<table align="center">
-  <tr>
-    <td>
-      <strong>加入交流群</strong><br />
-      <sub>对 BOFT CLI 用法、功能感兴趣的开发者可以扫码加入微信群交流。</sub>
-      <ul>
-        <li><sub>安装问题可以加群询问</sub></li>
-        <li><sub>功能建议与反馈</sub></li>
-        <li><sub>开发问题讨论</sub></li>
-        <li><sub>Bug 问题建议提交 <strong>issue</strong></sub></li>
-      </ul>
-      <sub><strong>欢迎一起贡献~ </strong></sub>
-    </td>
-    <td align="center">
-      <img width="230" alt="7ba6eda891ba4c8d091f2a71a8b8e81d" src="https://github.com/user-attachments/assets/6bdddc62-596a-477a-9953-936d4752667c" />
-    </td>
-  </tr>
-</table>
-
 ## 开发
 
 环境要求：官方 Codex Desktop、Node.js 22.19+ 或 24、Rust。
@@ -269,3 +237,4 @@ npm start
 
 - 感谢 [LINUX DO](https://linux.do/) 社区一直以来的支持。
 - 感谢 [Paseo](https://github.com/getpaseo/paseo) 项目在多 Harness 接入思路与架构设计方面带来的启发与参考。
+- 感谢 [Codexhost](https://github.com/BytePioneer-AI/codex-host) 项目带来的启发与参考。

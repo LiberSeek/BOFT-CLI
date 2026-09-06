@@ -1,10 +1,10 @@
 [Setup]
 AppId={{8A7B4E80-A650-4D47-9D05-8D4D7F13E67E}
-AppName=codexhost
+AppName=BOFT CLI
 AppVersion={#ProductVersion}
-AppPublisher=codexhost
+AppPublisher=LiberSeek
 DefaultDirName={localappdata}\Programs\codexhost
-DefaultGroupName=codexhost
+DefaultGroupName=BOFT CLI
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir={#OutputDir}
@@ -12,7 +12,7 @@ OutputBaseFilename={#OutputBaseFilename}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-UninstallDisplayName=codexhost
+UninstallDisplayName=BOFT CLI
 
 #if Architecture == "x64"
 ArchitecturesAllowed=x64compatible
@@ -26,7 +26,7 @@ ArchitecturesInstallIn64BitMode=arm64
 Source: "{#PayloadRoot}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{userprograms}\codexhost"; Filename: "{app}\bin\codexhost-start.exe"; WorkingDir: "{app}"
+Name: "{userprograms}\BOFT CLI"; Filename: "{app}\bin\codexhost-start.exe"; WorkingDir: "{app}"
 
 [Dirs]
 Name: "{app}"

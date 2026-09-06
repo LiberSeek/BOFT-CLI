@@ -99,7 +99,7 @@ function diagnosticText(
 ): string {
   const error = item.error;
   return [
-    "codexhost connection diagnostics",
+    "BOFT CLI connection diagnostics",
     `host: ${hostId}`,
     `agent: ${item.name}`,
     `status: ${item.availability}`,

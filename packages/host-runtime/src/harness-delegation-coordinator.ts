@@ -633,8 +633,8 @@ export class HarnessDelegationCoordinator {
       harnessId,
       status: "running",
       next: {
-        read: `codexhost thread read ${threadId}`,
-        wait: `codexhost thread wait ${threadId} --timeout-ms 30000`,
+        read: `boft thread read ${threadId}`,
+        wait: `boft thread wait ${threadId} --timeout-ms 30000`,
       },
     };
   }
@@ -660,8 +660,8 @@ export class HarnessDelegationCoordinator {
         ? { configuration }
         : {}),
       next: {
-        read: `codexhost thread read ${threadId}`,
-        wait: `codexhost thread wait ${threadId} --timeout-ms 30000`,
+        read: `boft thread read ${threadId}`,
+        wait: `boft thread wait ${threadId} --timeout-ms 30000`,
       },
     };
   }

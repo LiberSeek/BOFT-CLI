@@ -40,7 +40,6 @@ But **Codex** is not the only capable **Agent Harness**. Some people prefer **Cl
   <a href="#feature-status">Feature status</a> •
   <a href="#cross-agent-collaboration">Cross-Agent collaboration</a> •
   <a href="#remote-harness">Remote</a> •
-  <a href="#join-the-community">Community</a> •
   <a href="#development">Development</a>
 </p>
 
@@ -48,8 +47,6 @@ But **Codex** is not the only capable **Agent Harness**. Some people prefer **Cl
 ## Interface Preview
 
 No app switching required: **Pi, Claude Code, OpenCode, OMP, Grok Build, and DeepSeek Harness** can all run directly in the same Codex Desktop window.
-
-https://github.com/user-attachments/assets/c48192d7-23ff-4f6e-b61a-6345a655bb76
 
 ### Interface
 
@@ -81,7 +78,7 @@ If the app cannot be verified when you first open it, run:
 xattr -dr com.apple.quarantine /Applications/codexhost.app
 ```
 
-Then run `boft` again. `codexhost` remains available as a compatibility command.
+Then run `boft` again. `codexhost` remains available as a compatibility alias.
 
 **Windows** - Portable/extracted Codex Desktop
 
@@ -98,14 +95,6 @@ Fully quit Codex Desktop, open a new terminal, and run `boft`.
 ### Interaction examples
 
 <table>
-  <tr>
-    <td colspan="2" valign="top">
-      <p><strong>Full workspace</strong></p>
-      <div align="center">
-        <img width="90%" src="imgs/codexhost-full-workspace.png" alt="The complete BOFT CLI workspace in Codex Desktop, showing the project tree, conversation area, and multiple Agent selectors">
-      </div>
-    </td>
-  </tr>
   <tr>
     <td width="50%" valign="top">
       <p><strong>Agent and Model selection</strong></p>
@@ -221,27 +210,6 @@ The goal is fidelity, not merely making the conversation work. Streaming, tool s
 
 </details>
 
-## Join the community
-
-<table align="center">
-  <tr>
-    <td>
-      <strong>Join the community</strong><br />
-      <sub>Developers interested in BOFT CLI usage and features can scan the QR code to join the WeChat group.</sub>
-      <ul>
-        <li><sub>Ask installation questions in the group</sub></li>
-        <li><sub>Feature suggestions and feedback</sub></li>
-        <li><sub>Development discussion</sub></li>
-        <li><sub>For bugs, please file an <strong>issue</strong></sub></li>
-      </ul>
-      <sub><strong>Contributions are welcome.</strong></sub>
-    </td>
-    <td align="center">
-      <img width="230" alt="WeChat group QR code" src="https://github.com/user-attachments/assets/e40b162e-a961-43ac-9728-af59890c4d72" />
-    </td>
-  </tr>
-</table>
-
 ## Development
 
 Requirements: official Codex Desktop, Node.js 22.19+ or 24, and Rust.
@@ -270,3 +238,4 @@ When adding a Harness, you can have a coding Agent use the in-repo [codexhost-ad
 
 - Thanks to the [LINUX DO](https://linux.do/) community for its continued support.
 - Thanks to the [Paseo](https://github.com/getpaseo/paseo) project for inspiring and informing the multi-Harness integration approach and architecture.
+- Thanks to the [Codexhost](https://github.com/BytePioneer-AI/codex-host) project for inspiration and reference.
