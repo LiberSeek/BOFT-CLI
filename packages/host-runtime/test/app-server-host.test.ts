@@ -1811,6 +1811,56 @@ describe("AppServerHost HarnessAdapter projection", () => {
     }
   });
 
+  it("fails the active Turn and keeps the Thread usable after a projection invariant violation", async () => {
+    const fixture = createFixture();
+    const threadId = await startPiThread(fixture);
+    const session = fixture.adapter.sessions[0];
+    if (!session) throw new Error("Fake Pi Session was not opened");
+
+    const wedgedTurnId = await startPiTurn(fixture, threadId);
+    await fixture.collector.waitFor((message) => turnEvent(message, "turn/started", wedgedTurnId));
+    const wedgedTurn = hostTurnIdSchema.parse(wedgedTurnId);
+    const item = {
+      type: "agentMessage" as const,
+      itemId: hostItemIdSchema.parse("fake-item-1"),
+      text: "",
+    };
+    // A duplicate Item start violates the projector invariant and used to exit
+    // the output drain loop, wedging the Thread with a permanently active Turn.
+    session.emitEvent({ type: "item.started", turnId: wedgedTurn, item });
+
+    await expect(
+      fixture.collector.waitFor(
+        (message) => method(message, "error") && messageParams(message).turnId === wedgedTurnId,
+      ),
+    ).resolves.toMatchObject({
+      params: {
+        error: {
+          message: expect.stringContaining("started more than once"),
+          codexErrorInfo: "other",
+        },
+        willRetry: false,
+        threadId,
+        turnId: wedgedTurnId,
+      },
+    });
+    await expect(
+      fixture.collector.waitFor((message) => turnEvent(message, "turn/completed", wedgedTurnId)),
+    ).resolves.toMatchObject({
+      params: { turn: { id: wedgedTurnId, status: "failed" } },
+    });
+    await fixture.collector.waitFor((message) => threadStatus(message, threadId, "idle"));
+    session.abandonTurn();
+
+    const secondTurnId = await startPiTurn(fixture, threadId, 3);
+    session.appendText("answer");
+    session.succeedTurn();
+    await expect(
+      fixture.collector.waitFor((message) => turnEvent(message, "turn/completed", secondTurnId)),
+    ).resolves.toMatchObject({ params: { turn: { status: "completed" } } });
+    await stopFixture(fixture);
+  });
+
   it("fails when official app-server output closes before Desktop input", async () => {
     const fixture = createFixture();
 

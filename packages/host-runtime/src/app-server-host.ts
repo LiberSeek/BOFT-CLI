@@ -3741,8 +3741,99 @@ export class AppServerHost {
   async #consumeHarnessOutputs(thread: ExternalThread): Promise<void> {
     try {
       for await (const output of thread.session.outputs) {
-        await this.#projectHarnessOutput(thread, output);
+        try {
+          await this.#projectHarnessOutput(thread, output);
+        } catch (error) {
+          // A projector invariant violation must never wedge the Thread: fail
+          // the active Turn, clear its live state, and keep draining outputs.
+          await this.#recoverFailedProjection(thread, error);
+        }
       }
+    } catch (error) {
+      this.#diagnose(error);
+    }
+  }
+
+  /**
+   * Synthesize the failed terminal for the active Turn after a projection
+   * failure, mirroring the mid-turn failure shape the projector emits: an
+   * `error` frame followed by `turn/completed` with `status: "failed"`. The
+   * Thread is left idle so Desktop can start a new Turn.
+   */
+  async #recoverFailedProjection(thread: ExternalThread, cause: unknown): Promise<void> {
+    this.#diagnose(`External Turn projection failed: ${errorMessage(cause)}`);
+    const turnId = thread.activeTurnId;
+    if (turnId === null) return;
+    const projection = thread.projectedTurns.get(turnId);
+    const wireError = {
+      message: `External Turn projection failed: ${errorMessage(cause)}`,
+      codexErrorInfo: "other",
+      additionalDetails: null,
+    };
+    const completedAtMs = Date.now();
+    const completedAt = Math.floor(completedAtMs / 1000);
+    const pendingItems = projection ? projection.projector.pendingTurn().items : undefined;
+    const turn: JsonObject = {
+      id: turnId,
+      status: "failed",
+      items: Array.isArray(pendingItems) ? pendingItems : [],
+      error: wireError,
+      startedAt: null,
+      completedAt,
+      durationMs: null,
+      itemsView: "full",
+    };
+    try {
+      for (const pending of [...this.#pendingDesktopApprovals.values()]) {
+        if (pending.thread === thread && pending.interaction.turnId === turnId) {
+          await this.#resolveDesktopApproval(pending.interaction.interactionId);
+        }
+      }
+      for (const pending of [...this.#pendingDesktopQuestions.values()]) {
+        if (pending.thread === thread && pending.interaction.turnId === turnId) {
+          await this.#resolveDesktopQuestion(pending.interaction.interactionId);
+        }
+      }
+      await this.#writer.json({
+        method: "error",
+        params: { error: wireError, willRetry: false, threadId: thread.id, turnId },
+      });
+      await this.#writer.json({
+        method: "turn/completed",
+        emittedAtMs: completedAtMs,
+        params: { threadId: thread.id, turn },
+      });
+    } catch (error) {
+      this.#diagnose(error);
+    }
+    if (!thread.ephemeralTurnIds.delete(turnId)) {
+      thread.turns.push(turn);
+      thread.thread.updatedAt = completedAt;
+      thread.thread.recencyAt = completedAt;
+    }
+    thread.historyHydrated = false;
+    thread.running = false;
+    thread.activeTurnId = null;
+    thread.projectedTurns.delete(turnId);
+    const gate = thread.responseGates.get(turnId);
+    thread.responseGates.delete(turnId);
+    gate?.resolve();
+    this.#signalActiveWorkChanged();
+    try {
+      const delegation = await this.#repository.getDelegationByChild(thread.record.hostThreadId);
+      if (delegation) {
+        await this.#repository.setDelegationStatus(delegation.delegationId, "failed");
+      }
+    } catch (error) {
+      this.#diagnose(error);
+    }
+    try {
+      await this.#setThreadStatus(
+        thread,
+        this.#hasRunningSubagents(thread.id)
+          ? { type: "active", activeFlags: [] }
+          : { type: "idle" },
+      );
     } catch (error) {
       this.#diagnose(error);
     }

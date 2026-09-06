@@ -444,6 +444,16 @@ export class FakeHarnessSession implements HarnessSession {
     return { ok: true, value: { turnId: command.turnId } };
   }
 
+  /** Test helper: inject a Host event as if the native session produced it. */
+  emitEvent(event: HostEvent): void {
+    this.#event(event);
+  }
+
+  /** Test helper: drop the active Turn without emitting a terminal event. */
+  abandonTurn(): void {
+    this.#active = null;
+  }
+
   appendText(text: string): void {
     const active = this.#requireActive();
     const item = [...active.items.values()].find(
