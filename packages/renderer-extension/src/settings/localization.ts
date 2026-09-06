@@ -21,6 +21,7 @@ export interface RendererSettingsMessages {
   readonly locale: RendererSettingsLocale;
   readonly title: string;
   readonly close: string;
+  readonly starOnGitHub: string;
   readonly sectionsLabel: string;
   readonly generalSection: string;
   readonly otherSection: string;
@@ -63,6 +64,25 @@ export interface RendererSettingsMessages {
   readonly pluginsDescription: string;
   readonly pluginsRefresh: string;
   readonly pluginsRefreshing: string;
+  readonly accountsDescription: string;
+  readonly accountAdd: string;
+  readonly accountCreateFailed: string;
+  readonly accountDelete: string;
+  readonly accountDeleteConfirm: string;
+  readonly accountDeleting: string;
+  readonly accountDeleteFailed: string;
+  readonly accountActive: string;
+  readonly accountUse: string;
+  readonly accountSignIn: string;
+  readonly accountSigningIn: string;
+  readonly accountDeviceCodePrerequisite: string;
+  readonly accountVerificationDescription: string;
+  readonly accountCopyCode: string;
+  readonly accountCopied: string;
+  readonly accountLoginCancel: string;
+  readonly accountLoginSucceeded: string;
+  readonly accountLoginFailed: string;
+  readonly accountLoadFailed: string;
   readonly connectionAdapter: string;
   readonly connectionHosts: string;
   readonly connectionLocalHost: string;
@@ -167,6 +187,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "en",
   title: "Settings",
   close: "Close settings",
+  starOnGitHub: "Give us a Star~",
   sectionsLabel: "Settings sections",
   generalSection: "General",
   otherSection: "Other",
@@ -215,6 +236,27 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   pluginsDescription: "Extend and manage Codex plugins.",
   pluginsRefresh: "Scan environment",
   pluginsRefreshing: "Scanning...",
+  accountsDescription:
+    "New Codex tasks start with this account. Existing tasks keep the account they were created with.",
+  accountAdd: "Add Account",
+  accountCreateFailed: "Could not add the Account.",
+  accountDelete: "Delete",
+  accountDeleteConfirm: "Delete this Account and its local data? This cannot be undone.",
+  accountDeleting: "Deleting Account...",
+  accountDeleteFailed: "Could not delete the Account.",
+  accountActive: "Default",
+  accountUse: "Set as default",
+  accountSignIn: "Sign in",
+  accountSigningIn: "Starting device sign-in...",
+  accountDeviceCodePrerequisite:
+    "Before signing in, enable “Enable device code authorization for Codex” in Web Settings → Account security & sign-in.",
+  accountVerificationDescription: "Open the verification page and enter this one-time code:",
+  accountCopyCode: "Copy code",
+  accountCopied: "Copied",
+  accountLoginCancel: "Cancel sign-in",
+  accountLoginSucceeded: "Sign-in completed.",
+  accountLoginFailed: "Sign-in failed.",
+  accountLoadFailed: "Could not load Codex Accounts.",
   connectionAdapter: "Renderer adapter",
   connectionHosts: "Hosts",
   connectionLocalHost: "Local",
@@ -335,6 +377,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   pageLabels: Object.freeze({
     connections: "Agents",
     plugins: "Plugin",
+    accounts: "Accounts",
     "session-import": "Session Import",
     updates: "Updates",
     about: "About",
@@ -345,6 +388,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "zh-CN",
   title: "设置",
   close: "关闭设置",
+  starOnGitHub: "点个 Star~",
   sectionsLabel: "设置分类",
   generalSection: "通用",
   otherSection: "其他",
@@ -390,6 +434,26 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   pluginsDescription: "扩展和管理 Codex 的插件。",
   pluginsRefresh: "扫描环境",
   pluginsRefreshing: "正在扫描...",
+  accountsDescription: "这里决定之后新建 Codex 任务默认用哪个账号。已经开过的任务不会换号。",
+  accountAdd: "添加账号",
+  accountCreateFailed: "添加账号失败。",
+  accountDelete: "删除",
+  accountDeleteConfirm: "删除此账号及其本地数据？此操作无法撤销。",
+  accountDeleting: "正在删除账号...",
+  accountDeleteFailed: "删除账号失败。",
+  accountActive: "默认账号",
+  accountUse: "设为默认",
+  accountSignIn: "登录",
+  accountSigningIn: "正在启动设备登录...",
+  accountDeviceCodePrerequisite:
+    "登录前，请先在 Web 端的“设置 → 账号安全与登录”中开启“为 Codex 启用设备代码授权”。",
+  accountVerificationDescription: "打开验证页面并输入以下一次性代码：",
+  accountCopyCode: "复制代码",
+  accountCopied: "已复制",
+  accountLoginCancel: "取消登录",
+  accountLoginSucceeded: "登录成功。",
+  accountLoginFailed: "登录失败。",
+  accountLoadFailed: "无法加载 Codex 账号。",
   connectionAdapter: "Renderer 适配器",
   connectionHosts: "Host 列表",
   connectionLocalHost: "本地",
@@ -507,6 +571,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   pageLabels: Object.freeze({
     connections: "Agents",
     plugins: "Plugin",
+    accounts: "账号",
     "session-import": "会话导入",
     updates: "更新",
     about: "关于",

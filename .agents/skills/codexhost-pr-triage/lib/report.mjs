@@ -89,7 +89,7 @@ function identity(pr, path, repositories, identities) {
 }
 
 /** Validate without filling fields, changing verdicts, or modifying the input. */
-export function validateReport(report) {
+export function validateReport(report, { requireCardSummary = false } = {}) {
   object(report, "report", [
     "schemaVersion",
     "generatedAt",
@@ -137,15 +137,25 @@ export function validateReport(report) {
         "questions",
         "simplifications",
       ],
-      ["evaluatedAt"],
+      ["originalTitle", "effect"],
     );
-    if (pr.evaluatedAt !== undefined && pr.evaluatedAt !== null)
-      timestamp(pr.evaluatedAt, `${path}.evaluatedAt`);
+    if (requireCardSummary) {
+      check(
+        Object.hasOwn(pr, "originalTitle"),
+        `${path}.originalTitle`,
+        "新评估必须提供原始 PR 标题",
+      );
+      check(Object.hasOwn(pr, "effect"), `${path}.effect`, "新评估必须先说明 PR 的作用");
+    }
+    for (const field of ["originalTitle", "effect"])
+      if (pr[field] !== undefined) text(pr[field], `${path}.${field}`);
     identity(pr, path, repositories, identities);
     check(VERDICTS.includes(pr.verdict), `${path}.verdict`, `必须是 ${VERDICTS.join(" / ")}`);
     for (const field of ["reason", "value", "scope", "cost", "action"])
       text(pr[field], `${path}.${field}`);
-    check(!/[\r\n]/u.test(pr.reason), `${path}.reason`, "理由必须是一行");
+    for (const field of ["title", "originalTitle", "effect", "value", "reason", "action"])
+      if (pr[field] !== undefined)
+        check(!/[\r\n]/u.test(pr[field]), `${path}.${field}`, "卡片字段必须是一行");
     for (const field of ["baseSha", "headSha"]) {
       if (pr[field] === null) {
         check(pr.verdict === "DISCUSS", `${path}.${field}`, "缺少版本证据只能标为 DISCUSS");
@@ -187,9 +197,7 @@ export function validateReport(report) {
     check(pr.evidence.length <= 5, `${path}.evidence`, "最多 5 个关键证据");
   });
   list(report.skipped, "report.skipped", (pr, path) => {
-    object(pr, path, ["repository", "number", "title", "url", "reason"], ["evaluatedAt"]);
-    if (pr.evaluatedAt !== undefined && pr.evaluatedAt !== null)
-      timestamp(pr.evaluatedAt, `${path}.evaluatedAt`);
+    object(pr, path, ["repository", "number", "title", "url", "reason"]);
     identity(pr, path, repositories, identities);
     text(pr.reason, `${path}.reason`);
   });

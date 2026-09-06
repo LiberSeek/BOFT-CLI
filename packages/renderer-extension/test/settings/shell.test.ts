@@ -6,11 +6,16 @@ import {
   createDefaultRendererSettingsRegistry,
 } from "../../src/settings/pages.js";
 import {
+  RENDERER_SETTINGS_COLOR_SCHEME,
   isRendererSettingsDialogSupported,
   resolveRendererSettingsTheme,
 } from "../../src/settings/shell.js";
 
 describe("Renderer settings foundation", () => {
+  it("inherits the Codex theme instead of forcing a dark settings surface", () => {
+    expect(RENDERER_SETTINGS_COLOR_SCHEME).toBe("inherit");
+  });
+
   it("publishes deterministic product sections with Agents as the default", () => {
     const pages = createDefaultRendererSettingsPages();
     const registry = createDefaultRendererSettingsRegistry();
@@ -19,6 +24,7 @@ describe("Renderer settings foundation", () => {
     expect(pages.map(({ label }) => label)).toEqual([
       "Agents",
       "Plugin",
+      "Accounts",
       "Session Import",
       "Updates",
       "About",
@@ -26,7 +32,8 @@ describe("Renderer settings foundation", () => {
     expect(pages.map(({ icon }) => icon)).toEqual([
       "connections",
       "plugins",
-      "download",
+      "accounts",
+      "session-import",
       "updates",
       "about",
     ]);
@@ -59,6 +66,7 @@ describe("Renderer settings foundation", () => {
     expect(pages.map(({ id }) => id)).toEqual([
       "connections",
       "plugins",
+      "accounts",
       "session-import",
       "updates",
       "about",
@@ -67,6 +75,7 @@ describe("Renderer settings foundation", () => {
       "connectionRefresh",
     );
     expect(pages.find(({ id }) => id === "plugins")?.mount.toString()).toContain("pluginsRefresh");
+    expect(pages.find(({ id }) => id === "accounts")?.mount.toString()).toContain("accountAdd");
     expect(pages.find(({ id }) => id === "session-import")?.mount.toString()).toContain(
       "sessionImportRefresh",
     );

@@ -108,6 +108,7 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
   <tr>
     <td colspan="2" valign="top">
       <img src="imgs/grok-usage-limits.png" alt="5시간 및 7일 기간의 남은 한도와 초기화 시간">
+      <p>macOS 메뉴 막대 아이콘 및 Windows 작업 표시줄 아이콘에는 남은 한도 비율이 표시되며, 5시간 창을 우선 사용하고 없으면 7일 창으로 대체합니다.</p>
     </td>
   </tr>
   <tr>

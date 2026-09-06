@@ -11,9 +11,10 @@ import {
   DEFAULT_RENDERER_SETTINGS_MESSAGES,
   type RendererSettingsMessages,
 } from "./localization.js";
-import { createDefaultRendererSettingsRegistry } from "./pages.js";
+import { CODEXHOST_GITHUB_REPOSITORY_URL, createDefaultRendererSettingsRegistry } from "./pages.js";
 
 export const SETTINGS_SHELL_ATTRIBUTE = "data-codexhost-settings-shell";
+export const RENDERER_SETTINGS_COLOR_SCHEME = "inherit";
 
 export interface RendererSettingsShell {
   readonly root: HTMLElement;
@@ -82,6 +83,7 @@ export function mountRendererSettingsShell(
   root.setAttribute(SETTINGS_SHELL_ATTRIBUTE, "v1");
   root.lang = messages.locale;
   applyRendererSettingsTheme(root, ownerDocument);
+  root.style.colorScheme = RENDERER_SETTINGS_COLOR_SCHEME;
   const shadow = root.attachShadow({ mode: "open" });
   const style = ownerDocument.createElement("style");
   style.textContent = settingsCss;
@@ -217,9 +219,23 @@ export function mountRendererSettingsShell(
     navigationButtons.set(definition.id, button);
     navigation.append(button);
   }
+  const starLink = ownerDocument.createElement("a");
+  starLink.className = "settings-nav-button settings-nav-star-link";
+  starLink.href = CODEXHOST_GITHUB_REPOSITORY_URL;
+  starLink.target = "_blank";
+  starLink.rel = "noopener noreferrer";
+  starLink.setAttribute("aria-label", messages.starOnGitHub);
+  starLink.title = messages.starOnGitHub;
+  starLink.append(createRendererSettingsIcon("star", 17));
+  const starLabel = ownerDocument.createElement("span");
+  starLabel.textContent = messages.starOnGitHub;
+  starLink.append(starLabel);
+  navigation.append(starLink);
   const supported = isRendererSettingsDialogSupported(dialog);
   const focusActiveNavigation = (): void => {
-    navigationButtons.get(navigationState.activePageId)?.focus();
+    navigationButtons
+      .get(navigationState.activePageId)
+      ?.focus({ preventScroll: true, focusVisible: false });
   };
   const finishClose = (): void => {
     disposeActivePage();

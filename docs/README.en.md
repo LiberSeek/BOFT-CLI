@@ -108,6 +108,7 @@ Fully quit Codex Desktop, open a new terminal, and run `boft`.
   <tr>
     <td colspan="2" valign="top">
       <img src="imgs/grok-usage-limits.png" alt="Remaining allowance and reset times for the five-hour and seven-day windows">
+      <p>The macOS menu bar icon and Windows taskbar icon show the remaining allowance percentage, preferring the five-hour window and falling back to the seven-day window.</p>
     </td>
   </tr>
   <tr>
