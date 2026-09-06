@@ -838,7 +838,7 @@ export class MappingStore {
       // An invalid lock cannot prove a live owner and is treated as stale.
     }
     if (typeof existing.pid === "number" && lockOwnerIsLive(existing)) {
-      throw new MappingStoreError("STORE_LOCKED", "Another codexhost process owns Mapping Store");
+      throw new MappingStoreError("STORE_LOCKED", "Another BOFT CLI process owns Mapping Store");
     }
     await rename(this.#lockPath, `${this.#lockPath}.stale-${this.#now().getTime()}`).catch(
       () => undefined,

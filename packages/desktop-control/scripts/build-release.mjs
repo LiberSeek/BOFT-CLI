@@ -87,7 +87,7 @@ if (invoked === import.meta.url) {
     outputPath: parseOutput(process.argv.slice(2)),
   }).catch((error) => {
     console.error(
-      `codexhost Desktop Controller Bundle: ${error instanceof Error ? error.message : error}`,
+      `BOFT CLI Desktop Controller Bundle: ${error instanceof Error ? error.message : error}`,
     );
     process.exitCode = 1;
   });

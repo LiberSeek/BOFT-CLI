@@ -15,7 +15,7 @@ fn production_launcher_uses_the_three_state_running_desktop_flow() {
     assert!(source.contains("StartupState::CleanLaunch"));
     assert!(source.contains("StartupState::Attach"));
     assert!(source.contains("acquire_launcher_ownership"));
-    assert!(source.contains("completely quit it before starting codexhost"));
+    assert!(source.contains("completely quit it before starting boft"));
     assert!(!source.contains("attach_unmanaged_desktop"));
 }
 
@@ -27,9 +27,9 @@ fn production_launcher_rejects_the_gate_probe_command() {
         .expect("run launcher");
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("codexhost inspect"));
-    assert!(stderr.contains("codexhost launch"));
-    assert!(!stderr.contains("codexhost probe"));
+    assert!(stderr.contains("boft inspect"));
+    assert!(stderr.contains("boft launch"));
+    assert!(!stderr.contains("boft probe"));
 }
 
 #[test]

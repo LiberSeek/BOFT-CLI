@@ -81,13 +81,13 @@ export async function runRemoteHostCli(input: {
       output.write(
         [
           "usage:",
-          "  codexhost remote install [--stock-codex PATH] [--claude-command PATH]",
-          "  codexhost remote start",
-          "  codexhost remote stop",
-          "  codexhost remote status",
-          "  codexhost remote uninstall",
+          "  boft remote install [--stock-codex PATH] [--claude-command PATH]",
+          "  boft remote start",
+          "  boft remote stop",
+          "  boft remote status",
+          "  boft remote uninstall",
           "",
-          "Installs and manages a headless codexhost Remote Host for SSH sessions.",
+          "Installs and manages a headless BOFT CLI Remote Host for SSH sessions.",
         ].join("\n") + "\n",
       );
       return 0;
@@ -117,7 +117,7 @@ export async function runRemoteHostCli(input: {
     return 0;
   } catch (error) {
     diagnosticOutput.write(
-      `codexhost remote: ${error instanceof Error ? error.message : String(error)}\n`,
+      `boft remote: ${error instanceof Error ? error.message : String(error)}\n`,
     );
     return 1;
   }

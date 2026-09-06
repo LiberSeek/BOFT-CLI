@@ -3,12 +3,13 @@ import { mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-const SKILL_VERSION = 4;
+const SKILL_VERSION = 5;
 const SKILL_RELATIVE_PATH = path.join("skills", "codexhost-delegation", "SKILL.md");
 const PREVIOUS_MANAGED_DIGESTS: readonly string[] = [
   "ba509f57e5448e796b3dfdd5031dcb08672eded50b61c0a54de84cfa02c49dd3",
   "d3ddf6db9bc5c5df825479c885bbbf0ca08da66f7057a12e02e1fdf57525149e",
   "15eb63519ff867e1536c97188a0c43738d7a49d38d4d6adeb7a1036726e7246d",
+  "09acc3cc0a598e546ce35fccb9d856d9fe06c01ab055dfce1914dab92479c9a2",
 ];
 
 export const CODEXHOST_DELEGATION_SKILL = `---
@@ -27,7 +28,7 @@ description: >
 
 Before acting, run:
 
-\`codexhost delegate --help\`
+\`boft delegate --help\`
 
 Treat its output as the sole authoritative source for:
 

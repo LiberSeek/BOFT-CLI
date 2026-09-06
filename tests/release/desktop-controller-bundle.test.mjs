@@ -50,7 +50,7 @@ describe("Desktop Controller release Bundle", () => {
       });
       expect(audit.inputs).toContain("packages/desktop-control/src/release-main.ts");
       const source = await readFile(outputPath, "utf8");
-      expect(source).toContain("codexhost Desktop Controller");
+      expect(source).toContain("BOFT CLI Desktop Controller");
       expect(source).toContain("installRendererCdpControlSession");
       expect(source).toContain("schemaVersion: 2");
       expect(source).not.toContain("detection-failed");
