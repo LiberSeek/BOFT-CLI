@@ -80,12 +80,38 @@ function windowsInstallerDownloadUrl(window: Window | null | undefined, version:
 
 export const DEFAULT_RENDERER_SETTINGS_PAGE_IDS = [
   "connections",
-  "plugins",
   "accounts",
   "session-import",
+  "plugins",
   "updates",
   "about",
 ] as const;
+
+export const RENDERER_SETTINGS_NAV_SECTIONS = [
+  {
+    id: "connection",
+    pageIds: ["connections", "accounts", "session-import"],
+  },
+  {
+    id: "general",
+    pageIds: ["plugins", "updates"],
+  },
+  {
+    id: "other",
+    pageIds: ["about"],
+  },
+] as const;
+
+export type RendererSettingsNavSectionId = (typeof RENDERER_SETTINGS_NAV_SECTIONS)[number]["id"];
+
+export function rendererSettingsNavSectionLabel(
+  sectionId: RendererSettingsNavSectionId,
+  messages: RendererSettingsMessages,
+): string {
+  if (sectionId === "connection") return messages.connectionSection;
+  if (sectionId === "general") return messages.generalSection;
+  return messages.otherSection;
+}
 
 export type DefaultRendererSettingsPageId = (typeof DEFAULT_RENDERER_SETTINGS_PAGE_IDS)[number];
 
@@ -293,9 +319,12 @@ function updatesPage(
     mount(context: RendererSettingsPageMountContext) {
       const document = context.content.ownerDocument;
       const windows = isWindowsRenderer(document.defaultView);
+      const header = document.createElement("div");
+      header.className = "settings-connection-page-header";
       const heading = document.createElement("div");
       heading.className = "settings-section-label";
       heading.textContent = messages.pageLabels.updates;
+      header.append(heading);
 
       // Version summary: current, latest, and installation sit side by side so the
       // comparison is readable without scrolling.
@@ -403,7 +432,7 @@ function updatesPage(
       const notes = document.createElement("div");
       notes.className = "settings-update-notes-section";
 
-      context.content.append(heading, metadata, panel, controls, notes);
+      context.content.append(header, metadata, panel, controls, notes);
 
       // Presentation-only: emphasise the manual path once the automatic one has
       // visibly failed.
@@ -667,9 +696,9 @@ export function createDefaultRendererSettingsPages(
 ): readonly RendererSettingsPageDefinition[] {
   return Object.freeze([
     createConnectionsSettingsPage(messages, getDiagnostics),
-    createPluginsSettingsPage(messages, getDiagnostics),
     createAccountsSettingsPage(messages, getAccountClient),
     createSessionImportSettingsPage(messages, getSessionImportClient, openImportedThread),
+    createPluginsSettingsPage(messages, getDiagnostics),
     updatesPage(messages, getUpdateClient),
     aboutPage(messages),
   ]);

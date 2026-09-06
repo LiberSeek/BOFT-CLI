@@ -3,8 +3,14 @@ import { describe, expect, it } from "vitest";
 import { partitionAgentsByInstallStatus } from "../src/agent-group-preference.js";
 import { isNativeModelControlCandidate } from "../src/renderer-composer-dom.js";
 import {
+  DEFAULT_RENDERER_SETTINGS_MESSAGES,
+  rendererSettingsMessages,
+} from "../src/settings/localization.js";
+import {
   codexAccountDisplayName,
   codexAccountPresentationSignature,
+  formatCodexAccountAuthLabel,
+  shouldExpandCodexAccountOptions,
 } from "../src/renderer-codex-account-options.js";
 import {
   rendererAgentMenuPlacement,
@@ -69,6 +75,40 @@ describe("Renderer Agent picker presentation", () => {
     );
   });
 
+  it("formats API and ChatGPT Codex Accounts with an auth-kind prefix", () => {
+    const english = DEFAULT_RENDERER_SETTINGS_MESSAGES;
+    const chinese = rendererSettingsMessages("zh-CN");
+    expect(
+      formatCodexAccountAuthLabel(
+        {
+          accountId: "api",
+          label: "API home",
+          codexHome: "/tmp/api",
+          active: true,
+          isDefault: true,
+          authKind: "api",
+        },
+        english,
+      ),
+    ).toBe("API - BANK OF TOKEN");
+    expect(
+      formatCodexAccountAuthLabel(
+        {
+          accountId: "reviewer",
+          label: "Reviewer",
+          email: "reviewer@example.com",
+          codexHome: "/tmp/reviewer",
+          active: false,
+          isDefault: false,
+          authKind: "chatgpt",
+        },
+        chinese,
+      ),
+    ).toBe("账号 - reviewer@example.com");
+    expect(shouldExpandCodexAccountOptions(1)).toBe(false);
+    expect(shouldExpandCodexAccountOptions(2)).toBe(true);
+  });
+
   it("includes the active Codex Account in the locked hover detail", () => {
     expect(
       rendererAgentPickerTooltip(
@@ -80,9 +120,11 @@ describe("Renderer Agent picker presentation", () => {
           codexHome: "/tmp/reviewer",
           active: true,
           isDefault: false,
+          authKind: "chatgpt",
         },
+        2,
       ),
-    ).toBe("Agent: Codex · reviewer@example.com (locked)");
+    ).toBe("Agent: Codex · Account - reviewer@example.com (locked)");
     expect(rendererAgentPickerTooltip({ agent: "claude-code", phase: "locked" }, undefined)).toBe(
       "Agent: Claude Code (locked)",
     );

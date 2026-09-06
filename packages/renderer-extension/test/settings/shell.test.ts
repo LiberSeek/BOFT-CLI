@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_RENDERER_SETTINGS_PAGE_IDS,
+  RENDERER_SETTINGS_NAV_SECTIONS,
   createDefaultRendererSettingsPages,
   createDefaultRendererSettingsRegistry,
+  rendererSettingsNavSectionLabel,
 } from "../../src/settings/pages.js";
+import { rendererSettingsMessages } from "../../src/settings/localization.js";
 import {
   RENDERER_SETTINGS_COLOR_SCHEME,
   isRendererSettingsDialogSupported,
@@ -23,21 +26,30 @@ describe("Renderer settings foundation", () => {
     expect(pages.map(({ id }) => id)).toEqual(DEFAULT_RENDERER_SETTINGS_PAGE_IDS);
     expect(pages.map(({ label }) => label)).toEqual([
       "Agents",
-      "Plugin",
       "Accounts",
-      "Session Import",
+      "Sessions",
+      "Plugins",
       "Updates",
       "About",
     ]);
     expect(pages.map(({ icon }) => icon)).toEqual([
       "connections",
-      "plugins",
       "accounts",
       "session-import",
+      "plugins",
       "updates",
       "about",
     ]);
     expect(registry.defaultPageId).toBe("connections");
+    expect(RENDERER_SETTINGS_NAV_SECTIONS.map(({ id, pageIds }) => [id, [...pageIds]])).toEqual([
+      ["connection", ["connections", "accounts", "session-import"]],
+      ["general", ["plugins", "updates"]],
+      ["other", ["about"]],
+    ]);
+    const chinese = rendererSettingsMessages("zh-CN");
+    expect(rendererSettingsNavSectionLabel("connection", chinese)).toBe("连接");
+    expect(rendererSettingsNavSectionLabel("general", chinese)).toBe("通用");
+    expect(rendererSettingsNavSectionLabel("other", chinese)).toBe("其他");
     expect(Object.isFrozen(pages)).toBe(true);
     expect(pages.every((page) => Object.isFrozen(page))).toBe(true);
   });
@@ -65,9 +77,9 @@ describe("Renderer settings foundation", () => {
 
     expect(pages.map(({ id }) => id)).toEqual([
       "connections",
-      "plugins",
       "accounts",
       "session-import",
+      "plugins",
       "updates",
       "about",
     ]);

@@ -50,7 +50,12 @@ describe("Renderer settings localization", () => {
     expect(chinese.updateDownloadFromReleases).toBe("前往 GitHub Releases 下载");
     expect(chinese.updateDownloadWindowsInstaller).toBe("下载 Windows 安装包");
     expect(chinese.pageLabels.about).toBe("关于");
-    expect(chinese.pageLabels["session-import"]).toBe("会话导入");
+    expect(chinese.pageLabels["session-import"]).toBe("会话");
+    expect(chinese.sessionImportTitle).toBe("会话导入");
+    expect(chinese.pageLabels.plugins).toBe("插件");
+    expect(chinese.connectionSection).toBe("连接");
+    expect(chinese.generalSection).toBe("通用");
+    expect(chinese.otherSection).toBe("其他");
     expect(chinese.sessionImportAvailabilityNote).toContain("可选 Harness 来自本地 Host");
     expect(chinese.sessionImportAvailabilityNote).toContain("先在原生客户端关闭该会话再导入");
     expect(chinese.sessionImportAvailabilityNote).toContain("避免同时写入");
@@ -87,6 +92,6 @@ describe("Renderer settings localization", () => {
       createDefaultRendererSettingsPages(rendererSettingsMessages("zh-CN")).map(
         ({ label }) => label,
       ),
-    ).toEqual(["Agents", "Plugin", "账号", "会话导入", "更新", "关于"]);
+    ).toEqual(["Agents", "账号", "会话", "插件", "更新", "关于"]);
   });
 });

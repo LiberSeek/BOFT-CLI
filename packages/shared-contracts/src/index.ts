@@ -42,9 +42,11 @@ export {
   codexAccountLoginStartParamsSchema,
   codexAccountLoginStartResultSchema,
   codexAccountMutationResultSchema,
+  codexAccountAuthKindSchema,
   codexAccountSchema,
 } from "./codex-accounts.js";
 export type {
+  CodexAccountAuthKind,
   CodexAccountUsageParams,
   CodexAccountUsageResult,
   CodexAccountActivateParams,

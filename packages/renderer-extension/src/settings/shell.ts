@@ -11,7 +11,11 @@ import {
   DEFAULT_RENDERER_SETTINGS_MESSAGES,
   type RendererSettingsMessages,
 } from "./localization.js";
-import { CODEXHOST_GITHUB_REPOSITORY_URL, createDefaultRendererSettingsRegistry } from "./pages.js";
+import {
+  RENDERER_SETTINGS_NAV_SECTIONS,
+  createDefaultRendererSettingsRegistry,
+  rendererSettingsNavSectionLabel,
+} from "./pages.js";
 
 export const SETTINGS_SHELL_ATTRIBUTE = "data-codexhost-settings-shell";
 export const RENDERER_SETTINGS_COLOR_SCHEME = "inherit";
@@ -201,13 +205,7 @@ export function mountRendererSettingsShell(
     section.textContent = label;
     navigation.append(section);
   };
-  let otherSectionAdded = false;
-  appendNavigationSection(messages.generalSection);
-  for (const definition of resolvedRegistry.pages) {
-    if (definition.id === "about" && !otherSectionAdded) {
-      appendNavigationSection(messages.otherSection);
-      otherSectionAdded = true;
-    }
+  const appendNavigationButton = (definition: RendererSettingsPageDefinition): void => {
     const button = ownerDocument.createElement("button");
     button.type = "button";
     button.className = "settings-nav-button";
@@ -218,19 +216,23 @@ export function mountRendererSettingsShell(
     button.append(label);
     navigationButtons.set(definition.id, button);
     navigation.append(button);
+  };
+  const assignedPageIds = new Set<string>(
+    RENDERER_SETTINGS_NAV_SECTIONS.flatMap((section) => [...section.pageIds]),
+  );
+  for (const section of RENDERER_SETTINGS_NAV_SECTIONS) {
+    const pages = section.pageIds
+      .map((pageId) => resolvedRegistry.getPage(pageId))
+      .filter((definition): definition is RendererSettingsPageDefinition => definition !== undefined);
+    const leftovers =
+      section.id === "other"
+        ? resolvedRegistry.pages.filter((definition) => !assignedPageIds.has(definition.id))
+        : [];
+    if (pages.length === 0 && leftovers.length === 0) continue;
+    appendNavigationSection(rendererSettingsNavSectionLabel(section.id, messages));
+    for (const definition of pages) appendNavigationButton(definition);
+    for (const definition of leftovers) appendNavigationButton(definition);
   }
-  const starLink = ownerDocument.createElement("a");
-  starLink.className = "settings-nav-button settings-nav-star-link";
-  starLink.href = CODEXHOST_GITHUB_REPOSITORY_URL;
-  starLink.target = "_blank";
-  starLink.rel = "noopener noreferrer";
-  starLink.setAttribute("aria-label", messages.starOnGitHub);
-  starLink.title = messages.starOnGitHub;
-  starLink.append(createRendererSettingsIcon("star", 17));
-  const starLabel = ownerDocument.createElement("span");
-  starLabel.textContent = messages.starOnGitHub;
-  starLink.append(starLabel);
-  navigation.append(starLink);
   const supported = isRendererSettingsDialogSupported(dialog);
   const focusActiveNavigation = (): void => {
     navigationButtons

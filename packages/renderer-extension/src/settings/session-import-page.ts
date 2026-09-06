@@ -58,13 +58,16 @@ export function createSessionImportSettingsPage(
       const header = document.createElement("div");
       header.className = "settings-connection-page-header";
       const headingCopy = document.createElement("div");
-      const heading = document.createElement("h2");
+      const heading = document.createElement("div");
       heading.className = "settings-section-label";
-      heading.textContent = messages.pageLabels["session-import"];
+      heading.textContent = messages.sessionImportTitle;
       const description = document.createElement("p");
       description.className = "settings-page-description";
       description.textContent = messages.sessionImportDescription;
-      headingCopy.append(heading, description);
+      const availabilityNote = document.createElement("p");
+      availabilityNote.className = "settings-page-description";
+      availabilityNote.textContent = messages.sessionImportAvailabilityNote;
+      headingCopy.append(heading, description, availabilityNote);
       const refresh = document.createElement("button");
       refresh.type = "button";
       refresh.className = "settings-command-button settings-command-button--secondary";
@@ -80,10 +83,8 @@ export function createSessionImportSettingsPage(
 
       const harness = document.createElement("div");
       harness.className = "settings-session-import-harness";
-      const harnessLabel = document.createElement("span");
-      harnessLabel.textContent = messages.sessionImportHarness;
       const harnessOptions = document.createElement("div");
-      harnessOptions.className = "settings-segmented settings-session-import-harness__options";
+      harnessOptions.className = "settings-session-import-harness__options";
       harnessOptions.dataset.sessionImportHarness = "selector";
       harnessOptions.setAttribute("role", "group");
       harnessOptions.setAttribute("aria-label", messages.sessionImportHarness);
@@ -112,20 +113,13 @@ export function createSessionImportSettingsPage(
           harnessOptions.append(option);
         }
       };
-      harness.append(harnessLabel, harnessOptions);
-
-      const availabilityNote = document.createElement("p");
-      availabilityNote.className =
-        "settings-page-description settings-session-import-availability-note";
-      availabilityNote.textContent = messages.sessionImportAvailabilityNote;
+      harness.append(harnessOptions);
       const content = document.createElement("section");
       content.className = "settings-session-import-content";
       const listControls = createSessionImportListControls(document, messages, () => load());
       context.content.append(
         header,
         harness,
-        description,
-        availabilityNote,
         listControls.searchForm,
         content,
         listControls.pagination,

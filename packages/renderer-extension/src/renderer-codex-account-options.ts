@@ -1,6 +1,12 @@
 import type { CodexAccountSummary } from "@codexhost/shared-contracts";
 
 import { createRendererAgentIcon } from "./renderer-agent-icon.js";
+import {
+  PICKER_ROW_PADDING,
+  applyPickerTrailingSlot,
+  createPickerChromeIcon,
+} from "./renderer-picker-trailing-slot.js";
+import type { RendererSettingsMessages } from "./settings/localization.js";
 
 export interface RendererCodexAccountOptionControl {
   readonly row: HTMLElement;
@@ -30,6 +36,31 @@ export interface CodexAccountDisplayName {
 
 const ACCOUNT_COLORS = ["#5b38c9", "#239b88", "#ce6724", "#2878c7", "#b34778", "#65752a"] as const;
 
+export function shouldExpandCodexAccountOptions(accountCount: number): boolean {
+  return accountCount > 1;
+}
+
+export function codexAccountAuthKind(account: CodexAccountSummary): "api" | "chatgpt" {
+  if (account.authKind === "api" || account.authKind === "chatgpt") return account.authKind;
+  return account.email ? "chatgpt" : "api";
+}
+
+export function formatCodexAccountAuthLabel(
+  account: CodexAccountSummary,
+  messages: Pick<
+    RendererSettingsMessages,
+    "accountAuthApiPrefix" | "accountAuthChatPrefix" | "accountAuthApiIdentityFallback"
+  >,
+): string {
+  if (codexAccountAuthKind(account) === "api") {
+    const identity = account.authIdentity?.trim() || messages.accountAuthApiIdentityFallback;
+    return `${messages.accountAuthApiPrefix} - ${identity}`;
+  }
+  const identity = account.email ?? account.authIdentity;
+  if (!identity) return `${messages.accountAuthChatPrefix} - ${account.label}`;
+  return `${messages.accountAuthChatPrefix} - ${identity}`;
+}
+
 export function codexAccountDisplayName(account: CodexAccountSummary): CodexAccountDisplayName {
   const full = account.email ?? account.label;
   const separator = account.email?.lastIndexOf("@") ?? -1;
@@ -47,7 +78,10 @@ export function codexAccountPresentationSignature(
   accounts: readonly CodexAccountSummary[],
 ): string {
   return accounts
-    .map(({ accountId, label, email }) => `${accountId}\u0000${label}\u0000${email ?? ""}`)
+    .map(
+      ({ accountId, label, email, authKind, authIdentity }) =>
+        `${accountId}\u0000${label}\u0000${email ?? ""}\u0000${authKind ?? ""}\u0000${authIdentity ?? ""}`,
+    )
     .join("\u0001");
 }
 
@@ -80,6 +114,10 @@ export function createRendererCodexAccountGroup(input: {
   readonly ownerDocument: Document;
   readonly accountsLabel: string;
   readonly manageAccountsLabel: string;
+  readonly messages: Pick<
+    RendererSettingsMessages,
+    "accountAuthApiPrefix" | "accountAuthChatPrefix" | "accountAuthApiIdentityFallback"
+  >;
   readonly onSelect: (accountId: string) => void;
   readonly onManage: () => void;
 }): RendererCodexAccountGroupControl {
@@ -94,15 +132,25 @@ export function createRendererCodexAccountGroup(input: {
   accountSection.style.position = "relative";
 
   const header = document.createElement("div");
+  header.style.position = "relative";
   header.style.display = "flex";
   header.style.alignItems = "center";
-  header.style.gap = "7px";
-  header.style.height = "30px";
-  header.style.padding = "0 34px 0 8px";
+  header.style.gap = "8px";
+  header.style.height = "36px";
+  header.style.padding = PICKER_ROW_PADDING;
   header.style.color = "inherit";
   header.style.font = "600 12px/1 system-ui, sans-serif";
   header.style.opacity = "0.72";
-  header.append(createRendererAgentIcon("codex", 16, document), input.accountsLabel);
+  const headerIcon = document.createElement("span");
+  headerIcon.setAttribute("aria-hidden", "true");
+  headerIcon.style.display = "inline-flex";
+  headerIcon.style.alignItems = "center";
+  headerIcon.style.justifyContent = "center";
+  headerIcon.style.width = "24px";
+  headerIcon.style.height = "24px";
+  headerIcon.style.flex = "none";
+  headerIcon.append(createRendererAgentIcon("codex", 16, document));
+  header.append(headerIcon, input.accountsLabel);
 
   const list = document.createElement("div");
   list.style.display = "flex";
@@ -116,37 +164,30 @@ export function createRendererCodexAccountGroup(input: {
 
   const manage = document.createElement("button");
   manage.type = "button";
+  manage.dataset.codexAccountManage = "true";
   manage.setAttribute("role", "menuitem");
   manage.setAttribute("aria-label", input.manageAccountsLabel);
   manage.title = input.manageAccountsLabel;
-  manage.textContent = "…";
-  manage.style.position = "absolute";
-  manage.style.top = "3px";
-  manage.style.right = "4px";
-  manage.style.display = "inline-flex";
-  manage.style.alignItems = "center";
-  manage.style.justifyContent = "center";
-  manage.style.width = "24px";
-  manage.style.height = "24px";
-  manage.style.padding = "0";
-  manage.style.color = "inherit";
-  manage.style.background = "transparent";
+  applyPickerTrailingSlot(manage);
   manage.style.border = "0";
-  manage.style.borderRadius = "5px";
-  manage.style.font = "600 16px/1 system-ui, sans-serif";
-  manage.style.opacity = "0.56";
+  manage.style.borderRadius = "4px";
+  manage.style.background = "transparent";
+  manage.style.color = "inherit";
+  manage.style.opacity = "0.72";
   manage.style.cursor = "pointer";
+  manage.append(createPickerChromeIcon("ellipsis"));
   manage.addEventListener("pointerenter", () => {
     manage.style.background = "rgba(127, 127, 127, 0.1)";
     manage.style.opacity = "1";
   });
   manage.addEventListener("pointerleave", () => {
     manage.style.background = "transparent";
-    manage.style.opacity = "0.56";
+    manage.style.opacity = "0.72";
   });
   manage.addEventListener("click", input.onManage);
 
-  accountSection.append(header, list, manage);
+  header.append(manage);
+  accountSection.append(header, list);
   root.append(accountSection);
 
   const badge = document.createElement("span");
@@ -174,13 +215,12 @@ export function createRendererCodexAccountGroup(input: {
       button.type = "button";
       button.dataset.codexAccountId = account.accountId;
       button.setAttribute("role", "menuitemradio");
-      button.style.display = "grid";
-      button.style.gridTemplateColumns = "20px minmax(0, 1fr) 16px";
+      button.style.display = "flex";
       button.style.alignItems = "center";
-      button.style.gap = "7px";
+      button.style.gap = "8px";
       button.style.width = "100%";
-      button.style.height = "32px";
-      button.style.padding = "0 7px";
+      button.style.height = "36px";
+      button.style.padding = PICKER_ROW_PADDING;
       button.style.color = "inherit";
       button.style.background = "transparent";
       button.style.border = "0";
@@ -201,46 +241,35 @@ export function createRendererCodexAccountGroup(input: {
       avatar.style.borderRadius = "50%";
       avatar.style.font = "700 10px/1 system-ui, sans-serif";
 
-      const displayName = codexAccountDisplayName(account);
+      const authLabel = formatCodexAccountAuthLabel(account, input.messages);
       const name = document.createElement("span");
       name.style.display = "flex";
       name.style.alignItems = "baseline";
       name.style.minWidth = "0";
       name.style.gap = "4px";
       const local = document.createElement("strong");
-      local.textContent = displayName.local;
+      local.textContent = authLabel;
       local.style.minWidth = "0";
       local.style.overflow = "hidden";
       local.style.font = "600 13px/1 system-ui, sans-serif";
       local.style.textOverflow = "ellipsis";
       local.style.whiteSpace = "nowrap";
       name.append(local);
-      if (displayName.domain) {
-        const domain = document.createElement("span");
-        domain.textContent = displayName.domain;
-        domain.style.maxWidth = "48%";
-        domain.style.overflow = "hidden";
-        domain.style.flex = "none";
-        domain.style.font = "400 11px/1 system-ui, sans-serif";
-        domain.style.opacity = "0.58";
-        domain.style.textOverflow = "ellipsis";
-        domain.style.whiteSpace = "nowrap";
-        name.append(domain);
-      }
 
       const check = document.createElement("span");
-      check.textContent = "✓";
+      check.dataset.codexhostAgentTrailing = "check";
       check.setAttribute("aria-hidden", "true");
-      check.style.width = "16px";
-      check.style.textAlign = "center";
-      check.style.font = "600 14px/1 system-ui, sans-serif";
+      applyPickerTrailingSlot(check);
       check.style.visibility = "hidden";
+      check.style.pointerEvents = "none";
+      check.append(createPickerChromeIcon("tick"));
 
-      button.title = displayName.full;
-      button.setAttribute("aria-label", `${input.accountsLabel}: ${displayName.full}`);
-      button.append(avatar, name, check);
+      button.title = authLabel;
+      button.setAttribute("aria-label", `${input.accountsLabel}: ${authLabel}`);
+      button.append(avatar, name);
       button.addEventListener("click", () => input.onSelect(account.accountId));
-      row.append(button);
+      row.style.position = "relative";
+      row.append(button, check);
       list.append(row);
       options.set(account.accountId, { row, button, check, action: null });
     }

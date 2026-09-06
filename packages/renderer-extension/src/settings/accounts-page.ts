@@ -14,6 +14,10 @@ import type {
 } from "@codexhost/shared-contracts";
 
 import type { RendererSettingsPageDefinition, RendererSettingsPageMountContext } from "./core.js";
+import {
+  codexAccountAuthKind,
+  formatCodexAccountAuthLabel,
+} from "../renderer-codex-account-options.js";
 import { createRendererSettingsIcon } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
 
@@ -137,7 +141,7 @@ export function createAccountsSettingsPage(
           identity.className = "settings-account-row__identity";
           const titleLine = document.createElement("div");
           const title = document.createElement("strong");
-          title.textContent = account.email ?? account.label;
+          title.textContent = formatCodexAccountAuthLabel(account, messages);
           titleLine.append(title);
           if (account.active) {
             const badge = document.createElement("span");
@@ -162,7 +166,7 @@ export function createAccountsSettingsPage(
             );
             actions.append(activate);
           }
-          if (!account.email) {
+          if (codexAccountAuthKind(account) !== "api" && !account.email) {
             const signIn = document.createElement("button");
             signIn.type = "button";
             signIn.className = "settings-command-button settings-command-button--secondary";

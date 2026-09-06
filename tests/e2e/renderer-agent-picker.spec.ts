@@ -39,6 +39,7 @@ const { outputFiles } = await build({
           ["codex", "pi"],
           () => {},
           () => {},
+          () => {},
         );
         mountShell().append(control.root);
         renderRendererAgentPicker(
@@ -59,6 +60,8 @@ const { outputFiles } = await build({
           ["codex", "pi", "claude-code", "grok"],
           () => {},
           () => {},
+          () => {},
+          undefined,
           groups,
         );
         mountShell().append(control.root);
@@ -107,7 +110,7 @@ test("keeps the Agent menu anchored inside the Codex window zoom", async ({ page
   if (!triggerBox || !menuBox) throw new Error("Agent picker geometry is unavailable");
 
   expect(menuBox.x + menuBox.width).toBeCloseTo(triggerBox.x + triggerBox.width, 0);
-  expect(menuBox.width).toBeCloseTo(200 * 1.6, 0);
+  expect(menuBox.width).toBeCloseTo(224 * 1.6, 0);
   expect(triggerBox.y - (menuBox.y + menuBox.height)).toBeCloseTo(6 * 1.6, 0);
 });
 
@@ -144,15 +147,19 @@ test("expands More Agents upward with a trailing Settings icon", async ({ page }
   await expect(settingsButtons).toHaveCount(1);
   await expect(settingsButtons).toHaveAttribute("data-codexhost-agent-more", "settings");
 
-  const grokAdd = menu.locator('button[data-agent="grok"]').locator("..").locator("button").nth(1);
-  const [rowBox, settingsBox, panelBox, piBox, addBox] = await Promise.all([
+  const grokAdd = menu.getByRole("button", { name: "Install Grok" });
+  const selectedCheck = menu.locator('[data-codexhost-agent-trailing="check"]').first();
+  const moreArrow = page.locator('[data-codexhost-agent-more="arrow"]');
+  const [rowBox, settingsBox, panelBox, piBox, addBox, checkBox, arrowBox] = await Promise.all([
     moreRow.boundingBox(),
     moreSettings.boundingBox(),
     morePanel.boundingBox(),
     menu.locator('button[data-agent="pi"]').boundingBox(),
     grokAdd.boundingBox(),
+    selectedCheck.boundingBox(),
+    moreArrow.boundingBox(),
   ]);
-  if (!rowBox || !settingsBox || !panelBox || !piBox || !addBox) {
+  if (!rowBox || !settingsBox || !panelBox || !piBox || !addBox || !checkBox || !arrowBox) {
     throw new Error("More Agents geometry is unavailable");
   }
 
@@ -160,4 +167,9 @@ test("expands More Agents upward with a trailing Settings icon", async ({ page }
   expect(piBox.y + piBox.height).toBeLessThanOrEqual(rowBox.y + 1);
   expect(settingsBox.x).toBeCloseTo(addBox.x, 0);
   expect(settingsBox.width).toBeCloseTo(addBox.width, 0);
+  expect(checkBox.x).toBeCloseTo(addBox.x, 0);
+  expect(checkBox.width).toBeCloseTo(addBox.width, 0);
+  expect(arrowBox.width).toBeCloseTo(settingsBox.width, 0);
+  expect(arrowBox.height).toBeCloseTo(settingsBox.height, 0);
+  expect(arrowBox.y + arrowBox.height / 2).toBeCloseTo(settingsBox.y + settingsBox.height / 2, 0);
 });

@@ -42,6 +42,9 @@ export function createSessionImportListControls(
 
   const pagination = document.createElement("div");
   pagination.className = "settings-session-import-pagination";
+  const summary = document.createElement("span");
+  summary.setAttribute("role", "status");
+  summary.dataset.sessionImportAction = "page-summary";
   const pageSizeLabel = document.createElement("label");
   pageSizeLabel.textContent = messages.sessionImportPageSize;
   const pageSize = document.createElement("select");
@@ -63,9 +66,6 @@ export function createSessionImportListControls(
     offset = 0;
     onChange();
   });
-  const summary = document.createElement("span");
-  summary.setAttribute("role", "status");
-  summary.dataset.sessionImportAction = "page-summary";
   const previous = document.createElement("button");
   const next = document.createElement("button");
   for (const [button, label, action, direction] of [
@@ -85,19 +85,21 @@ export function createSessionImportListControls(
   const navigation = document.createElement("div");
   navigation.className = "settings-session-import-pagination__navigation";
   navigation.append(previous, next);
-  pagination.append(pageSizeLabel, summary, navigation);
+  pagination.append(summary, pageSizeLabel, navigation);
   const update = (): void => {
     search.disabled = locked;
     submit.disabled = locked;
     pageSize.disabled = locked;
     previous.disabled = locked || loading || offset === 0;
     next.disabled = locked || loading || offset + limit >= total;
+    const from = total === 0 ? 0 : offset + 1;
+    const to = Math.min(offset + limit, total);
     summary.textContent = loading
       ? ""
       : messages.sessionImportPageSummary
-          .replace("{page}", String(total ? Math.floor(offset / limit) + 1 : 0))
-          .replace("{pages}", String(Math.ceil(total / limit)))
-          .replace("{total}", String(total));
+          .replace("{total}", String(total))
+          .replace("{from}", String(from))
+          .replace("{to}", String(to));
   };
   update();
   return {

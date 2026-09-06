@@ -639,7 +639,7 @@ describe("Renderer Plugin page", () => {
       runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
     });
 
-    expect(visibleText(content)).toContain("Plugin");
+    expect(visibleText(content)).toContain("插件");
     expect(visibleText(content)).toContain("Renderer 适配器");
     expect(visibleText(content)).not.toContain("CH");
     const adapterRow = descendants(content).find(
@@ -718,11 +718,13 @@ describe("Renderer Codex Accounts page", () => {
       runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
     });
 
-    await vi.waitFor(() => expect(visibleText(content)).toContain("Default"));
+    await vi.waitFor(() => expect(visibleText(content)).toContain("API - BANK OF TOKEN"));
     expect(client.refreshCodexAccounts).toHaveBeenCalledOnce();
 
-    refresh.resolve({ accounts: [{ ...cachedAccount, email: "cached@example.com" }] });
-    await vi.waitFor(() => expect(visibleText(content)).toContain("cached@example.com"));
+    refresh.resolve({
+      accounts: [{ ...cachedAccount, email: "cached@example.com", authKind: "chatgpt" }],
+    });
+    await vi.waitFor(() => expect(visibleText(content)).toContain("Account - cached@example.com"));
 
     scope.dispose();
   });
@@ -827,7 +829,7 @@ describe("Renderer Codex Accounts page", () => {
       signal: scope.signal,
       runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
     });
-    await vi.waitFor(() => expect(visibleText(content)).toContain("Work"));
+    await vi.waitFor(() => expect(visibleText(content)).toContain("/tmp/work"));
 
     const deleteButtons = descendants(content).filter(
       ({ tagName, textContent }) => tagName === "button" && textContent === "Delete",
@@ -838,8 +840,8 @@ describe("Renderer Codex Accounts page", () => {
       "Delete this Account and its local data? This cannot be undone.",
     );
     await vi.waitFor(() => expect(deleteCodexAccount).toHaveBeenCalledWith({ accountId: "work" }));
-    await vi.waitFor(() => expect(visibleText(content)).not.toContain("Work"));
-    expect(visibleText(content)).toContain("Default");
+    await vi.waitFor(() => expect(visibleText(content)).not.toContain("/tmp/work"));
+    expect(visibleText(content)).toContain("/tmp/default");
 
     scope.dispose();
   });
@@ -864,6 +866,7 @@ describe("Renderer Codex Accounts page", () => {
           codexHome: "/tmp/personal",
           active: active === "personal",
           isDefault: true,
+          authKind: "chatgpt",
         },
         {
           accountId: "work",
@@ -872,6 +875,7 @@ describe("Renderer Codex Accounts page", () => {
           codexHome: "/tmp/work",
           active: active === "work",
           isDefault: false,
+          authKind: "chatgpt",
         },
       ],
     }));
@@ -929,7 +933,8 @@ describe("Renderer Codex Accounts page", () => {
       signal: scope.signal,
       runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
     });
-    await vi.waitFor(() => expect(visibleText(content)).toContain("Personal"));
+    await vi.waitFor(() => expect(visibleText(content)).toContain("Account - Personal"));
+    expect(visibleText(content)).toContain("Account - work@example.com");
     expect(visibleText(content)).toContain(
       "Existing tasks keep the account they were created with",
     );
@@ -1372,7 +1377,7 @@ describe("Renderer Session Import page", () => {
     };
     await vi.waitFor(() => expect(visibleRows()).toHaveLength(20));
     expect(action("previous").disabled).toBe(true);
-    expect(action("page-summary").textContent).toBe("Page 1 of 3 · 45 sessions");
+    expect(action("page-summary").textContent).toBe("45 records / 1-20");
     action("next").dispatch("click");
     await vi.waitFor(() => expect(visibleRows()[0]?.dataset.sessionImportId).toBe("session-20"));
     action("next").dispatch("click");
@@ -1380,7 +1385,7 @@ describe("Renderer Session Import page", () => {
     expect(action("next").disabled).toBe(true);
     action("previous").dispatch("click");
     await vi.waitFor(() =>
-      expect(action("page-summary").textContent).toBe("Page 2 of 3 · 45 sessions"),
+      expect(action("page-summary").textContent).toBe("45 records / 21-40"),
     );
     action("page-size").value = "50";
     action("page-size").dispatch("change");
@@ -1407,7 +1412,7 @@ describe("Renderer Session Import page", () => {
     await slow.promise;
     await Promise.resolve();
     expect(visibleRows()).toHaveLength(1);
-    expect(action("page-summary").textContent).toBe("Page 1 of 1 · 1 sessions");
+    expect(action("page-summary").textContent).toBe("1 records / 1-1");
     search("absent");
     await vi.waitFor(() => expect(visibleText(content)).toContain("No sessions match"));
     expect(action("previous").disabled).toBe(true);
@@ -1464,15 +1469,15 @@ describe("Renderer Session Import page", () => {
     });
     const control = (name: string) =>
       descendants(content).find(({ dataset }) => dataset.sessionImportAction === name);
-    await vi.waitFor(() => expect(control("page-summary")?.textContent).toContain("Page 1 of 3"));
+    await vi.waitFor(() => expect(control("page-summary")?.textContent).toBe("41 records / 1-20"));
     control("next")?.dispatch("click");
-    await vi.waitFor(() => expect(control("page-summary")?.textContent).toContain("Page 2 of 3"));
+    await vi.waitFor(() => expect(control("page-summary")?.textContent).toBe("41 records / 21-40"));
     control("next")?.dispatch("click");
-    await vi.waitFor(() => expect(control("page-summary")?.textContent).toContain("Page 3 of 3"));
+    await vi.waitFor(() => expect(control("page-summary")?.textContent).toBe("41 records / 41-41"));
     rows.splice(1);
     control("refresh")?.dispatch("click");
     await vi.waitFor(() =>
-      expect(control("page-summary")?.textContent).toBe("Page 1 of 1 · 1 sessions"),
+      expect(control("page-summary")?.textContent).toBe("1 records / 1-1"),
     );
     expect(client.listHarnessSessions).toHaveBeenLastCalledWith({
       harnessId: "pi",
@@ -1711,19 +1716,20 @@ describe("Renderer Session Import page", () => {
     );
     expect(visualIdentity?.textContent).not.toContain("idle-session-identifier-that-is-long");
     expect(visualIdentity?.title).toBe("idle-session-identifier-that-is-long");
-    expect(descendants(content).find(({ tagName }) => tagName === "h2")?.textContent).toBe(
-      "会话导入",
-    );
     const header = elementWithClass(content, "settings-connection-page-header");
+    expect(visibleText(header)).toContain("会话导入");
     expect(visibleText(header)).toContain(
       "会话将保留原始项目路径；若该文件夹尚未出现在 Codex 侧栏，请先将其添加为项目。原始历史仍由 Harness 管理。",
     );
     expect(visibleText(header)).not.toContain(
       "当前仅支持导入 DeepSeek Harness Modern 会话；其他 Harness 的会话导入能力敬请期待。",
     );
-    expect(visibleText(content)).toContain(
+    expect(visibleText(header)).toContain(
       "可选 Harness 来自本地 Host。运行状态未知时，请先在原生客户端关闭该会话再导入，避免同时写入。",
     );
+    expect(
+      descendants(content).some(({ textContent }) => textContent === "Harness"),
+    ).toBe(false);
     const harnessSelector = descendants(content).find(
       ({ dataset }) => dataset.sessionImportHarness === "selector",
     );

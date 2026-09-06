@@ -12,13 +12,21 @@ import type {
 import type { CodexAccountSummary } from "@codexhost/shared-contracts";
 import {
   createRendererCodexAccountGroup,
+  formatCodexAccountAuthLabel,
+  shouldExpandCodexAccountOptions,
   type RendererCodexAccountGroupControl,
   type RendererCodexAccountOptionControl,
 } from "./renderer-codex-account-options.js";
 import { createRendererAgentIcon, RENDERER_AGENT_LABELS } from "./renderer-agent-icon.js";
 import { applyRendererPickerPopoverSurface } from "./renderer-picker-popover-style.js";
 import { requestConnectionsPageFocus } from "./settings/connections-page.js";
-import { createRendererSettingsIcon } from "./settings/icons.js";
+import {
+  PICKER_TRAILING_SLOT_PX,
+  PICKER_ROW_PADDING,
+  applyPickerChromeIconHost,
+  applyPickerTrailingSlot,
+  createPickerChromeIcon,
+} from "./renderer-picker-trailing-slot.js";
 import {
   rendererSettingsMessages,
   resolveRendererSettingsLocale,
@@ -29,10 +37,7 @@ import type { RendererAdapterStatus } from "./versioned-renderer-adapter.js";
 // English by longstanding convention in this file — only the newer
 // Main/More grouping copy below is localized, since it mirrors text the
 // user already sees (translated) on the Connections settings page.
-function pickerGroupMessages(): Pick<
-  ReturnType<typeof rendererSettingsMessages>,
-  "pickerMoreAgentsLabel" | "pickerManageLink" | "pickerHideUnusedAgentsCta"
-> & {
+function pickerGroupMessages(): ReturnType<typeof rendererSettingsMessages> & {
   readonly codexAccountsLabel: string;
   readonly manageCodexAccountsLabel: string;
 } {
@@ -83,13 +88,10 @@ const AGENT_MENU_WIDTH = 224;
 // Below this many enabled Agents, the picker stays a flat list — grouping
 // only earns its keep once there are enough Harnesses to make scanning slow.
 const AGENT_GROUP_CTA_THRESHOLD = 5;
-// Shared size for Lucide chrome icons (More chevron + Settings gear).
-const PICKER_CHROME_ICON_SIZE_PX = 18;
-
 interface AgentOptionControl {
   row: HTMLElement;
   button: HTMLButtonElement;
-  /** Trailing ✓ inside the option button (same row as icon + label). */
+  /** Trailing ✓ in the shared 24×24 slot (same column as install / Settings). */
   check: HTMLElement;
   // Overlays the trailing check slot as Install ("+") when not installed, or
   // a red error ("!") once it has failed — mutually exclusive with a selected
@@ -166,10 +168,11 @@ export function rendererAgentTrailingSlot(input: {
 export function rendererAgentPickerTooltip(
   state: { agent: RendererAgent; phase: ComposerAgentPhase },
   activeAccount: CodexAccountSummary | undefined,
+  accountCount = 0,
 ): string {
   const account =
-    state.agent === "codex" && activeAccount
-      ? ` · ${activeAccount.email ?? activeAccount.label}`
+    state.agent === "codex" && activeAccount && shouldExpandCodexAccountOptions(accountCount)
+      ? ` · ${formatCodexAccountAuthLabel(activeAccount, rendererSettingsMessages(resolveRendererSettingsLocale(typeof navigator !== "undefined" ? navigator.languages : [])))}`
       : "";
   return `Agent: ${RENDERER_AGENT_LABELS[state.agent]}${account}${state.phase === "locked" ? " (locked)" : ""}`;
 }
@@ -331,6 +334,7 @@ export function mountRendererAgentPicker(
     ownerDocument: document,
     accountsLabel: groupMessages.codexAccountsLabel,
     manageAccountsLabel: groupMessages.manageCodexAccountsLabel,
+    messages: groupMessages,
     onSelect(accountId) {
       close();
       trigger.focus();
@@ -376,7 +380,7 @@ export function mountRendererAgentPicker(
     button.style.width = "100%";
     button.style.flex = "1 1 auto";
     button.style.height = "36px";
-    button.style.padding = "0 34px 0 8px";
+    button.style.padding = PICKER_ROW_PADDING;
     button.style.border = "0";
     button.style.borderRadius = "4px";
     button.style.background = "transparent";
@@ -398,15 +402,12 @@ export function mountRendererAgentPicker(
     button.addEventListener("blur", () => updateHighlight(false));
 
     const check = document.createElement("span");
-    check.textContent = "\u2713";
+    check.dataset.codexhostAgentTrailing = "check";
     check.setAttribute("aria-hidden", "true");
-    check.style.display = "inline-flex";
-    check.style.alignItems = "center";
-    check.style.justifyContent = "center";
-    check.style.width = "24px";
-    check.style.height = "24px";
-    check.style.flex = "none";
+    applyPickerTrailingSlot(check);
     check.style.visibility = "hidden";
+    check.style.pointerEvents = "none";
+    check.append(createPickerChromeIcon("tick"));
 
     const label = document.createElement("span");
     label.textContent = RENDERER_AGENT_LABELS[agent];
@@ -415,9 +416,11 @@ export function mountRendererAgentPicker(
     label.style.overflow = "hidden";
     label.style.textOverflow = "ellipsis";
     label.style.whiteSpace = "nowrap";
-    // Icon + label + ✓ share one button so selection reads as a single row
-    // (same pattern as the model / permission pickers).
-    button.append(createRendererAgentIcon(agent), label, check);
+    const leadingIcon = document.createElement("span");
+    leadingIcon.setAttribute("aria-hidden", "true");
+    applyPickerChromeIconHost(leadingIcon);
+    leadingIcon.append(createRendererAgentIcon(agent));
+    button.append(leadingIcon, label);
     button.addEventListener("click", () => {
       const selected = button.getAttribute("aria-pressed") === "true";
       close();
@@ -434,17 +437,8 @@ export function mountRendererAgentPicker(
             // Overlay the trailing check slot — install/error never share a
             // selected row with ✓, and nesting a button inside the option
             // button is invalid HTML.
-            control.style.position = "absolute";
-            control.style.top = "50%";
-            control.style.right = "8px";
-            control.style.transform = "translateY(-50%)";
-            control.style.display = "inline-flex";
-            control.style.alignItems = "center";
-            control.style.justifyContent = "center";
-            control.style.width = "24px";
-            control.style.height = "24px";
-            control.style.flex = "none";
-            control.style.padding = "0";
+            applyPickerTrailingSlot(control);
+            control.dataset.codexhostAgentTrailing = "action";
             control.style.border = "0";
             control.style.borderRadius = "4px";
             control.style.background = "transparent";
@@ -480,7 +474,7 @@ export function mountRendererAgentPicker(
     const row = document.createElement("div");
     row.style.position = "relative";
     row.style.display = "block";
-    row.append(button);
+    row.append(button, check);
     if (action) row.append(action);
     options[agent] = { row, button, check, action };
     rowsByAgent.set(agent, row);
@@ -520,8 +514,7 @@ export function mountRendererAgentPicker(
   moreToggle.style.gap = "8px";
   moreToggle.style.width = "100%";
   moreToggle.style.height = "36px";
-  // Trailing 40px matches the Agent row's 8px padding + 24px action slot + 8px.
-  moreToggle.style.padding = "0 40px 0 8px";
+  moreToggle.style.padding = PICKER_ROW_PADDING;
   moreToggle.style.border = "0";
   moreToggle.style.borderRadius = "4px";
   moreToggle.style.background = "transparent";
@@ -531,18 +524,12 @@ export function mountRendererAgentPicker(
   moreToggle.style.cursor = "pointer";
   applyMutedChromeHover(moreToggle);
   const moreArrow = document.createElement("span");
+  moreArrow.dataset.codexhostAgentMore = "arrow";
   moreArrow.setAttribute("aria-hidden", "true");
-  moreArrow.style.display = "inline-flex";
-  moreArrow.style.alignItems = "center";
-  moreArrow.style.justifyContent = "center";
-  moreArrow.style.width = `${PICKER_CHROME_ICON_SIZE_PX}px`;
-  moreArrow.style.height = `${PICKER_CHROME_ICON_SIZE_PX}px`;
-  moreArrow.style.flex = "none";
+  applyPickerChromeIconHost(moreArrow);
   moreArrow.style.color = "currentColor";
   const setMoreArrow = (open: boolean): void => {
-    moreArrow.replaceChildren(
-      createRendererSettingsIcon(open ? "chevron-up" : "chevron-right", PICKER_CHROME_ICON_SIZE_PX),
-    );
+    moreArrow.replaceChildren(createPickerChromeIcon(open ? "chevron-up" : "chevron-right"));
   };
   setMoreArrow(false);
   const moreLabel = document.createElement("span");
@@ -553,41 +540,21 @@ export function mountRendererAgentPicker(
   moreLabel.style.overflow = "hidden";
   moreLabel.style.textOverflow = "ellipsis";
   moreLabel.style.whiteSpace = "nowrap";
-  moreLabel.style.lineHeight = `${PICKER_CHROME_ICON_SIZE_PX}px`;
+  moreLabel.style.lineHeight = `${PICKER_TRAILING_SLOT_PX}px`;
   moreToggle.append(moreArrow, moreLabel);
   const moreSettings = document.createElement("button");
   moreSettings.type = "button";
   moreSettings.dataset.codexhostAgentMore = "settings";
   moreSettings.setAttribute("aria-label", groupMessages.pickerManageLink);
   moreSettings.title = groupMessages.pickerManageLink;
-  // Same trailing slot as the Agent install "+" action (24×24, 8px from the right).
-  moreSettings.style.position = "absolute";
-  moreSettings.style.top = "50%";
-  moreSettings.style.right = "8px";
-  moreSettings.style.transform = "translateY(-50%)";
-  moreSettings.style.display = "inline-flex";
-  moreSettings.style.alignItems = "center";
-  moreSettings.style.justifyContent = "center";
-  moreSettings.style.width = "24px";
-  moreSettings.style.height = "24px";
-  moreSettings.style.flex = "none";
-  moreSettings.style.padding = "0";
+  applyPickerTrailingSlot(moreSettings);
   moreSettings.style.border = "0";
   moreSettings.style.borderRadius = "4px";
   moreSettings.style.background = "transparent";
   moreSettings.style.color = "inherit";
   moreSettings.style.opacity = "0.72";
   moreSettings.style.cursor = "pointer";
-  const moreSettingsIcon = document.createElement("span");
-  moreSettingsIcon.setAttribute("aria-hidden", "true");
-  moreSettingsIcon.style.display = "inline-flex";
-  moreSettingsIcon.style.alignItems = "center";
-  moreSettingsIcon.style.justifyContent = "center";
-  moreSettingsIcon.style.width = `${PICKER_CHROME_ICON_SIZE_PX}px`;
-  moreSettingsIcon.style.height = `${PICKER_CHROME_ICON_SIZE_PX}px`;
-  moreSettingsIcon.style.color = "currentColor";
-  moreSettingsIcon.append(createRendererSettingsIcon("settings", PICKER_CHROME_ICON_SIZE_PX));
-  moreSettings.append(moreSettingsIcon);
+  moreSettings.append(createPickerChromeIcon("settings"));
   applyMutedChromeHover(moreSettings);
   moreSettings.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -637,19 +604,14 @@ export function mountRendererAgentPicker(
     button.style.cursor = "pointer";
     const icon = document.createElement("span");
     icon.setAttribute("aria-hidden", "true");
-    icon.style.display = "inline-flex";
-    icon.style.alignItems = "center";
-    icon.style.justifyContent = "center";
-    icon.style.width = `${PICKER_CHROME_ICON_SIZE_PX}px`;
-    icon.style.height = `${PICKER_CHROME_ICON_SIZE_PX}px`;
-    icon.style.flex = "none";
+    applyPickerChromeIconHost(icon);
     icon.style.color = "currentColor";
-    icon.append(createRendererSettingsIcon("settings", PICKER_CHROME_ICON_SIZE_PX));
+    icon.append(createPickerChromeIcon("settings"));
     const label = document.createElement("span");
     label.textContent = labelText;
     label.style.display = "inline-flex";
     label.style.alignItems = "center";
-    label.style.lineHeight = `${PICKER_CHROME_ICON_SIZE_PX}px`;
+    label.style.lineHeight = `${PICKER_TRAILING_SLOT_PX}px`;
     button.append(icon, label);
     applyMutedChromeHover(button);
     button.addEventListener("click", () => openConnectionsSettings(trigger));
@@ -837,14 +799,14 @@ export function renderRendererAgentPicker(
   control.syncAvailability(availability);
   control.codexAccounts = [...codexAccounts];
   const codexOption = control.options.codex;
-  if (codexOption) codexOption.row.hidden = codexAccounts.length > 0;
+  if (codexOption) codexOption.row.hidden = shouldExpandCodexAccountOptions(codexAccounts.length);
   const view = rendererAgentPickerView(
     state,
     adapterState,
     switching,
     control.agents,
     availability,
-    codexAccounts.length,
+    shouldExpandCodexAccountOptions(codexAccounts.length) ? codexAccounts.length : 0,
   );
   if (control.iconSlot.dataset.agent !== state.agent) {
     control.iconSlot.replaceChildren(createRendererAgentIcon(state.agent));
@@ -858,12 +820,12 @@ export function renderRendererAgentPicker(
   );
   const activeAccount = codexAccounts.find(({ active }) => active);
   control.codexAccountGroup.render({
-    accounts: codexAccounts,
+    accounts: shouldExpandCodexAccountOptions(codexAccounts.length) ? codexAccounts : [],
     selectedAccountId: state.agent === "codex" ? (activeAccount?.accountId ?? null) : null,
     disabled: switching || state.phase === "locked",
-    showBadge: state.agent === "codex" && codexAccounts.length > 1,
+    showBadge: state.agent === "codex" && shouldExpandCodexAccountOptions(codexAccounts.length),
   });
-  control.trigger.title = rendererAgentPickerTooltip(state, activeAccount);
+  control.trigger.title = rendererAgentPickerTooltip(state, activeAccount, codexAccounts.length);
   control.trigger.style.cursor = control.trigger.disabled ? "not-allowed" : "pointer";
   control.trigger.style.opacity = control.trigger.disabled && !switching ? "0.72" : "1";
   control.iconSlot.style.display = switching ? "none" : "inline-flex";
@@ -900,15 +862,17 @@ export function renderRendererAgentPicker(
         option.action.textContent = "!";
         option.action.style.color = "#f87171";
         option.action.style.font = "800 13px/1 system-ui, sans-serif";
+        option.action.style.lineHeight = "1";
         option.action.style.opacity = "1";
         const label = `${RENDERER_AGENT_LABELS[agent]} connection error — open Settings for details`;
         option.action.setAttribute("aria-label", label);
         option.action.title = label;
       } else {
         option.action.dataset.mode = "install";
-        option.action.textContent = "+";
+        option.action.replaceChildren(createPickerChromeIcon("add"));
         option.action.style.color = "inherit";
-        option.action.style.font = "600 18px/1 system-ui, sans-serif";
+        option.action.style.font = "";
+        option.action.style.lineHeight = "0";
         option.action.style.opacity = "0.72";
         const label = `Install ${RENDERER_AGENT_LABELS[agent]}`;
         option.action.setAttribute("aria-label", label);

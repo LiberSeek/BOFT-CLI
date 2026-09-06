@@ -21,14 +21,15 @@ export interface RendererSettingsMessages {
   readonly locale: RendererSettingsLocale;
   readonly title: string;
   readonly close: string;
-  readonly starOnGitHub: string;
   readonly sectionsLabel: string;
+  readonly connectionSection: string;
   readonly generalSection: string;
   readonly otherSection: string;
   readonly pageUnavailable: string;
   readonly inDevelopment: string;
   readonly notAvailable: string;
   readonly runtimeCapabilityNotInstalled: string;
+  readonly sessionImportTitle: string;
   readonly sessionImportHarness: string;
   readonly sessionImportDescription: string;
   readonly sessionImportAvailabilityNote: string;
@@ -83,6 +84,9 @@ export interface RendererSettingsMessages {
   readonly accountLoginSucceeded: string;
   readonly accountLoginFailed: string;
   readonly accountLoadFailed: string;
+  readonly accountAuthApiPrefix: string;
+  readonly accountAuthChatPrefix: string;
+  readonly accountAuthApiIdentityFallback: string;
   readonly connectionAdapter: string;
   readonly connectionHosts: string;
   readonly connectionLocalHost: string;
@@ -187,14 +191,15 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "en",
   title: "Settings",
   close: "Close settings",
-  starOnGitHub: "Give us a Star~",
   sectionsLabel: "Settings sections",
+  connectionSection: "Connections",
   generalSection: "General",
   otherSection: "Other",
   pageUnavailable: "Page unavailable",
   inDevelopment: "In development",
   notAvailable: "Not available",
   runtimeCapabilityNotInstalled: "This runtime capability is not installed yet.",
+  sessionImportTitle: "Session Import",
   sessionImportHarness: "Harness",
   sessionImportDescription:
     "Sessions keep their original project path. If a folder is not in the Codex sidebar, add it as a project first. Original history remains managed by the Harness.",
@@ -208,10 +213,10 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   sessionImportSearch: "Search",
   sessionImportSearchPlaceholder: "Search titles, session IDs or project paths",
   sessionImportNoMatches: "No sessions match your search.",
-  sessionImportPageSize: "Per page",
+  sessionImportPageSize: "Per page:",
   sessionImportPrevious: "Previous",
   sessionImportNext: "Next",
-  sessionImportPageSummary: "Page {page} of {pages} · {total} sessions",
+  sessionImportPageSummary: "{total} records / {from}-{to}",
   sessionImportLoadFailed:
     "Local sessions could not be loaded. Check directory access or duplicate session IDs, then retry.",
   sessionImportFailed: "The session could not be imported.",
@@ -257,6 +262,9 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountLoginSucceeded: "Sign-in completed.",
   accountLoginFailed: "Sign-in failed.",
   accountLoadFailed: "Could not load Codex Accounts.",
+  accountAuthApiPrefix: "API",
+  accountAuthChatPrefix: "Account",
+  accountAuthApiIdentityFallback: "BANK OF TOKEN",
   connectionAdapter: "Renderer adapter",
   connectionHosts: "Hosts",
   connectionLocalHost: "Local",
@@ -376,9 +384,9 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   aboutBrandTagline: "Explore toward the future",
   pageLabels: Object.freeze({
     connections: "Agents",
-    plugins: "Plugin",
+    plugins: "Plugins",
     accounts: "Accounts",
-    "session-import": "Session Import",
+    "session-import": "Sessions",
     updates: "Updates",
     about: "About",
   }),
@@ -388,14 +396,15 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "zh-CN",
   title: "设置",
   close: "关闭设置",
-  starOnGitHub: "点个 Star~",
   sectionsLabel: "设置分类",
+  connectionSection: "连接",
   generalSection: "通用",
   otherSection: "其他",
   pageUnavailable: "页面不可用",
   inDevelopment: "开发中",
   notAvailable: "暂不可用",
   runtimeCapabilityNotInstalled: "运行时尚未安装该项能力，因此暂不可用。",
+  sessionImportTitle: "会话导入",
   sessionImportHarness: "Harness",
   sessionImportDescription:
     "会话将保留原始项目路径；若该文件夹尚未出现在 Codex 侧栏，请先将其添加为项目。原始历史仍由 Harness 管理。",
@@ -409,10 +418,10 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   sessionImportSearch: "搜索",
   sessionImportSearchPlaceholder: "搜索标题、会话 ID 或项目路径",
   sessionImportNoMatches: "没有匹配的会话。",
-  sessionImportPageSize: "每页",
+  sessionImportPageSize: "每页:",
   sessionImportPrevious: "上一页",
   sessionImportNext: "下一页",
-  sessionImportPageSummary: "第 {page} / {pages} 页 · 共 {total} 条",
+  sessionImportPageSummary: "{total} 条记录 / {from}-{to}",
   sessionImportLoadFailed: "无法读取本地会话，请检查目录访问权限或重复的会话 ID 后重试。",
   sessionImportFailed: "无法导入该会话。",
   sessionImportUntitled: "未命名会话",
@@ -454,6 +463,9 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountLoginSucceeded: "登录成功。",
   accountLoginFailed: "登录失败。",
   accountLoadFailed: "无法加载 Codex 账号。",
+  accountAuthApiPrefix: "API",
+  accountAuthChatPrefix: "账号",
+  accountAuthApiIdentityFallback: "BANK OF TOKEN",
   connectionAdapter: "Renderer 适配器",
   connectionHosts: "Host 列表",
   connectionLocalHost: "本地",
@@ -570,9 +582,9 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   aboutBrandTagline: "向未来探索",
   pageLabels: Object.freeze({
     connections: "Agents",
-    plugins: "Plugin",
+    plugins: "插件",
     accounts: "账号",
-    "session-import": "会话导入",
+    "session-import": "会话",
     updates: "更新",
     about: "关于",
   }),

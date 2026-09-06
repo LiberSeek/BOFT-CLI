@@ -1,3 +1,4 @@
+import { inspectCodexHomeAuth } from "./account/codex-home-auth.js";
 import { AccountRateLimits } from "./codex-runtime/account-rate-limits.js";
 import type { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
@@ -1467,14 +1468,9 @@ export class AppServerHost {
         await this.#writer.json(
           rpcEnvelope(request, {
             result: {
-              accounts: accounts.map((account) => ({
-                accountId: account.accountId,
-                label: account.label,
-                ...(account.email ? { email: account.email } : {}),
-                codexHome: account.codexHome,
-                active: account.accountId === activeAccountId,
-                isDefault: this.#accountRepository.isDefaultAccount(account.accountId),
-              })),
+              accounts: await Promise.all(
+                accounts.map((account) => this.#codexAccountSummary(account, activeAccountId)),
+              ),
             },
           }),
         );
@@ -1492,14 +1488,7 @@ export class AppServerHost {
         await this.#writer.json(
           rpcEnvelope(request, {
             result: {
-              account: {
-                accountId: account.accountId,
-                label: account.label,
-                ...(account.email ? { email: account.email } : {}),
-                codexHome: account.codexHome,
-                active: account.accountId === activeAccountId,
-                isDefault: this.#accountRepository.isDefaultAccount(account.accountId),
-              },
+              account: await this.#codexAccountSummary(account, activeAccountId),
             },
           }),
         );
@@ -1514,14 +1503,7 @@ export class AppServerHost {
         await this.#writer.json(
           rpcEnvelope(request, {
             result: {
-              account: {
-                accountId: account.accountId,
-                label: account.label,
-                ...(account.email ? { email: account.email } : {}),
-                codexHome: account.codexHome,
-                active: true,
-                isDefault: this.#accountRepository.isDefaultAccount(account.accountId),
-              },
+              account: await this.#codexAccountSummary(account, account.accountId),
             },
           }),
         );
@@ -1620,6 +1602,34 @@ export class AppServerHost {
 
   #officialRequestKey(accountId: string, requestId: unknown): string {
     return `${accountId}\u0000${typeof requestId}\u0000${String(requestId)}`;
+  }
+
+  async #codexAccountSummary(
+    account: { accountId: string; label: string; email?: string; codexHome: string },
+    activeAccountId: string,
+  ): Promise<{
+    accountId: string;
+    label: string;
+    email?: string;
+    codexHome: string;
+    active: boolean;
+    isDefault: boolean;
+    authKind: "api" | "chatgpt";
+    authIdentity?: string;
+  }> {
+    const auth = await inspectCodexHomeAuth(account.codexHome);
+    const authIdentity =
+      auth.kind === "api" ? auth.identity : account.email?.trim() || auth.identity;
+    return {
+      accountId: account.accountId,
+      label: account.label,
+      ...(account.email ? { email: account.email } : {}),
+      codexHome: account.codexHome,
+      active: account.accountId === activeAccountId,
+      isDefault: this.#accountRepository.isDefaultAccount(account.accountId),
+      authKind: auth.kind,
+      ...(authIdentity ? { authIdentity } : {}),
+    };
   }
 
   async #refreshCodexAccountMetadata(): Promise<void> {

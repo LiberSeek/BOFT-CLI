@@ -2,6 +2,7 @@ import type { IconNode } from "lucide";
 import createElement from "lucide/dist/esm/createElement.mjs";
 import Boxes from "lucide/dist/esm/icons/boxes.mjs";
 import Check from "lucide/dist/esm/icons/circle-check.mjs";
+import CheckTick from "lucide/dist/esm/icons/check.mjs";
 import ChevronDown from "lucide/dist/esm/icons/chevron-down.mjs";
 import ChevronLeft from "lucide/dist/esm/icons/chevron-left.mjs";
 import ChevronRight from "lucide/dist/esm/icons/chevron-right.mjs";
@@ -9,6 +10,7 @@ import ChevronUp from "lucide/dist/esm/icons/chevron-up.mjs";
 import CircleArrowUp from "lucide/dist/esm/icons/circle-arrow-up.mjs";
 import CircleOff from "lucide/dist/esm/icons/circle-off.mjs";
 import Copy from "lucide/dist/esm/icons/copy.mjs";
+import Ellipsis from "lucide/dist/esm/icons/ellipsis.mjs";
 import Download from "lucide/dist/esm/icons/download.mjs";
 import ExternalLink from "lucide/dist/esm/icons/external-link.mjs";
 import FolderInput from "lucide/dist/esm/icons/folder-input.mjs";
@@ -24,7 +26,6 @@ import RotateCcw from "lucide/dist/esm/icons/rotate-ccw.mjs";
 import Route from "lucide/dist/esm/icons/route.mjs";
 import Settings from "lucide/dist/esm/icons/settings.mjs";
 import Stethoscope from "lucide/dist/esm/icons/stethoscope.mjs";
-import Star from "lucide/dist/esm/icons/star.mjs";
 import TriangleAlert from "lucide/dist/esm/icons/triangle-alert.mjs";
 import Users from "lucide/dist/esm/icons/users.mjs";
 import X from "lucide/dist/esm/icons/x.mjs";
@@ -33,7 +34,6 @@ import codexhostBrandIconUrl from "../assets/codexhost-brand-icon.png";
 export const RENDERER_SETTINGS_ICON_NAMES = [
   "settings",
   "close",
-  "star",
   "language",
   "connections",
   "plugins",
@@ -50,8 +50,10 @@ export const RENDERER_SETTINGS_ICON_NAMES = [
   "unavailable",
   "alert",
   "check",
+  "tick",
   "diagnose",
   "copy",
+  "ellipsis",
   "download",
   "chevron-left",
   "chevron-right",
@@ -66,7 +68,6 @@ export type RendererSettingsIconName = (typeof RENDERER_SETTINGS_ICON_NAMES)[num
 const iconNodes = {
   settings: Settings,
   close: X,
-  star: Star,
   language: Languages,
   connections: PlugZap,
   plugins: Puzzle,
@@ -83,8 +84,10 @@ const iconNodes = {
   unavailable: CircleOff,
   alert: TriangleAlert,
   check: Check,
+  tick: CheckTick,
   diagnose: Stethoscope,
   copy: Copy,
+  ellipsis: Ellipsis,
   download: Download,
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
