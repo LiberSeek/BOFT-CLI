@@ -15,6 +15,7 @@ The `HarnessAdapter` SHALL provide side-effect-free Model inspection that return
 - **WHEN** a caller inspects Claude Code and its official SDK returns a valid initialization Model list plus stable current-Model readback without a Prompt
 - **THEN** the Adapter returns a deterministic Catalog of the current Claude Code configuration's selectable values, a default selectable Ref, the observed resolved Model label, and `configuration.selectModel: true`
 - **AND** no model Turn or persistent Native Session is created and every temporary Claude process is closed before inspection resolves
+- **AND** a custom non-Anthropic `ANTHROPIC_BASE_URL` uses that gateway's live `/v1/models` list while official Anthropic account/API inspection keeps the SDK catalog
 
 #### Scenario: Inspection cannot start Pi
 - **WHEN** Pi is not installed, cannot start, or returns an invalid catalog

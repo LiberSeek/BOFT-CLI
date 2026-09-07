@@ -14,6 +14,7 @@ import type { HarnessAccountSnapshot, HarnessThinkingOptionId } from "@codexhost
 import { projectClaudeAccountUsage } from "./account-usage.js";
 
 import { resolveClaudeCodeExecutable, withNodeRuntimeOnPath } from "./command.js";
+import { applyGatewayModelCatalog } from "./gateway-models.js";
 import type { ClaudeModelInspectionSnapshot } from "./model-catalog.js";
 import { ClaudeNativeTurnAccumulator, parseClaudePlanLimitEvent } from "./native-message.js";
 import { isClaudePermissionMode, type ClaudePermissionMode } from "./permission-modes.js";
@@ -1009,13 +1010,14 @@ export class ClaudeSdkModelInspector implements ClaudeModelInspector {
 
   async inspect(): Promise<ClaudeModelInspectionSnapshot> {
     const activeQuery = this.#createQuery();
+    let snapshot: ClaudeModelInspectionSnapshot | undefined;
     try {
       const initialized = await activeQuery.initializationResult();
       const candidate = activeQuery as unknown as Record<string, unknown>;
       const canSelectModel =
         Array.isArray(initialized.models) && typeof candidate.setModel === "function";
       const canSelectPermissionMode = typeof candidate.setPermissionMode === "function";
-      return {
+      snapshot = {
         models: initialized.models,
         canSelectModel,
         canSelectPermissionMode,
@@ -1023,6 +1025,8 @@ export class ClaudeSdkModelInspector implements ClaudeModelInspector {
     } finally {
       await this.close();
     }
+    if (!snapshot) throw new Error("Claude Code Model inspection did not complete");
+    return applyGatewayModelCatalog(snapshot, this.#environment);
   }
 
   close(): Promise<void> {

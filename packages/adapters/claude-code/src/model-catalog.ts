@@ -19,7 +19,7 @@ import {
 } from "./thinking-options.js";
 
 const CLAUDE_MODEL_REF_PREFIX = "claude-model-v1.";
-const CLAUDE_MODEL_VALUE_MAX_LENGTH = 512;
+export const CLAUDE_MODEL_VALUE_MAX_LENGTH = 512;
 
 const modelInfoSchema = z.object({
   value: z.string().trim().min(1).max(CLAUDE_MODEL_VALUE_MAX_LENGTH),

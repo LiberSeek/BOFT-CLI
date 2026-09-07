@@ -1107,6 +1107,7 @@ describe("ClaudeSdkTransport Model control", () => {
     value.fakeQuery.getContextUsage.mockRejectedValueOnce(new Error("must not be called"));
     const inspector = new ClaudeSdkModelInspector({
       command: process.execPath,
+      environment: {},
       cwd: process.cwd(),
       closeTimeoutMs: 100,
       queryFactory: value.queryFactory,
@@ -1150,6 +1151,54 @@ describe("ClaudeSdkTransport Model control", () => {
     );
     expect(options(value)).not.toHaveProperty("sessionId");
     expect(options(value)).not.toHaveProperty("resume");
+  });
+
+  it("uses gateway /v1/models when ANTHROPIC_BASE_URL is a custom endpoint", async () => {
+    const value = fixture();
+    const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe("https://gateway.example/v1/models?limit=1000");
+      expect(init?.headers).toMatchObject({ Authorization: "Bearer secret-token" });
+      return new Response(
+        JSON.stringify({
+          data: [
+            { id: "claude-sonnet-5", display_name: "Sonnet 5" },
+            { id: "gpt-5.4", name: "GPT 5.4" },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    vi.stubGlobal("fetch", fetch);
+    const inspector = new ClaudeSdkModelInspector({
+      command: process.execPath,
+      environment: {
+        ANTHROPIC_BASE_URL: "https://gateway.example",
+        ANTHROPIC_AUTH_TOKEN: "secret-token",
+      },
+      cwd: process.cwd(),
+      closeTimeoutMs: 100,
+      queryFactory: value.queryFactory,
+    });
+
+    try {
+      await expect(inspector.inspect()).resolves.toEqual({
+        models: [
+          {
+            value: "default",
+            displayName: "Default",
+            description: "Default",
+            supportsAutoMode: true,
+          },
+          { value: "claude-sonnet-5", displayName: "Sonnet 5" },
+          { value: "gpt-5.4", displayName: "GPT 5.4" },
+        ],
+        canSelectModel: true,
+        canSelectPermissionMode: true,
+      });
+      expect(fetch).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

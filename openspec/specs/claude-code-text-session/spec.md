@@ -361,12 +361,24 @@ The Claude Code Adapter MUST publish `claude.init` (`/init`) and `claude.recap` 
 - **AND** no native command is started
 
 ### Requirement: Claude Catalog uses official runtime data without configuration parsing
-Claude Adapter SHALL derive selectable identity from official SDK `ModelInfo.value`, optional initial resolved display from structured SDK fields, and current actual display from stable structured current-context Model readback. It MUST NOT read `settings.json`, maintain a static first-party manifest, parse human descriptions, or advertise Models absent from the runtime Catalog.
+Claude Adapter SHALL derive selectable identity from official SDK `ModelInfo.value`, optional initial resolved display from structured SDK fields, and current actual display from stable structured current-context Model readback when the user is on an Anthropic account or the official Anthropic API. It MUST NOT maintain a static first-party manifest, parse human descriptions, or advertise Models that neither the SDK catalog nor a live custom-gateway `/v1/models` response contains.
+
+When process, shell, or Claude user-settings `env` provides a non-Anthropic `ANTHROPIC_BASE_URL`, inspection SHALL query that gateway's `GET /v1/models` after closing the temporary SDK inspect process, keep the SDK `default` row, and use the returned Model IDs as the remaining selectable catalog. If that request fails, times out, redirects, or returns no usable Models, inspection SHALL fall back to the SDK catalog. The Adapter MUST NOT log credentials or copy gateway authentication fields into the public Catalog. Official `api.anthropic.com` endpoints MUST keep the SDK catalog and MUST NOT fetch `/v1/models`.
 
 #### Scenario: User maps Claude aliases to a custom Model
 - **WHEN** the user's Claude Code configuration maps family aliases to GLM, MiniMax, Bedrock, or another compatible Model and the SDK exposes those resolved choices
+- **AND** `ANTHROPIC_BASE_URL` is unset or points at the official Anthropic API
 - **THEN** inspection shows the SDK-provided selectable values and resolved labels
 - **AND** it does not append unrelated hardcoded Sonnet, Opus, or Haiku versions
+
+#### Scenario: Custom gateway publishes a Model list
+- **WHEN** `ANTHROPIC_BASE_URL` points at a non-Anthropic Anthropic-compatible gateway and `GET /v1/models` returns usable Model IDs
+- **THEN** inspection keeps the SDK Default row and lists those gateway IDs as selectable Models
+- **AND** family aliases omitted by the gateway are not synthesized
+
+#### Scenario: Custom gateway Model discovery fails
+- **WHEN** `ANTHROPIC_BASE_URL` is custom but the `/v1/models` request fails, times out, or returns no usable Models
+- **THEN** inspection falls back to the SDK initialization catalog
 
 #### Scenario: Runtime returns sensitive Model metadata
 - **WHEN** initialization also contains account, Provider, pricing, endpoint, path, credential, or unknown fields
