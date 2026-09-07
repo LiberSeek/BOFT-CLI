@@ -320,7 +320,7 @@ function updatesPage(
       const document = context.content.ownerDocument;
       const windows = isWindowsRenderer(document.defaultView);
       const header = document.createElement("div");
-      header.className = "settings-connection-page-header";
+      header.className = "settings-connection-page-header settings-update-header";
       const heading = document.createElement("div");
       heading.className = "settings-section-label";
       heading.textContent = messages.pageLabels.updates;

@@ -87,6 +87,25 @@ export interface RendererSettingsMessages {
   readonly accountAuthApiPrefix: string;
   readonly accountAuthChatPrefix: string;
   readonly accountAuthApiIdentityFallback: string;
+  readonly accountCreditsUsed: string;
+  readonly accountCreditsReset: string;
+  readonly accountCreditsPeriodWeekly: string;
+  readonly accountCreditsPeriodMonthly: string;
+  readonly accountCreditsPeriodFiveHour: string;
+  readonly accountCreditsPeriodSevenDay: string;
+  readonly accountCreditsPeriodUnknown: string;
+  readonly accountCreditsBuild: string;
+  readonly accountResetCredits: string;
+  readonly accountResetCreditsUse: string;
+  readonly accountResetCreditsConfirm: string;
+  readonly accountResetCreditsUsing: string;
+  readonly accountResetCreditsFailed: string;
+  readonly accountResetCreditsNothingToReset: string;
+  readonly accountResetCreditsNoCredit: string;
+  readonly accountResetCreditsAlreadyRedeemed: string;
+  readonly accountResetCreditsSucceeded: string;
+  readonly accountResetCreditsDetails: string;
+  readonly accountResetCreditsCardExpiry: string;
   readonly connectionAdapter: string;
   readonly connectionHosts: string;
   readonly connectionLocalHost: string;
@@ -242,7 +261,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   pluginsRefresh: "Scan environment",
   pluginsRefreshing: "Scanning...",
   accountsDescription:
-    "New Codex tasks start with this account. Existing tasks keep the account they were created with.",
+    "New Codex tasks start with this account. Existing tasks keep the account they were created with. Multi-account is currently available for Codex; other Harnesses will follow in a later update.",
   accountAdd: "Add Account",
   accountCreateFailed: "Could not add the Account.",
   accountDelete: "Delete",
@@ -265,6 +284,26 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountAuthApiPrefix: "API",
   accountAuthChatPrefix: "Account",
   accountAuthApiIdentityFallback: "BANK OF TOKEN",
+  accountCreditsUsed: "Used",
+  accountCreditsReset: "reset",
+  accountCreditsPeriodWeekly: "Weekly limit",
+  accountCreditsPeriodMonthly: "Monthly limit",
+  accountCreditsPeriodFiveHour: "5-hour",
+  accountCreditsPeriodSevenDay: "7-day",
+  accountCreditsPeriodUnknown: "Limit",
+  accountCreditsBuild: "Build",
+  accountResetCredits: "Reset cards",
+  accountResetCreditsUse: "Use reset",
+  accountResetCreditsConfirm:
+    "This uses 1 reset card and resets both the 5-hour and 7-day limits. This cannot be undone.",
+  accountResetCreditsUsing: "Using reset card...",
+  accountResetCreditsFailed: "Could not use the reset card.",
+  accountResetCreditsNothingToReset: "Usage does not need a reset right now.",
+  accountResetCreditsNoCredit: "No reset cards are available.",
+  accountResetCreditsAlreadyRedeemed: "That reset card was already used.",
+  accountResetCreditsSucceeded: "Limits were reset.",
+  accountResetCreditsDetails: "Reset card details",
+  accountResetCreditsCardExpiry: "Card {index} · expires {time}",
   connectionAdapter: "Renderer adapter",
   connectionHosts: "Hosts",
   connectionLocalHost: "Local",
@@ -443,7 +482,8 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   pluginsDescription: "扩展和管理 Codex 的插件。",
   pluginsRefresh: "扫描环境",
   pluginsRefreshing: "正在扫描...",
-  accountsDescription: "这里决定之后新建 Codex 任务默认用哪个账号。已经开过的任务不会换号。",
+  accountsDescription:
+    "这里决定之后新建 Codex 任务默认用哪个账号。已经开过的任务不会换号。当前支持 Codex 多账号，其他 Harness 敬请期待后续更新。",
   accountAdd: "添加账号",
   accountCreateFailed: "添加账号失败。",
   accountDelete: "删除",
@@ -466,6 +506,25 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountAuthApiPrefix: "API",
   accountAuthChatPrefix: "账号",
   accountAuthApiIdentityFallback: "BANK OF TOKEN",
+  accountCreditsUsed: "已用",
+  accountCreditsReset: "重置",
+  accountCreditsPeriodWeekly: "周额度",
+  accountCreditsPeriodMonthly: "月额度",
+  accountCreditsPeriodFiveHour: "5 小时",
+  accountCreditsPeriodSevenDay: "7 天",
+  accountCreditsPeriodUnknown: "额度",
+  accountCreditsBuild: "Build",
+  accountResetCredits: "重置卡",
+  accountResetCreditsUse: "使用重置",
+  accountResetCreditsConfirm: "将消耗 1 张重置卡，同时重置 5 小时和 7 天额度。此操作无法撤销。",
+  accountResetCreditsUsing: "正在使用重置卡...",
+  accountResetCreditsFailed: "使用重置卡失败。",
+  accountResetCreditsNothingToReset: "当前额度不需要重置。",
+  accountResetCreditsNoCredit: "没有可用的重置卡。",
+  accountResetCreditsAlreadyRedeemed: "这张重置卡已经使用过。",
+  accountResetCreditsSucceeded: "额度已重置。",
+  accountResetCreditsDetails: "重置卡详情",
+  accountResetCreditsCardExpiry: "第 {index} 张 · {time}到期",
   connectionAdapter: "Renderer 适配器",
   connectionHosts: "Host 列表",
   connectionLocalHost: "本地",

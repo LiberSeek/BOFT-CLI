@@ -31,6 +31,9 @@ export { codexhostErrorSchema } from "./errors.js";
 export {
   codexAccountUsageParamsSchema,
   codexAccountUsageResultSchema,
+  codexAccountResetCreditConsumeParamsSchema,
+  codexAccountResetCreditConsumeOutcomeSchema,
+  codexAccountResetCreditConsumeResultSchema,
   codexAccountActivateParamsSchema,
   codexAccountCreateParamsSchema,
   codexAccountDeleteParamsSchema,
@@ -49,6 +52,9 @@ export type {
   CodexAccountAuthKind,
   CodexAccountUsageParams,
   CodexAccountUsageResult,
+  CodexAccountResetCreditConsumeParams,
+  CodexAccountResetCreditConsumeOutcome,
+  CodexAccountResetCreditConsumeResult,
   CodexAccountActivateParams,
   CodexAccountCreateParams,
   CodexAccountDeleteParams,
@@ -200,6 +206,7 @@ export type {
 } from "./harness-commands.js";
 export {
   accountCreditsProductUsageSchema,
+  accountResetCreditsSchema,
   accountCreditsSnapshotSchema,
   threadUsageInspectionParamsSchema,
   threadUsageInspectionSchema,
@@ -207,6 +214,7 @@ export {
 } from "./thread-usage.js";
 export type {
   AccountCreditsSnapshot,
+  AccountResetCredits,
   ThreadUsageInspection,
   ThreadUsageInspectionParams,
   ThreadUsageSnapshot,

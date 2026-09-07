@@ -859,18 +859,69 @@ describe("AppServerHost HarnessAdapter projection", () => {
         expect(quotaRead).toMatchObject({ method: "account/rateLimits/read", params: {} });
         writeRequest(connection.stdout as PassThrough, {
           id: requiredMessageId(quotaRead),
-          result: { rateLimits: { primary: { usedPercent, windowDurationMins: 300 } } },
+          result: {
+            rateLimits: { primary: { usedPercent, windowDurationMins: 300 } },
+            rateLimitResetCredits: {
+              availableCount: 2,
+              credits: [
+                {
+                  id: "reset-soon",
+                  resetType: "codexRateLimits",
+                  status: "available",
+                  grantedAt: 1_000,
+                  expiresAt: 2_400,
+                  title: "Full reset",
+                  description: null,
+                },
+              ],
+            },
+          },
         });
         await expect(
           fixture.collector.waitFor((message) => requestId(message, id)),
         ).resolves.toMatchObject({
           result: {
             accountId,
-            accountCredits: { usedPercent },
+            accountCredits: {
+              usedPercent,
+              resetCredits: {
+                availableCount: 2,
+                nextExpiresAt: new Date(2_400 * 1000).toISOString(),
+              },
+            },
             usage: { planFiveHourUsedPercent: usedPercent },
           },
         });
       }
+      writeRequest(fixture.desktopInput, {
+        id: 133,
+        method: "codexhost/account/rate-limit-reset/consume",
+        params: { accountId: "account-b", idempotencyKey: "2f1d4a6c-8b90-4e12-a345-6789abcdef01" },
+      });
+      const consumeRead = await readJsonLine(accountB.stdin as PassThrough);
+      expect(consumeRead).toMatchObject({
+        method: "account/rateLimitResetCredit/consume",
+        params: { idempotencyKey: "2f1d4a6c-8b90-4e12-a345-6789abcdef01" },
+      });
+      writeRequest(accountB.stdout as PassThrough, {
+        id: requiredMessageId(consumeRead),
+        result: { outcome: "reset" },
+      });
+      const refreshedQuota = await readJsonLine(accountB.stdin as PassThrough);
+      expect(refreshedQuota).toMatchObject({ method: "account/rateLimits/read", params: {} });
+      writeRequest(accountB.stdout as PassThrough, {
+        id: requiredMessageId(refreshedQuota),
+        result: { rateLimits: { primary: { usedPercent: 1, windowDurationMins: 300 } } },
+      });
+      await expect(
+        fixture.collector.waitFor((message) => requestId(message, 133)),
+      ).resolves.toMatchObject({
+        result: {
+          accountId: "account-b",
+          outcome: "reset",
+          accountCredits: { usedPercent: 1 },
+        },
+      });
       writeRequest(fixture.desktopInput, {
         id: 132,
         method: "codexhost/thread/usage/inspect",
@@ -6812,6 +6863,135 @@ describe("AppServerHost HarnessAdapter projection", () => {
 
     session.succeedTurn();
     await fixture.collector.waitFor((message) => method(message, "turn/completed"));
+    await stopFixture(fixture);
+  });
+
+  it("steers an external Thread by cancelling, waiting for terminal projection, and starting once", async () => {
+    const fixture = createFixture();
+    const threadId = await startPiThread(fixture);
+    const oldTurnId = await startPiTurn(fixture, threadId);
+    const session = fixture.adapter.sessions[0];
+    if (!session) throw new Error("Fake Pi Session was not opened");
+    const execute = vi.spyOn(session, "execute");
+    const officialWrite = vi.fn();
+    fixture.official.stdin.on("data", officialWrite);
+    const params = {
+      threadId,
+      expectedTurnId: oldTurnId,
+      clientUserMessageId: "steer-message",
+      input: [{ type: "text", text: "new direction" }],
+    };
+    writeRequest(fixture.desktopInput, { id: 100, method: "turn/steer", params });
+    await vi.waitFor(() =>
+      expect(execute).toHaveBeenCalledWith({ type: "turn.cancel", turnId: oldTurnId }),
+    );
+    expect(fixture.collector.messages.some((message) => requestId(message, 100))).toBe(false);
+    writeRequest(fixture.desktopInput, { id: 101, method: "turn/steer", params });
+    writeRequest(fixture.desktopInput, {
+      id: 102,
+      method: "turn/start",
+      params: { threadId, input: [{ type: "text", text: "competing" }] },
+    });
+    await expect(
+      fixture.collector.waitFor((message) => requestId(message, 102)),
+    ).resolves.toMatchObject({ error: { code: -32072 } });
+    session.completeCancellation();
+    const response = await fixture.collector.waitFor((message) => requestId(message, 100));
+    const replacementId = (response.result as JsonObject).turnId;
+    expect(typeof replacementId).toBe("string");
+    expect(replacementId).not.toBe(oldTurnId);
+    await expect(
+      fixture.collector.waitFor((message) => requestId(message, 101)),
+    ).resolves.toMatchObject({ result: { turnId: replacementId } });
+    await fixture.collector.waitFor((message) =>
+      turnEvent(message, "turn/started", String(replacementId)),
+    );
+    const index = (predicate: (message: JsonObject) => boolean) =>
+      fixture.collector.messages.findIndex(predicate);
+    expect(index((message) => turnEvent(message, "turn/completed", oldTurnId))).toBeLessThan(
+      index((message) => requestId(message, 100)),
+    );
+    expect(index((message) => requestId(message, 100))).toBeLessThan(
+      index((message) => turnEvent(message, "turn/started", String(replacementId))),
+    );
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(execute).toHaveBeenNthCalledWith(2, {
+      type: "turn.start",
+      turnId: replacementId,
+      input: [{ type: "text", text: "new direction" }],
+    });
+    expect(officialWrite).not.toHaveBeenCalled();
+    session.succeedTurn();
+    await fixture.collector.waitFor((message) =>
+      turnEvent(message, "turn/completed", String(replacementId)),
+    );
+    await stopFixture(fixture);
+  });
+
+  it("handles synchronous external cancellation and rejects stale or unsupported steer input locally", async () => {
+    const fixture = createFixture();
+    const threadId = await startPiThread(fixture);
+    const oldTurnId = await startPiTurn(fixture, threadId);
+    const session = fixture.adapter.sessions[0];
+    if (!session) throw new Error("Fake Pi Session was not opened");
+    const execute = vi.spyOn(session, "execute");
+    for (const [id, params] of [
+      [100, { threadId, expectedTurnId: "stale", input: [{ type: "text", text: "new" }] }],
+      [
+        101,
+        {
+          threadId,
+          expectedTurnId: oldTurnId,
+          input: [
+            { type: "text", text: "new" },
+            { type: "image", url: "image" },
+          ],
+        },
+      ],
+    ] as const) {
+      writeRequest(fixture.desktopInput, {
+        id,
+        method: "turn/steer",
+        params: JSON.parse(JSON.stringify(params)),
+      });
+      await expect(
+        fixture.collector.waitFor((message) => requestId(message, id)),
+      ).resolves.toHaveProperty("error");
+    }
+    expect(execute).not.toHaveBeenCalled();
+    session.completeCancellationOnRequest();
+    writeRequest(fixture.desktopInput, {
+      id: 102,
+      method: "turn/steer",
+      params: { threadId, expectedTurnId: oldTurnId, input: [{ type: "text", text: "new" }] },
+    });
+    const response = await fixture.collector.waitFor((message) => requestId(message, 102));
+    expect(response).toHaveProperty("result.turnId");
+    session.succeedTurn();
+    await stopFixture(fixture);
+  });
+
+  it("passes an Account-bound official steer and its result through unchanged", async () => {
+    const fixture = createFixture();
+    await bindOfficialThread(fixture, "official-thread");
+    const params = {
+      threadId: "official-thread",
+      expectedTurnId: "official-turn",
+      clientUserMessageId: "message",
+      input: [{ type: "text", text: "new direction" }],
+    };
+    writeRequest(fixture.desktopInput, { id: 100, method: "turn/steer", params });
+    await expect(readJsonLine(fixture.official.stdin)).resolves.toEqual({
+      id: 100,
+      method: "turn/steer",
+      params,
+    });
+    writeRequest(fixture.official.stdout, { id: 100, result: { turnId: "official-turn" } });
+    await expect(fixture.collector.waitFor((message) => requestId(message, 100))).resolves.toEqual({
+      id: 100,
+      result: { turnId: "official-turn" },
+    });
+    expect(fixture.adapter.sessions).toHaveLength(0);
     await stopFixture(fixture);
   });
 
