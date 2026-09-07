@@ -40,6 +40,7 @@ import type { RendererAdapterStatus } from "./versioned-renderer-adapter.js";
 function pickerGroupMessages(): ReturnType<typeof rendererSettingsMessages> & {
   readonly codexAccountsLabel: string;
   readonly manageCodexAccountsLabel: string;
+  readonly ownershipErrorLabel: string;
 } {
   const languages = typeof navigator !== "undefined" ? navigator.languages : [];
   const messages = rendererSettingsMessages(resolveRendererSettingsLocale(languages));
@@ -48,6 +49,10 @@ function pickerGroupMessages(): ReturnType<typeof rendererSettingsMessages> & {
     codexAccountsLabel: "Codex",
     manageCodexAccountsLabel:
       messages.locale === "zh-CN" ? "管理 Codex 账号" : "Manage Codex Accounts",
+    ownershipErrorLabel:
+      messages.locale === "zh-CN"
+        ? "无法确认会话的 Agent；重新聚焦窗口以重试"
+        : "Unable to determine the Thread Agent; refocus the window to retry",
   };
 }
 
@@ -106,6 +111,7 @@ export interface RendererAgentPickerControl {
   trigger: HTMLButtonElement;
   iconSlot: HTMLElement;
   spinner: HTMLElement;
+  ownershipError: HTMLElement;
   menu: HTMLElement;
   agents: readonly RendererAgent[];
   options: Partial<Record<RendererAgent, AgentOptionControl>>;
@@ -300,7 +306,12 @@ export function mountRendererAgentPicker(
     duration: 800,
     iterations: Infinity,
   });
-  trigger.append(iconSlot, spinner);
+  const ownershipError = document.createElement("span");
+  ownershipError.textContent = "!";
+  ownershipError.setAttribute("aria-hidden", "true");
+  ownershipError.style.display = "none";
+  ownershipError.style.font = "bold 16px/1 system-ui, sans-serif";
+  trigger.append(iconSlot, spinner, ownershipError);
 
   const menu = document.createElement("div");
   menu.id = `${composerId}-agent-menu`;
@@ -760,6 +771,7 @@ export function mountRendererAgentPicker(
     trigger,
     iconSlot,
     spinner,
+    ownershipError,
     menu,
     agents: [...enabledAgents],
     options,
@@ -795,6 +807,7 @@ export function renderRendererAgentPicker(
   switching: boolean,
   availability: AgentAvailability = {},
   codexAccounts: readonly CodexAccountSummary[] = [],
+  ownershipError = false,
 ): RendererAgentPickerView {
   control.syncAvailability(availability);
   control.codexAccounts = [...codexAccounts];
@@ -812,11 +825,15 @@ export function renderRendererAgentPicker(
     control.iconSlot.replaceChildren(createRendererAgentIcon(state.agent));
     control.iconSlot.dataset.agent = state.agent;
   }
-  control.trigger.disabled = view.triggerDisabled;
+  control.trigger.disabled = view.triggerDisabled || ownershipError;
   control.trigger.setAttribute("aria-busy", String(switching));
   control.trigger.setAttribute(
     "aria-label",
-    state.phase === "locked" ? `Agent: ${view.label}` : `Select Agent, current ${view.label}`,
+    ownershipError
+      ? pickerGroupMessages().ownershipErrorLabel
+      : state.phase === "locked"
+        ? `Agent: ${view.label}`
+        : `Select Agent, current ${view.label}`,
   );
   const activeAccount = codexAccounts.find(({ active }) => active);
   control.codexAccountGroup.render({
@@ -825,12 +842,15 @@ export function renderRendererAgentPicker(
     disabled: switching || state.phase === "locked",
     showBadge: state.agent === "codex" && shouldExpandCodexAccountOptions(codexAccounts.length),
   });
-  control.trigger.title = rendererAgentPickerTooltip(state, activeAccount, codexAccounts.length);
+  control.trigger.title = ownershipError
+    ? pickerGroupMessages().ownershipErrorLabel
+    : rendererAgentPickerTooltip(state, activeAccount, codexAccounts.length);
   control.trigger.style.cursor = control.trigger.disabled ? "not-allowed" : "pointer";
   control.trigger.style.opacity = control.trigger.disabled && !switching ? "0.72" : "1";
-  control.iconSlot.style.display = switching ? "none" : "inline-flex";
+  control.iconSlot.style.display = switching || ownershipError ? "none" : "inline-flex";
   control.spinner.style.display = switching ? "block" : "none";
-  if (view.triggerDisabled) control.close();
+  control.ownershipError.style.display = ownershipError && !switching ? "block" : "none";
+  if (control.trigger.disabled) control.close();
 
   for (const agent of control.agents) {
     const option = control.options[agent];

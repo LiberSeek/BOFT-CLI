@@ -1,5 +1,6 @@
 import { inspectCodexHomeAuth } from "./account/codex-home-auth.js";
 import { AccountRateLimits } from "./codex-runtime/account-rate-limits.js";
+import { inspectHarnessAccounts } from "./harness-accounts.js";
 import type { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { rm } from "node:fs/promises";
@@ -21,6 +22,9 @@ import type { HarnessPluginContext } from "@codexhost/harness-adapter/plugin";
 import type { StoredThreadRecordV1 } from "@codexhost/mapping-store";
 import {
   accountCreditsSnapshotSchema,
+  harnessAccountListParamsSchema,
+  harnessAccountListResultSchema,
+  type HarnessAccountListResult,
   codexAccountUsageParamsSchema,
   codexAccountUsageResultSchema,
   codexAccountResetCreditConsumeParamsSchema,
@@ -31,6 +35,8 @@ import {
   codexAccountDeleteParamsSchema,
   codexAccountLoginCancelParamsSchema,
   codexAccountLoginStartParamsSchema,
+  type CodexAccountPlanType,
+  codexAccountPlanTypeSchema,
   harnessPluginListParamsSchema,
   harnessPluginListResultSchema,
   type HarnessPluginDescriptor,
@@ -493,6 +499,7 @@ export class AppServerHost {
   #accountDataDirectory: string;
   #externalAdapters: Map<ExternalHarnessId, HarnessAdapter>;
   #pluginDescriptors: HarnessPluginDescriptor[] = [];
+  #accountInspection: Promise<HarnessAccountListResult> | null = null;
   #externalRuntime: ExternalThreadRuntime;
   readonly #externalSteering = new ExternalTurnSteering();
   #repository: ExternalThreadRepository;
@@ -813,16 +820,35 @@ export class AppServerHost {
       }
       if (
         request.method === "codexhost/account/usage/inspect" ||
+        request.method === "codexhost/account/rate-limit-reset/consume" ||
         request.method === "codexhost/account/list" ||
         request.method === "codexhost/account/refresh" ||
         request.method === "codexhost/account/create" ||
         request.method === "codexhost/account/delete" ||
         request.method === "codexhost/account/activate" ||
         request.method === "codexhost/account/login/start" ||
-        request.method === "codexhost/account/login/cancel" ||
-        request.method === "codexhost/account/rate-limit-reset/consume"
+        request.method === "codexhost/account/login/cancel"
       ) {
         this.#dispatchDesktopRequest(() => this.#handleCodexAccountRequest(request));
+        continue;
+      }
+      if (request.method === "codexhost/harness/accounts/list") {
+        this.#dispatchDesktopRequest(async () => {
+          if (!harnessAccountListParamsSchema.safeParse(request.params).success) {
+            await this.#writer.json(
+              rpcError(request, -32602, "Invalid Harness account list params"),
+            );
+            return;
+          }
+          this.#accountInspection ??= inspectHarnessAccounts(
+            this.#externalAdapters.values(),
+            this.#pluginDescriptors,
+          ).finally(() => {
+            this.#accountInspection = null;
+          });
+          const result = harnessAccountListResultSchema.parse(await this.#accountInspection);
+          await this.#writer.json(rpcEnvelope(request, { result: jsonValueSchema.parse(result) }));
+        });
         continue;
       }
       if (request.method === "codexhost/harness/inspect") {
@@ -1657,12 +1683,13 @@ export class AppServerHost {
   }
 
   async #codexAccountSummary(
-    account: { accountId: string; label: string; email?: string; codexHome: string },
+    account: CodexAccount,
     activeAccountId: string,
   ): Promise<{
     accountId: string;
     label: string;
     email?: string;
+    planType?: CodexAccountPlanType;
     codexHome: string;
     active: boolean;
     isDefault: boolean;
@@ -1676,6 +1703,7 @@ export class AppServerHost {
       accountId: account.accountId,
       label: account.label,
       ...(account.email ? { email: account.email } : {}),
+      ...(account.planType ? { planType: account.planType } : {}),
       codexHome: account.codexHome,
       active: account.accountId === activeAccountId,
       isDefault: this.#accountRepository.isDefaultAccount(account.accountId),
@@ -1692,15 +1720,21 @@ export class AppServerHost {
         ).request("account/read", { refreshToken: false });
         const result = isRecord(response.result) ? response.result : null;
         const officialAccount = result && isRecord(result.account) ? result.account : null;
-        const email =
-          officialAccount && typeof officialAccount.email === "string"
-            ? officialAccount.email.trim()
-            : "";
-        if (!email || email === account.email) continue;
+        if (!officialAccount) continue;
+        const email = typeof officialAccount.email === "string" ? officialAccount.email.trim() : "";
+        const parsedPlanType = codexAccountPlanTypeSchema.safeParse(officialAccount.planType);
+        const planType =
+          officialAccount.type === "chatgpt"
+            ? parsedPlanType.success
+              ? parsedPlanType.data
+              : "unknown"
+            : undefined;
+        if ((!email || email === account.email) && planType === account.planType) continue;
         await this.#accountRepository.upsert({
           accountId: account.accountId,
           codexHome: account.codexHome,
-          email,
+          ...(email ? { email } : {}),
+          planType: planType ?? null,
           label: account.label,
         });
       } catch (error) {
@@ -2498,13 +2532,18 @@ export class AppServerHost {
       await this.#writer.json(rpcError(request, resolution.error.code, resolution.error.message));
       return;
     }
+    // A remote or not-yet-bound Thread has no local Account. Omit the optional
+    // field rather than emitting undefined (invalid JSON) or guessing an Account.
+    const accountId =
+      resolution.kind === "official"
+        ? await this.#codexRuntimePool.accountIdForThread(params.data.threadId)
+        : null;
     const inspection = threadInspectionSchema.parse(
       resolution.kind === "official"
         ? {
             owner: "codex",
             locked: true,
-            accountId:
-              (await this.#codexRuntimePool.accountIdForThread(params.data.threadId)) ?? undefined,
+            ...(accountId ? { accountId } : {}),
           }
         : {
             owner: "external",

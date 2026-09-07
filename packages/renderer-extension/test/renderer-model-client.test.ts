@@ -167,6 +167,20 @@ describe("Renderer fixed Model request client", () => {
     expect(remove).toHaveBeenCalledOnce();
   });
 
+  it("reads and validates read-only accounts from the bound Host without a Thread ID", async () => {
+    const account = {
+      harnessId: "sample-agent",
+      harnessName: "Sample Agent",
+      credits: { usedPercent: 0, periodType: "weekly" },
+    };
+    const sendRequest = vi.fn().mockResolvedValue({ accounts: [account] });
+    const client = createRendererModelClient([{ sendRequest }]);
+    expect(await client?.listHarnessAccounts?.()).toEqual({ accounts: [account] });
+    expect(sendRequest).toHaveBeenCalledExactlyOnceWith("codexhost/harness/accounts/list", {});
+    sendRequest.mockResolvedValueOnce({ accounts: [{ ...account, token: "private" }] });
+    await expect(client?.listHarnessAccounts?.()).rejects.toThrow();
+  });
+
   it("reads plugin descriptors from its own target and rejects backend or executable metadata", async () => {
     const sendLocal = vi
       .fn()
@@ -270,6 +284,7 @@ describe("Renderer fixed Model request client", () => {
       "activateCodexAccount",
       "cancelCodexAccountLogin",
       "checkUpdate",
+      "consumeCodexAccountResetCredit",
       "createCodexAccount",
       "deleteCodexAccount",
       "executeThreadCommand",
@@ -282,6 +297,7 @@ describe("Renderer fixed Model request client", () => {
       "inspectThreadCommands",
       "inspectThreadUsage",
       "listCodexAccounts",
+      "listHarnessAccounts",
       "listHarnessPlugins",
       "listHarnessSessions",
       "listSessionImportSources",
