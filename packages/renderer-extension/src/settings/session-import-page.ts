@@ -18,6 +18,7 @@ import { createSessionImportListControls } from "./session-import-list-controls.
 export type RendererImportedThreadOpener = (
   threadId: HostThreadId,
   signal: AbortSignal,
+  hostId?: string,
 ) => Promise<void>;
 
 function shortSessionId(value: string): string {
@@ -126,6 +127,7 @@ export function createSessionImportSettingsPage(
       );
 
       let candidates: readonly HarnessSessionImportCandidate[] = [];
+      let loadedClient: RendererSessionImportClient | null = null;
       let importingId: string | null = null;
       let actions: Array<{
         readonly button: HTMLButtonElement;
@@ -184,6 +186,7 @@ export function createSessionImportSettingsPage(
       const renderOpenRecovery = (
         candidate: HarnessSessionImportCandidate,
         threadId: HostThreadId,
+        hostId: string | undefined,
       ): void => {
         actions = [];
         refresh.disabled = false;
@@ -253,12 +256,12 @@ export function createSessionImportSettingsPage(
         retry.addEventListener("click", () => {
           if (retry.disabled) return;
           setRetrying(true);
-          void context.runLatest((signal) => openImportedThread(threadId, signal), {
+          void context.runLatest((signal) => openImportedThread(threadId, signal, hostId), {
             success() {
               setRetrying(false);
             },
             failure() {
-              renderOpenRecovery(candidate, threadId);
+              renderOpenRecovery(candidate, threadId, hostId);
             },
           });
         });
@@ -344,7 +347,7 @@ export function createSessionImportSettingsPage(
             if (candidate.running === true || importingId !== null || selectedHarness === null)
               return;
             const harnessId = selectedHarness;
-            const client = getClient();
+            const client = loadedClient;
             if (!client) {
               renderUnavailable(true);
               return;
@@ -360,7 +363,9 @@ export function createSessionImportSettingsPage(
                   nativeSessionId: candidate.nativeSessionId,
                 });
                 committedThreadId = result.threadId;
-                if (!signal.aborted) await openImportedThread(result.threadId, signal);
+                if (!signal.aborted) {
+                  await openImportedThread(result.threadId, signal, client.hostId);
+                }
               },
               {
                 success() {
@@ -373,7 +378,7 @@ export function createSessionImportSettingsPage(
                   updateImportActions();
                   refresh.disabled = false;
                   if (committedThreadId) {
-                    renderOpenRecovery(candidate, committedThreadId);
+                    renderOpenRecovery(candidate, committedThreadId, client.hostId);
                   } else {
                     renderFailure(error, "import");
                   }
@@ -392,6 +397,7 @@ export function createSessionImportSettingsPage(
 
       const load = (): void => {
         if (importingId !== null || context.signal.aborted) return;
+        loadedClient = null;
         const client = getClient();
         if (!client) {
           refresh.disabled = false;
@@ -427,6 +433,7 @@ export function createSessionImportSettingsPage(
           },
           {
             success(result) {
+              loadedClient = client;
               listControls.setBusy(false);
               if (listControls.setTotal(result.total)) {
                 load();
@@ -439,6 +446,7 @@ export function createSessionImportSettingsPage(
               else renderCandidates();
             },
             failure(error) {
+              loadedClient = null;
               listControls.setBusy(false);
               candidates = [];
               refresh.disabled = false;

@@ -267,6 +267,15 @@ export interface ClaudeModelInspectorFactoryInput {
   cwd: string;
 }
 
+export interface ClaudeSessionMetadata {
+  sessionId?: string;
+  summary?: string;
+  lastModified?: number;
+  customTitle?: string;
+  firstPrompt?: string;
+  cwd?: string;
+}
+
 export interface ClaudeAdapterDependencies {
   createInspector(input: ClaudeModelInspectorFactoryInput): ClaudeModelInspector;
   createTransport(input: ClaudeTransportFactoryInput): ClaudeTurnTransport;
@@ -276,7 +285,8 @@ export interface ClaudeAdapterDependencies {
     cwd: string;
     sourceSessionId: string;
   }): Promise<{ sessionId: string }>;
-  getSessionInfo(input: { sessionId: string }): Promise<{ cwd?: string } | undefined>;
+  getSessionInfo(input: { sessionId: string }): Promise<ClaudeSessionMetadata | undefined>;
+  listSessions(): Promise<readonly ClaudeSessionMetadata[]>;
   inspectInstallation(): void;
   readSessionMessages(input: { cwd: string; sessionId: string }): Promise<unknown[]>;
   readSubagentMessages(input: {

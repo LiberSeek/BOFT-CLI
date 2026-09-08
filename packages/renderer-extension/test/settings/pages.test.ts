@@ -1846,7 +1846,7 @@ describe("Renderer Session Import page", () => {
       }),
     );
     await vi.waitFor(() =>
-      expect(open).toHaveBeenCalledWith("pi-imported", expect.any(AbortSignal)),
+      expect(open).toHaveBeenCalledWith("pi-imported", expect.any(AbortSignal), undefined),
     );
     scope.dispose();
   });
@@ -1897,15 +1897,17 @@ describe("Renderer Session Import page", () => {
     if (!refresh) throw new Error("Session Import Refresh is not rendered");
 
     expect(refresh.disabled).toBe(true);
-    expect(visibleNotesText(refresh)).toContain("Loading local sessions");
-    expect(visibleText(content)).toContain("Loading local sessions");
+    expect(visibleNotesText(refresh)).toContain("Loading sessions from the selected Host");
+    expect(visibleText(content)).toContain("Loading sessions from the selected Host");
 
     await vi.waitFor(() => expect(client.listHarnessSessions).toHaveBeenCalledOnce());
     // A synthetic second activation proves runLatest still rejects stale results even if
     // browser-level disabled handling is bypassed.
     refresh.dispatch("click");
     second.resolve({ candidates: [], total: 0 });
-    await vi.waitFor(() => expect(visibleText(content)).toContain("No local sessions"));
+    await vi.waitFor(() =>
+      expect(visibleText(content)).toContain("No sessions are available to import"),
+    );
     expect(refresh.disabled).toBe(false);
 
     first.resolve({
@@ -1914,7 +1916,7 @@ describe("Renderer Session Import page", () => {
     });
     await first.promise;
     await Promise.resolve();
-    expect(visibleText(content)).toContain("No local sessions");
+    expect(visibleText(content)).toContain("No sessions are available to import");
     expect(visibleText(content)).not.toContain("Ignored stale");
 
     refresh.dispatch("click");
@@ -1927,8 +1929,9 @@ describe("Renderer Session Import page", () => {
     scope.dispose();
   });
 
-  it("lists local DSH Modern sessions and imports only an idle row", async () => {
+  it("lists Host-scoped sessions and opens the imported Thread on the same Host", async () => {
     const client = {
+      hostId: "remote-1",
       listSessionImportSources: vi.fn(async () => ({
         harnesses: [
           { harnessId: harnessIdSchema.parse("deepseek-harness"), name: "DeepSeek Harness" },
@@ -2002,7 +2005,7 @@ describe("Renderer Session Import page", () => {
       "当前仅支持导入 DeepSeek Harness Modern 会话；其他 Harness 的会话导入能力敬请期待。",
     );
     expect(visibleText(header)).toContain(
-      "可选 Harness 来自本地 Host。运行状态未知时，请先在原生客户端关闭该会话再导入，避免同时写入。",
+      "可选 Harness 来自当前 Host。运行状态未知时，请先在原生客户端关闭该会话再导入，避免同时写入。",
     );
     expect(
       descendants(content).some(({ textContent }) => textContent === "Harness"),
@@ -2058,7 +2061,11 @@ describe("Renderer Session Import page", () => {
       nativeSessionId: "idle-session-identifier-that-is-long",
     });
     await vi.waitFor(() =>
-      expect(openImportedThread).toHaveBeenCalledWith("imported-thread", expect.any(AbortSignal)),
+      expect(openImportedThread).toHaveBeenCalledWith(
+        "imported-thread",
+        expect.any(AbortSignal),
+        "remote-1",
+      ),
     );
     scope.dispose();
   });
@@ -2338,7 +2345,7 @@ describe("Renderer Session Import page", () => {
       runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
     });
 
-    expect(visibleText(content)).toContain("Session import is unavailable for this local Harness");
+    expect(visibleText(content)).toContain("Session import is unavailable for this Harness");
     expect(
       descendants(content).filter(({ dataset }) => dataset.sessionImportAction === "import"),
     ).toHaveLength(0);
