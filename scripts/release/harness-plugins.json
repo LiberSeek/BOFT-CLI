@@ -8,7 +8,8 @@
     "packages/adapters/omp",
     "packages/adapters/antigravity",
     "packages/adapters/hermes",
-    "packages/adapters/muse"
+    "packages/adapters/muse",
+    "packages/adapters/kiro-cli"
   ],
   "runtimePackages": [
     "@agentclientprotocol/sdk",

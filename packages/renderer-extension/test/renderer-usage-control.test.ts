@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatRendererContextSummary,
+  formatRendererCredits,
   formatRendererPlanReset,
   formatRendererPlanWindow,
   formatRendererTokenCount,
@@ -16,6 +17,7 @@ describe("Renderer Usage localization", () => {
       usage: "用量",
       context: "上下文",
       latestCacheHit: "缓存命中率",
+      recordedCredits: "已记录消耗",
       inputOutput: "输入 / 输出",
       sessionCostEstimate: "会话费用估算",
     });
@@ -24,6 +26,7 @@ describe("Renderer Usage localization", () => {
       usage: "Usage",
       context: "Context",
       latestCacheHit: "Latest cache hit",
+      recordedCredits: "Recorded usage",
       inputOutput: "Input / output",
       sessionCostEstimate: "Session cost estimate",
     });
@@ -41,6 +44,13 @@ describe("Renderer Usage token-count formatting", () => {
     expect(formatRendererTokenCount(999_999_999)).toBe("1000M");
     expect(formatRendererTokenCount(1_000_000_000)).toBe("1B");
     expect(formatRendererTokenCount(-1_250_000_000)).toBe("-1.3B");
+  });
+});
+
+describe("Renderer Usage credits formatting", () => {
+  it("formats recorded credits with a three-decimal floor for tiny values", () => {
+    expect(formatRendererCredits(1.25)).toBe("1.25 credits");
+    expect(formatRendererCredits(0.0004)).toBe("<0.001 credits");
   });
 });
 
@@ -68,6 +78,8 @@ describe("Renderer Usage plan-window formatting", () => {
 
 describe("Renderer Usage Claude plan windows", () => {
   it("does not show Usage for a plan-only snapshot", () => {
+    expect(rendererUsageHasDisplayData({ totalCredits: 1.25 })).toBe(true);
+    expect(rendererUsageHasDisplayData({ contextUsagePercent: 12.5 })).toBe(true);
     expect(rendererUsageHasDisplayData({ planFiveHourUsedPercent: 45 })).toBe(false);
     expect(rendererUsageHasDisplayData({ planSevenDayUsedPercent: 12 })).toBe(false);
   });

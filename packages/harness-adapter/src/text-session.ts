@@ -286,6 +286,8 @@ export interface HostAgentMessageItem {
   itemId: HostItemId;
   text: string;
   durationMs?: number;
+  /** Omit when the Harness cannot distinguish progress from its final answer. */
+  phase?: "commentary" | "final_answer";
 }
 
 export interface HostReasoningItem {

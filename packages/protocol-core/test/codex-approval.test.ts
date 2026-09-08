@@ -21,6 +21,55 @@ const interaction = (
 });
 
 describe("Codex native Approval wire projection", () => {
+  it("keeps multiple native scopes as explicit form choices with one-shot defaults", () => {
+    const approval = interaction({
+      actions: [
+        { id: "once", label: "Allow once", effect: "allowOnce" },
+        { id: "no", label: "Deny", effect: "deny" },
+        { id: "exact", label: "Save for workspace: git add file.txt", effect: "allowAlways" },
+        { id: "prefix", label: "Save for user: git add *", effect: "allowAlways" },
+        { id: "deny-persist", label: "Deny for user: git *", effect: "deny" },
+      ],
+    });
+    const projected = projectCodexApprovalRequest({
+      threadId: "thread-1",
+      interaction: approval,
+      serverName: "Kiro CLI",
+    });
+    expect(projected.request).toMatchObject({
+      params: {
+        requestedSchema: {
+          properties: {
+            actionId: {
+              default: "once",
+              oneOf: approval.actions.map(({ id, label }) => ({ const: id, title: label })),
+            },
+          },
+          required: ["actionId"],
+        },
+      },
+    });
+    expect(projected.request.params).not.toHaveProperty("_meta.codex_approval_kind");
+    for (const { id } of approval.actions) {
+      expect(projected.parseResponse({ action: "accept", content: { actionId: id } })).toEqual({
+        type: "approval",
+        actionId: id,
+      });
+    }
+    expect(projected.parseResponse({ action: "cancel" })).toEqual({
+      type: "approval",
+      actionId: "no",
+    });
+    for (const result of [
+      { action: "accept" },
+      { action: "accept", content: { actionId: "undeclared" } },
+      { action: "accept", content: { actionId: "once", resource: "*" } },
+      { action: "accept", content: { actionId: "once" }, _meta: { persist: "always" } },
+      { action: "decline", content: { actionId: "exact" } },
+    ])
+      expect(() => projected.parseResponse(result)).toThrow();
+  });
+
   it("projects the reviewed MCP Tool Approval shape and exact one-shot responses", () => {
     const projected = projectCodexApprovalRequest({
       threadId: "thread-1",

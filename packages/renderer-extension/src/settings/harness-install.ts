@@ -71,6 +71,12 @@ const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInsta
       posix: "curl -fsSL https://dev.meta.ai/install.sh | bash",
       windows: "curl -fsSL https://dev.meta.ai/install.sh | bash",
     },
+    "kiro-cli": {
+      url: "https://kiro.dev/docs/cli/",
+      binary: "kiro-cli",
+      posix: "curl -fsSL https://cli.kiro.dev/install | bash",
+      windows: "irm 'https://cli.kiro.dev/install.ps1' | iex",
+    },
   });
 
 export function harnessInstallPlatform(

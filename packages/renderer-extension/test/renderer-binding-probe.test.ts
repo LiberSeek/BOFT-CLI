@@ -126,6 +126,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: "ready",
           hermes: "ready",
           muse: "ready",
+          "kiro-cli": "ready",
         },
         {
           pi: undefined,
@@ -141,6 +142,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: undefined,
           hermes: undefined,
           muse: undefined,
+          "kiro-cli": undefined,
         },
       ),
     ).toEqual([]);
@@ -157,6 +159,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: "ready",
           hermes: "ready",
           muse: "ready",
+          "kiro-cli": "ready",
         },
         {
           pi: undefined,
@@ -172,6 +175,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: undefined,
           hermes: undefined,
           muse: undefined,
+          "kiro-cli": undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);
@@ -188,6 +192,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: "ready",
           hermes: "ready",
           muse: "ready",
+          "kiro-cli": "ready",
         },
         {
           pi: undefined,
@@ -203,6 +208,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: undefined,
           hermes: undefined,
           muse: undefined,
+          "kiro-cli": undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);
@@ -221,6 +227,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: "checking",
           hermes: "checking",
           muse: "checking",
+          "kiro-cli": "checking",
         },
         {
           pi: undefined,
@@ -232,6 +239,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: undefined,
           hermes: undefined,
           muse: undefined,
+          "kiro-cli": undefined,
         },
       ),
     ).toEqual([
@@ -244,6 +252,7 @@ describe("Renderer Composer DOM behavior", () => {
       "antigravity",
       "hermes",
       "muse",
+      "kiro-cli",
     ]);
 
     expect(
@@ -258,6 +267,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: "ready",
           hermes: "ready",
           muse: "ready",
+          "kiro-cli": "ready",
         },
         {
           pi: undefined,
@@ -273,6 +283,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: undefined,
           hermes: undefined,
           muse: undefined,
+          "kiro-cli": undefined,
         },
       ),
     ).toEqual([]);
@@ -289,6 +300,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: "ready",
           hermes: "ready",
           muse: "ready",
+          "kiro-cli": "ready",
         },
         {
           pi: undefined,
@@ -304,6 +316,7 @@ describe("Renderer Composer DOM behavior", () => {
           antigravity: undefined,
           hermes: undefined,
           muse: undefined,
+          "kiro-cli": undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);

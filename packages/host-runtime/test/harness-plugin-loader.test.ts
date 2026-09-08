@@ -81,6 +81,7 @@ describe("Harness plugin discovery and loading", () => {
     "antigravity",
     "hermes",
     "muse",
+    "kiro-cli",
   ])(
     "ships a valid %s manifest and resolvable compiled resources",
     async (id) => {

@@ -13,6 +13,8 @@ describe("Thread Usage contracts", () => {
       cacheWriteInputTokens: 1_200,
       cacheHitRatePercent: 99.9,
       totalCostUsd: 0.168,
+      totalCredits: 1.25,
+      contextUsagePercent: 12.5,
       contextUsedTokens: 31_200,
       contextWindowTokens: 128_000,
     };

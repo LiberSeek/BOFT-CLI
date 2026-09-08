@@ -480,7 +480,7 @@ function projectItem(
         id: item.itemId,
         type: "agentMessage",
         text: item.text,
-        phase: null,
+        phase: item.phase ?? null,
         memoryCitation: null,
         durationMs: item.durationMs ?? null,
       };

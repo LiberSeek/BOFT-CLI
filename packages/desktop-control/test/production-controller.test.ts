@@ -152,6 +152,7 @@ describe("production Desktop Controller", () => {
         "antigravity",
         "hermes",
         "muse",
+        "kiro-cli",
       ],
       timeoutMs: 90_000,
     });

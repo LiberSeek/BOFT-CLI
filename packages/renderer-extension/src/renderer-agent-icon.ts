@@ -2,6 +2,7 @@ import codexAgentIconUrl from "./assets/codex-agent.png";
 import grokAgentIconUrl from "./assets/grok-agent.png";
 import antigravityAgentIconUrl from "./assets/antigravity-agent.svg";
 import hermesAgentIconUrl from "./assets/hermes-agent.png";
+import kiroAgentIconUrl from "./assets/kiro-agent.svg";
 import ompAgentIconUrl from "./assets/omp-agent.svg";
 import openCodeAgentIconUrl from "./assets/opencode-agent.png";
 import type { RendererAgent } from "./agent-selection-state.js";
@@ -17,6 +18,7 @@ export const RENDERER_AGENT_LABELS: Record<RendererAgent, string> = {
   antigravity: "Antigravity CLI",
   hermes: "Hermes",
   muse: "Meta Muse Code",
+  "kiro-cli": "Kiro CLI",
 };
 
 const PI_PATHS = [
@@ -125,6 +127,17 @@ export function createRendererAgentIcon(
   if (agent === "hermes") {
     const image = ownerDocument.createElement("img");
     image.src = hermesAgentIconUrl;
+    image.alt = "";
+    image.draggable = false;
+    image.style.width = `${size}px`;
+    image.style.height = `${size}px`;
+    image.style.objectFit = "contain";
+    image.style.flex = "none";
+    return image;
+  }
+  if (agent === "kiro-cli") {
+    const image = ownerDocument.createElement("img");
+    image.src = kiroAgentIconUrl;
     image.alt = "";
     image.draggable = false;
     image.style.width = `${size}px`;

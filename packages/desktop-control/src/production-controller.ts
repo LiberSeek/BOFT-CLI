@@ -253,6 +253,7 @@ export async function runDesktopController(
           "antigravity",
           "hermes",
           "muse",
+          "kiro-cli",
         ],
         timeoutMs: PRODUCTION_INSTALL_TIMEOUT_MS,
       },

@@ -12,6 +12,8 @@ describe("Harness Usage", () => {
       reasoningOutputTokens: 3,
       totalTokens: 21,
       totalCostUsd: 0.125,
+      totalCredits: 1.25,
+      contextUsagePercent: 12.5,
       cacheHitRatePercent: 99.9,
       contextUsedTokens: 120,
       contextWindowTokens: 100,
