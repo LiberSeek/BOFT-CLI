@@ -29,6 +29,20 @@ export function rendererCreditsTone(usedPercent: number): RendererCreditsTone {
   return "ok";
 }
 
+export function formatAccountCreditsBalance(remaining: number, unit: string): string {
+  const amount = Number.isInteger(remaining)
+    ? remaining.toLocaleString("en-US")
+    : remaining.toLocaleString("en-US", {
+        maximumFractionDigits: 4,
+        minimumFractionDigits: 0,
+      });
+  const normalized = unit.trim();
+  if (!normalized || normalized.toUpperCase() === "USD" || normalized === "$") {
+    return `$${amount}`;
+  }
+  return `${amount} ${normalized}`;
+}
+
 interface RendererCreditsMessages {
   readonly remaining: string;
   readonly resets: string;
@@ -192,6 +206,10 @@ function renderCreditsHeader(
     left.append(reset);
   }
 
+  if (credits.usedPercent === undefined) {
+    wrapper.append(top);
+    return wrapper;
+  }
   const color = toneColor(rendererCreditsTone(credits.usedPercent));
   const remaining = remainingPercent(credits.usedPercent);
   const percent = document.createElement("span");
@@ -268,6 +286,21 @@ function renderDetails(
   locale: RendererSettingsLocale,
 ): void {
   const messages = rendererCreditsMessages(locale);
+  if (credits.usedPercent === undefined) {
+    const amount =
+      credits.remaining === undefined || !credits.unit
+        ? ""
+        : formatAccountCreditsBalance(credits.remaining, credits.unit);
+    popover.style.backgroundImage = "";
+    popover.setAttribute("aria-label", messages.details);
+    popover.replaceChildren();
+    const header = document.createElement("div");
+    header.textContent = amount ? `${messages.remaining} ${amount}` : messages.account;
+    header.style.fontSize = "13px";
+    header.style.fontWeight = "600";
+    popover.append(header);
+    return;
+  }
   const glowColor = toneColor(rendererCreditsTone(credits.usedPercent));
   popover.style.backgroundImage = `radial-gradient(160px 100px at 18% -10%, color-mix(in srgb, ${glowColor} 20%, transparent), transparent 70%)`;
   popover.setAttribute("aria-label", messages.details);
@@ -475,6 +508,26 @@ export function renderRendererCreditsControl(
     control.root.style.display = "none";
     closePopover(control);
     return false;
+  }
+  if (accountCredits.usedPercent === undefined) {
+    const amount =
+      accountCredits.remaining === undefined || !accountCredits.unit
+        ? null
+        : formatAccountCreditsBalance(accountCredits.remaining, accountCredits.unit);
+    if (!amount) {
+      control.root.style.display = "none";
+      closePopover(control);
+      return false;
+    }
+    const ringSlot = control.trigger.querySelector<HTMLElement>("[data-codexhost-credits-ring]");
+    const label = control.trigger.querySelector<HTMLElement>("[data-codexhost-credits-label]");
+    ringSlot?.replaceChildren();
+    if (label) label.textContent = amount;
+    control.root.style.display = "inline-flex";
+    control.trigger.setAttribute("aria-label", amount);
+    control.trigger.title = amount;
+    renderDetails(control.popover, accountCredits, locale);
+    return true;
   }
   const remaining = remainingPercent(accountCredits.usedPercent);
   const percent = formatRendererCreditsPercent(remaining);

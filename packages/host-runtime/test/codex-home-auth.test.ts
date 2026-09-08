@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   CODEX_API_AUTH_IDENTITY_FALLBACK,
+  inspectCodexApiUsageSource,
   inspectCodexAuthDocuments,
   inspectCodexHomeAuth,
 } from "../src/account/codex-home-auth.js";
@@ -65,6 +66,24 @@ base_url = "https://example.invalid/v1"
         authJson: JSON.stringify({ api_key: "sk-secret" }),
       }),
     ).toEqual({ kind: "api", identity: "BANK OF TOKEN" });
+  });
+
+  it("reads API usage credentials from the provider table without exposing them in the auth summary", () => {
+    const configToml = `
+model_provider = "codex-for-me"
+[model_providers.codex-for-me]
+name = "BANK OF TOKEN"
+base_url = "https://example.invalid"
+requires_openai_auth = false
+experimental_bearer_token = "sk-fixture-token"
+`;
+    const inspection = inspectCodexAuthDocuments({ configToml });
+    expect(inspection).toEqual({ kind: "api", identity: "BANK OF TOKEN" });
+    expect(JSON.stringify(inspection)).not.toMatch(/sk-fixture-token/u);
+    expect(inspectCodexApiUsageSource({ configToml })).toEqual({
+      baseUrl: "https://example.invalid",
+      apiKey: "sk-fixture-token",
+    });
   });
 
   it("treats a custom provider with a local bearer token as API auth without exposing the token", () => {

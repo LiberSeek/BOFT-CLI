@@ -348,6 +348,21 @@
 :host([lang="zh-CN"]) .settings-account-usage__meter {
   grid-template-columns: 48px minmax(36px, 1fr) 72px;
 }
+.settings-account-usage__meter--balance {
+  display: flex;
+  grid-template-columns: none;
+  justify-content: flex-start;
+  gap: 6px;
+}
+.settings-account-usage__balance {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 .settings-account-usage__title {
   color: light-dark(#5d5d68, #c3c3cd);

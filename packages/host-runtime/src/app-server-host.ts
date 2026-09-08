@@ -1,3 +1,4 @@
+import { inspectCodexApiAccountCredits } from "./account/codex-api-usage.js";
 import { inspectCodexHomeAuth } from "./account/codex-home-auth.js";
 import { AccountRateLimits } from "./codex-runtime/account-rate-limits.js";
 import { inspectHarnessAccounts } from "./harness-accounts.js";
@@ -1491,8 +1492,19 @@ export class AppServerHost {
     try {
       if (request.method === "codexhost/account/usage/inspect") {
         const { accountId } = codexAccountUsageParamsSchema.parse(requestObject(request));
-        if (!(await this.#accountRepository.get(accountId)))
-          throw new Error("Unknown Codex Account");
+        const account = await this.#accountRepository.get(accountId);
+        if (!account) throw new Error("Unknown Codex Account");
+        const auth = await inspectCodexHomeAuth(account.codexHome);
+        if (auth.kind === "api") {
+          const accountCredits = await inspectCodexApiAccountCredits(account.codexHome);
+          const result = codexAccountUsageResultSchema.parse({
+            accountId,
+            usage: null,
+            ...(accountCredits ? { accountCredits } : {}),
+          });
+          await this.#writer.json(rpcEnvelope(request, { result: jsonValueSchema.parse(result) }));
+          return;
+        }
         await this.#refreshOfficialRateLimits(accountId);
         const usage = this.#officialRateLimits.get(accountId);
         const accountCredits = this.#officialAccountCredits(accountId);

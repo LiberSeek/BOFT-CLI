@@ -2,12 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   creditsPeriodLabel,
+  formatAccountCreditsBalance,
   formatRendererCreditsReset,
   rendererCreditsTone,
 } from "../src/renderer-credits-control.js";
 import { formatRendererCreditsPercent } from "../src/renderer-usage-control.js";
 
 describe("Renderer credits control", () => {
+  it("formats remaining API credits with a currency unit", () => {
+    expect(formatAccountCreditsBalance(12.5, "USD")).toBe("$12.5");
+    expect(formatAccountCreditsBalance(8, "credits")).toBe("8 credits");
+  });
+
   it("maps used percent into a status tone", () => {
     expect(rendererCreditsTone(0)).toBe("ok");
     expect(rendererCreditsTone(52)).toBe("ok");

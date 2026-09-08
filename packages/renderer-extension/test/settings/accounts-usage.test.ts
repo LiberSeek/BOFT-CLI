@@ -70,6 +70,21 @@ function usage(snapshot = credits, display: "used" | "remaining" = "used") {
 }
 
 describe("Account limit windows", () => {
+  it("renders API remaining balance without synthesizing a percent meter", () => {
+    const result = renderAccountUsage(
+      document,
+      { status: "ready", credits: { remaining: 12.5, unit: "USD", periodType: "unknown" } },
+      messages,
+      "remaining",
+      vi.fn(),
+    );
+    if (!result) throw new Error("Expected limits");
+    expect(text(result)).toContain("$12.5");
+    expect(text(result)).toContain("剩余");
+    expect(text(result).replace(/\s+/gu, " ")).toContain("$12.5 剩余");
+    expect(elements(result).filter((el) => el.attributes.get("role") === "meter")).toHaveLength(0);
+  });
+
   it("does not synthesize a 5h window for weekly-only accounts", () => {
     const result = renderAccountUsage(
       document,

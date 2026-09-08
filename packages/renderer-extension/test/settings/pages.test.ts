@@ -1031,6 +1031,59 @@ describe("Renderer Codex Accounts page", () => {
     scope.dispose();
   });
 
+  it("renders remaining API credits for API Accounts without requiring an email", async () => {
+    const inspectCodexAccountUsage = vi.fn(async ({ accountId }: { accountId: string }) => ({
+      accountId,
+      usage: null,
+      accountCredits: { remaining: 42.125, unit: "USD", periodType: "unknown" as const },
+    }));
+    const client = {
+      listCodexAccounts: vi.fn(async () => ({
+        accounts: [
+          {
+            accountId: "bank",
+            label: "BANK OF TOKEN",
+            authKind: "api" as const,
+            authIdentity: "BANK OF TOKEN",
+            codexHome: "/tmp/api-home",
+            active: true,
+            isDefault: true,
+          },
+        ],
+      })),
+      inspectCodexAccountUsage,
+      createCodexAccount: vi.fn(),
+      deleteCodexAccount: vi.fn(),
+      activateCodexAccount: vi.fn(),
+      startCodexAccountLogin: vi.fn(),
+      cancelCodexAccountLogin: vi.fn(),
+    };
+    const page = createDefaultRendererSettingsPages(
+      rendererSettingsMessages("zh-CN"),
+      () => null,
+      () => null,
+      () => client,
+    ).find(({ id }) => id === "accounts");
+    if (!page) throw new Error("Accounts page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    await vi.waitFor(() =>
+      expect(inspectCodexAccountUsage).toHaveBeenCalledWith({ accountId: "bank" }),
+    );
+    await vi.waitFor(() => expect(visibleText(content)).toContain("$42.125"));
+    expect(visibleText(content)).toContain("API - BANK OF TOKEN");
+
+    scope.dispose();
+  });
+
   it("hides login for valid Accounts and exposes device-code login for others", async () => {
     let active = "personal";
     const personal = { email: undefined as string | undefined };

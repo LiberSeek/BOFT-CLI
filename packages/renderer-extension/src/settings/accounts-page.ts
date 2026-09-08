@@ -57,6 +57,10 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+function accountHasUsage(account: CodexAccountSummary): boolean {
+  return account.authKind === "api" || Boolean(account.email);
+}
+
 export function createAccountsSettingsPage(
   messages: RendererSettingsMessages,
   getClient: () => RendererCodexAccountClient | null,
@@ -227,7 +231,8 @@ export function createAccountsSettingsPage(
           button.setAttribute("aria-pressed", String(display === usageDisplay));
         }
         refreshUsage.disabled =
-          ((!getClient()?.inspectCodexAccountUsage || !accounts.some((account) => account.email)) &&
+          ((!getClient()?.inspectCodexAccountUsage ||
+            !accounts.some((account) => accountHasUsage(account))) &&
             !getClient()?.listHarnessAccounts) ||
           harnessAccounts?.refreshing === true ||
           [...usageByAccountId.values()].some((usage) => usage.status === "loading") ||
@@ -340,7 +345,7 @@ export function createAccountsSettingsPage(
       };
       const loadUsage = (nextAccounts: readonly CodexAccountSummary[]): void => {
         const inspect = getClient()?.inspectCodexAccountUsage;
-        const signedIn = nextAccounts.filter((account) => account.email);
+        const signedIn = nextAccounts.filter((account) => accountHasUsage(account));
         const keep = new Set(signedIn.map((account) => account.accountId));
         for (const accountId of [...usageByAccountId.keys()]) {
           if (!keep.has(accountId)) usageByAccountId.delete(accountId);

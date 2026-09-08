@@ -1618,10 +1618,11 @@ button {
   border-radius: 8px;
 }
 
-/* Soft status copy (unavailable / request failure) should not sit in a framed card. */
+/* Soft status copy and the Update action should not sit in a framed card. */
 .settings-update-panel[data-update-state="unavailable"],
 .settings-update-panel[data-update-state="failed"],
-.settings-update-panel[data-update-state="error"] {
+.settings-update-panel[data-update-state="error"],
+.settings-update-panel[data-update-state="available"] {
   padding: 4px 0 0;
   border: 0;
   border-radius: 0;

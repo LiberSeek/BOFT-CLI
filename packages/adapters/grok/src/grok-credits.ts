@@ -190,10 +190,11 @@ export async function fetchGrokCredits(
   input: FetchGrokCreditsInput = {},
 ): Promise<GrokCreditsSnapshot | null> {
   const account = await fetchGrokAccount(input);
-  if (!account) return null;
+  const usedPercent = account?.credits.usedPercent;
+  if (!account || usedPercent === undefined) return null;
   const { credits } = account;
   return {
-    usedPercent: credits.usedPercent,
+    usedPercent,
     periodType:
       credits.periodType === "weekly" || credits.periodType === "monthly"
         ? credits.periodType

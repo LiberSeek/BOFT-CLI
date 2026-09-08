@@ -93,13 +93,30 @@ export const accountCreditsSnapshotSchema = z
   .object({
     /** Native label when the primary limit is scoped to a model or product group. */
     label: z.string().min(1).optional(),
-    usedPercent: usagePercentSchema,
+    usedPercent: usagePercentSchema.optional(),
+    remaining: z.number().finite().optional(),
+    unit: z.string().trim().min(1).max(32).optional(),
     resetsAt: z.string().min(1).optional(),
     periodType: z.enum(["weekly", "monthly", "five_hour", "seven_day", "unknown"]),
     productUsage: z.array(accountCreditsProductUsageSchema).min(1).optional(),
     resetCredits: accountResetCreditsSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((credits, context) => {
+    if (credits.usedPercent === undefined && credits.remaining === undefined) {
+      context.addIssue({
+        code: "custom",
+        message: "Account credits must include usedPercent or remaining",
+      });
+    }
+    if (credits.remaining !== undefined && !credits.unit) {
+      context.addIssue({
+        code: "custom",
+        message: "Account remaining credits require a unit",
+        path: ["unit"],
+      });
+    }
+  });
 
 export type AccountResetCredits = z.infer<typeof accountResetCreditsSchema>;
 export type AccountCreditsSnapshot = z.infer<typeof accountCreditsSnapshotSchema>;

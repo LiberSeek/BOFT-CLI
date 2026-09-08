@@ -1,6 +1,10 @@
 import type { AccountCreditsSnapshot } from "@codexhost/shared-contracts";
 
-import { formatRendererCreditsReset, rendererCreditsTone } from "../renderer-credits-control.js";
+import {
+  formatAccountCreditsBalance,
+  formatRendererCreditsReset,
+  rendererCreditsTone,
+} from "../renderer-credits-control.js";
 import { formatRendererCreditsPercent } from "../renderer-usage-control.js";
 import { createRendererSettingsIcon } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
@@ -99,8 +103,26 @@ export function renderAccountUsage(
     return usage;
   }
   const credits = state.credits;
+  if (credits.remaining !== undefined && credits.unit) {
+    const meter = document.createElement("div");
+    meter.className = "settings-account-usage__meter settings-account-usage__meter--balance";
+    const amount = formatAccountCreditsBalance(credits.remaining, credits.unit);
+    const value = document.createElement("span");
+    value.className = "settings-account-usage__balance";
+    const number = document.createElement("span");
+    number.textContent = amount;
+    const suffix = document.createElement("span");
+    suffix.className = "settings-account-usage__value-label";
+    suffix.textContent = messages.accountCreditsRemaining;
+    value.append(number, suffix);
+    value.title = `${amount} ${messages.accountCreditsRemaining}`;
+    meter.append(value);
+    usage.append(meter);
+    if (credits.usedPercent === undefined) return usage;
+  }
   // Render only reported windows/products. Neither a plan name nor a missing
   // window is evidence of zero usage, unlimited access, or a synthetic 5h limit.
+  if (credits.usedPercent === undefined) return usage;
   const windows = [
     {
       label: credits.label ?? creditsPeriodLabel(credits.periodType, messages),

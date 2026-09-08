@@ -42,8 +42,16 @@ function tomlTopLevelAssignment(source: string, key: string): string | undefined
 interface CodexModelProviderAuth {
   readonly id: string;
   readonly name?: string;
+  readonly baseUrl?: string;
+  readonly bearerToken?: string;
+  readonly envKey?: string;
   readonly requiresOpenAiAuth: boolean;
   readonly hasLocalApiCredential: boolean;
+}
+
+export interface CodexApiUsageSource {
+  readonly baseUrl: string;
+  readonly apiKey: string;
 }
 
 function tomlBoolean(value: string | undefined): boolean | undefined {
@@ -69,6 +77,9 @@ function parseModelProviderAuth(
   const tables = tomlProviderTableNames(providerId);
   let currentTable = "";
   let name: string | undefined;
+  let baseUrl: string | undefined;
+  let bearerToken: string | undefined;
+  let envKey: string | undefined;
   let requiresOpenAiAuth: boolean | undefined;
   let hasLocalApiCredential = false;
   for (const rawLine of source.split(/\r?\n/u)) {
@@ -85,17 +96,23 @@ function parseModelProviderAuth(
     const key = assignment[1] ?? "";
     const value = tomlUnquote(assignment[2] ?? "");
     if (key === "name" && value) name = value;
+    if (key === "base_url" && value) baseUrl = value;
     if (key === "requires_openai_auth") requiresOpenAiAuth = tomlBoolean(value);
-    if (
-      (key === "experimental_bearer_token" || key === "env_key") &&
-      value.trim().length > 0
-    ) {
+    if (key === "experimental_bearer_token" && value.trim().length > 0) {
+      bearerToken = value.trim();
+      hasLocalApiCredential = true;
+    }
+    if (key === "env_key" && value.trim().length > 0) {
+      envKey = value.trim();
       hasLocalApiCredential = true;
     }
   }
   return {
     id: providerId,
     ...(name ? { name } : {}),
+    ...(baseUrl ? { baseUrl } : {}),
+    ...(bearerToken ? { bearerToken } : {}),
+    ...(envKey ? { envKey } : {}),
     requiresOpenAiAuth: requiresOpenAiAuth ?? providerId === "openai",
     hasLocalApiCredential,
   };
@@ -162,6 +179,34 @@ async function readOptionalUtf8(file: string): Promise<string | undefined> {
   }
 }
 
+function authJsonApiKey(authJson: string | undefined): string | undefined {
+  if (!authJson) return undefined;
+  try {
+    const auth = JSON.parse(authJson) as Record<string, unknown>;
+    return typeof auth.api_key === "string" && auth.api_key.trim() ? auth.api_key.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Local API credentials for usage queries. Never include this in renderer-facing summaries. */
+export function inspectCodexApiUsageSource(input: {
+  readonly configToml?: string;
+  readonly authJson?: string;
+  readonly env?: NodeJS.ProcessEnv;
+}): CodexApiUsageSource | null {
+  const provider = parseModelProviderAuth(input.configToml);
+  const baseUrl = provider?.baseUrl?.trim();
+  if (!baseUrl) return null;
+  const env = input.env ?? process.env;
+  const apiKey =
+    provider?.bearerToken?.trim() ||
+    authJsonApiKey(input.authJson) ||
+    (provider?.envKey ? env[provider.envKey]?.trim() : undefined);
+  if (!apiKey) return null;
+  return { baseUrl, apiKey };
+}
+
 export async function inspectCodexHomeAuth(codexHome: string): Promise<CodexHomeAuthInspection> {
   const root = path.resolve(codexHome);
   const [configToml, authJson] = await Promise.all([
@@ -171,5 +216,21 @@ export async function inspectCodexHomeAuth(codexHome: string): Promise<CodexHome
   return inspectCodexAuthDocuments({
     ...(configToml ? { configToml } : {}),
     ...(authJson ? { authJson } : {}),
+  });
+}
+
+export async function inspectCodexHomeApiUsageSource(
+  codexHome: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<CodexApiUsageSource | null> {
+  const root = path.resolve(codexHome);
+  const [configToml, authJson] = await Promise.all([
+    readOptionalUtf8(path.join(root, "config.toml")),
+    readOptionalUtf8(path.join(root, "auth.json")),
+  ]);
+  return inspectCodexApiUsageSource({
+    ...(configToml ? { configToml } : {}),
+    ...(authJson ? { authJson } : {}),
+    env,
   });
 }

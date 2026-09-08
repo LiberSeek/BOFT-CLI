@@ -65,6 +65,28 @@ describe("Thread Usage contracts", () => {
     ).toBe(false);
   });
 
+  it("accepts remaining API credits without a used percent", () => {
+    expect(
+      threadUsageInspectionSchema.parse({
+        threadId: "thread-usage",
+        usage: null,
+        accountCredits: { remaining: 12.5, unit: "USD", periodType: "unknown" },
+      }),
+    ).toMatchObject({
+      accountCredits: { remaining: 12.5, unit: "USD", periodType: "unknown" },
+    });
+  });
+
+  it("rejects remaining credits without a unit", () => {
+    expect(
+      threadUsageInspectionSchema.safeParse({
+        threadId: "thread-usage",
+        usage: null,
+        accountCredits: { remaining: 12.5, periodType: "unknown" },
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts only the fixed exact refresh mode", () => {
     expect(
       threadUsageInspectionParamsSchema.parse({ threadId: "thread-usage", refresh: "exact" }),
