@@ -16,7 +16,11 @@ import {
   type StoredThreadRecordV1,
   type StoredTurnMappingV1,
 } from "@codexhost/mapping-store";
-import { projectHistoricalTurn, type JsonObject } from "@codexhost/protocol-core";
+import {
+  decodeExternalTransportSelection,
+  projectHistoricalTurn,
+  type JsonObject,
+} from "@codexhost/protocol-core";
 import {
   hostThreadIdSchema,
   hostTurnIdSchema,
@@ -503,6 +507,23 @@ export function createExternalThreadRecordInput(input: {
   };
 }
 
+function subagentThreadModelFields(record: StoredThreadRecordV1): {
+  model?: string;
+  reasoningEffort?: string;
+} {
+  if (!record.subagent) return {};
+  try {
+    const selection = decodeExternalTransportSelection(record.harnessId, record.transportModelId);
+    if (!selection) return {};
+    return {
+      ...(selection.model?.id ? { model: selection.model.id } : {}),
+      ...(selection.thinkingOptionId ? { reasoningEffort: selection.thinkingOptionId } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export function externalThreadValue(input: {
   record: StoredThreadRecordV1;
   turns: JsonObject[];
@@ -581,5 +602,6 @@ export function externalThreadValue(input: {
     agentNickname: record.subagent ? record.title || null : null,
     agentRole: record.subagent?.role ?? null,
     extra: null,
+    ...subagentThreadModelFields(record),
   };
 }

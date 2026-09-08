@@ -4298,6 +4298,8 @@ export class AppServerHost {
       sessionId: parent.sessionId,
       running: status === "active",
     });
+    if (subagent.model) thread.model = subagent.model;
+    if (subagent.reasoningEffort) thread.reasoningEffort = subagent.reasoningEffort;
     this.#subagentThreadStatuses.set(record.hostThreadId, status);
     this.#trackRunningSubagent(parent.id, record.hostThreadId, status);
     await this.#writer.json({
