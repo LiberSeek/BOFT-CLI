@@ -159,6 +159,9 @@ export interface RendererSettingsMessages {
   readonly connectionOpenHarnessWeb: string;
   readonly connectionInstall: string;
   readonly connectionInstallDescription: string;
+  readonly connectionInstallCommand: string;
+  readonly connectionCopyPrompt: string;
+  readonly connectionInstallPrompt: string;
   readonly connectionErrorTitle: string;
   readonly connectionErrorLog: string;
   readonly connectionOpenIssue: string;
@@ -375,7 +378,11 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionOpenHarnessWeb: "Open DeepSeek Harness Web",
   connectionInstall: "Install",
   connectionInstallDescription:
-    "This Harness was not detected. Follow its official installation guide, then return here and run the check again.",
+    "This Harness was not detected. Copy the official install command, copy an install prompt for another Agent, or open the official installation page. After installing, return here and run the check again.",
+  connectionInstallCommand: "Install command",
+  connectionCopyPrompt: "Copy prompt",
+  connectionInstallPrompt:
+    "Please install {name} (CLI command: {binary}) on this machine.\n\nUse the official install method and run:\n{command}\n\nOfficial installation page: {url}\n\nAfter installation, verify that `{binary}` is available in the terminal and report the result.",
   connectionErrorTitle: "Connection check failed",
   connectionErrorLog: "Error log",
   connectionOpenIssue: "Open GitHub Issue",
@@ -613,7 +620,11 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionOpenHarnessWeb: "打开 DeepSeek Harness Web",
   connectionInstall: "安装",
   connectionInstallDescription:
-    "尚未检测到该 Harness。请按照官方安装指南完成安装，然后返回此页面重新检查。",
+    "尚未检测到该 Harness。可以复制官方安装命令、复制安装 Prompt 交给其他 Agent 执行，或前往官方安装页面。安装完成后请返回此页面重新检查。",
+  connectionInstallCommand: "安装命令",
+  connectionCopyPrompt: "复制 Prompt",
+  connectionInstallPrompt:
+    "请帮我在本机安装 {name}（CLI 命令：{binary}）。\n\n请按官方安装方式执行以下命令，并处理 PATH、权限和依赖问题：\n{command}\n\n官方安装页面：{url}\n\n安装完成后请验证 `{binary}` 可以在终端中运行，并告诉我结果。",
   connectionErrorTitle: "连接检查失败",
   connectionErrorLog: "错误日志",
   connectionOpenIssue: "提交 GitHub Issue",

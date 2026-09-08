@@ -20,6 +20,10 @@ so it stays visible on dark surfaces.
 `openai.chatgpt` VS Code extension. It is bundled as a data URL so the Renderer
 does not depend on a local extension path or a network request.
 
+`hermes-agent.png` is a cropped and resized copy of the Hermes Agent mark from
+the official Hermes Agent website favicon. It is bundled locally so the Renderer
+does not depend on the Hermes installation or a network request.
+
 `omp-agent.svg` is the official OMP favicon mark from the Oh My Pi repository
 (`packages/collab-web/public/favicon.svg`). `opencode-agent.png` is OpenCode's
 square mark with its dark outer plate. Both are bundled locally so the Renderer

@@ -57,6 +57,7 @@ async function runPackagedHost(host, directory, requests) {
     CODEXHOST_DEFAULT_AGENT: "codex",
     CODEXHOST_CLAUDE_COMMAND: path.join(directory, "missing-claude"),
     CODEXHOST_ANTIGRAVITY_COMMAND: path.join(directory, "missing-antigravity"),
+    CODEXHOST_HERMES_COMMAND: path.join(directory, "missing-hermes"),
   });
   const child = spawn(process.execPath, [host, official], {
     cwd: directory,
@@ -147,7 +148,7 @@ describe("release Host and independent plugin Bundles", () => {
     }
   });
 
-  it("runs relocated release artifacts with seven plugins, an unknown plugin, and no plugins", async () => {
+  it("runs relocated release artifacts with eight plugins, an unknown plugin, and no plugins", async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "codexhost-plugin-release-"));
     const app = path.join(directory, "build", "app");
     const relocated = path.join(directory, "relocated runtime", "app");

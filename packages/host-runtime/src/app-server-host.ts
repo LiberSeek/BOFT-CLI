@@ -4242,7 +4242,6 @@ export class AppServerHost {
         await this.#repository.setDelegationStatus(delegation.delegationId, status);
       }
     }
-    for (const message of result.messages) await this.#writer.json(message);
     if (event.type === "turn.completed") {
       await this.#setThreadStatus(
         thread,
@@ -4250,6 +4249,9 @@ export class AppServerHost {
           ? { type: "active", activeFlags: [] }
           : { type: "idle" },
       );
+    }
+    for (const message of result.messages) await this.#writer.json(message);
+    if (event.type === "turn.completed") {
       this.#externalSteering.terminal(thread.id, event.turnId, event.outcome);
     }
   }

@@ -11,20 +11,15 @@ import type { ExternalRendererAgent, RendererAgentAvailability } from "../agent-
 import { createRendererAgentIcon, RENDERER_AGENT_LABELS } from "../renderer-agent-icon.js";
 import type { RendererAdapterStatus } from "../versioned-renderer-adapter.js";
 import type { RendererSettingsPageDefinition, RendererSettingsPageMountContext } from "./core.js";
-import { createRendererSettingsIcon } from "./icons.js";
+import {
+  fillHarnessInstallPrompt,
+  harnessInstallGuide,
+  harnessInstallPlatform,
+} from "./harness-install.js";
+import { createRendererSettingsIcon, type RendererSettingsIconName } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
 
 export const CODEXHOST_GITHUB_ISSUES_NEW_URL = "https://github.com/LiberSeek/BOFT-CLI/issues/new";
-
-const HARNESS_INSTALL_URLS: Readonly<Record<ExternalRendererAgent, string>> = Object.freeze({
-  pi: "https://pi.dev/",
-  "claude-code": "https://code.claude.com/docs/en/quickstart",
-  "deepseek-harness": "https://deepseek-harness.github.io/deepseek-harness/",
-  opencode: "https://opencode.ai/docs/",
-  grok: "https://grok.com/",
-  omp: "https://github.com/can1357/oh-my-pi",
-  antigravity: "https://antigravity.google/product/antigravity-cli",
-});
 
 export interface RendererConnectionAgentSnapshot {
   readonly agent: ExternalRendererAgent;
@@ -128,36 +123,42 @@ function detailLine(document: Document, label: string, value: string): HTMLEleme
   return line;
 }
 
-function setCopyButtonLabel(button: HTMLButtonElement, label: string): void {
-  button.replaceChildren(createRendererSettingsIcon("copy", 16), label);
+function setActionButtonLabel(
+  button: HTMLButtonElement,
+  icon: RendererSettingsIconName,
+  label: string,
+): void {
+  button.replaceChildren(createRendererSettingsIcon(icon, 16), label);
 }
 
 function showCopyButtonFeedback(
   button: HTMLButtonElement,
+  icon: RendererSettingsIconName,
   label: string,
   restoreLabel: string,
 ): void {
-  setCopyButtonLabel(button, label);
+  setActionButtonLabel(button, icon, label);
   button.ownerDocument.defaultView?.setTimeout(() => {
-    setCopyButtonLabel(button, restoreLabel);
+    setActionButtonLabel(button, icon, restoreLabel);
   }, 2_000);
 }
 
-function copyDiagnosticsToClipboard(
+function copyTextToClipboard(
   document: Document,
   button: HTMLButtonElement,
   report: string,
   messages: RendererSettingsMessages,
   restoreLabel: string,
+  icon: RendererSettingsIconName = "copy",
 ): void {
   const clipboard = document.defaultView?.navigator.clipboard;
   if (!clipboard) {
-    showCopyButtonFeedback(button, messages.connectionCopyFailed, restoreLabel);
+    showCopyButtonFeedback(button, icon, messages.connectionCopyFailed, restoreLabel);
     return;
   }
   void clipboard.writeText(report).then(
-    () => showCopyButtonFeedback(button, messages.connectionCopied, restoreLabel),
-    () => showCopyButtonFeedback(button, messages.connectionCopyFailed, restoreLabel),
+    () => showCopyButtonFeedback(button, icon, messages.connectionCopied, restoreLabel),
+    () => showCopyButtonFeedback(button, icon, messages.connectionCopyFailed, restoreLabel),
   );
 }
 
@@ -254,6 +255,16 @@ function createInlineErrorDetail(
   body.dataset.connectionDetail = item.key;
 
   if (item.agentSnapshot?.availability === "notInstalled") {
+    const guide = harnessInstallGuide(
+      item.agentSnapshot.agent,
+      harnessInstallPlatform(document.defaultView),
+    );
+    const prompt = fillHarnessInstallPrompt(messages.connectionInstallPrompt, {
+      name: item.name,
+      binary: guide.binary,
+      command: guide.command,
+      url: guide.url,
+    });
     const callout = document.createElement("div");
     callout.className = "settings-connection-install-callout";
     const icon = document.createElement("span");
@@ -264,18 +275,70 @@ function createInlineErrorDetail(
     title.textContent = `${messages.connectionInstall} ${item.name}`;
     const description = document.createElement("p");
     description.textContent = messages.connectionInstallDescription;
-    copy.append(title, description);
+    const commandBlock = document.createElement("div");
+    commandBlock.className = "settings-connection-install-command";
+    const commandLabel = document.createElement("span");
+    commandLabel.textContent = messages.connectionInstallCommand;
+    const command = document.createElement("code");
+    command.textContent = guide.command;
+    commandBlock.append(commandLabel, command);
+    copy.append(title, description, commandBlock);
     callout.append(icon, copy);
-    const install = document.createElement("a");
-    install.className = "settings-command-button settings-connection-install-button";
-    install.href = HARNESS_INSTALL_URLS[item.agentSnapshot.agent];
-    install.target = "_blank";
-    install.rel = "noopener noreferrer";
-    install.append(
+
+    const actions = document.createElement("div");
+    actions.className = "settings-connection-install-actions";
+    const install = document.createElement("button");
+    install.type = "button";
+    install.className = "settings-command-button";
+    install.dataset.connectionAction = "install-command";
+    setActionButtonLabel(install, "hard-drive-download", messages.connectionInstall);
+    install.addEventListener("click", () => {
+      copyTextToClipboard(
+        document,
+        install,
+        guide.command,
+        messages,
+        messages.connectionInstall,
+        "hard-drive-download",
+      );
+    });
+
+    const copyPromptWrap = document.createElement("div");
+    copyPromptWrap.className = "settings-connection-copy-prompt";
+    const copyPrompt = document.createElement("button");
+    copyPrompt.type = "button";
+    copyPrompt.className = "settings-command-button settings-command-button--secondary";
+    copyPrompt.dataset.connectionAction = "copy-prompt";
+    copyPrompt.setAttribute("aria-describedby", `${item.key}-install-prompt-tooltip`);
+    setActionButtonLabel(copyPrompt, "copy", messages.connectionCopyPrompt);
+    copyPrompt.addEventListener("click", () => {
+      copyTextToClipboard(
+        document,
+        copyPrompt,
+        prompt,
+        messages,
+        messages.connectionCopyPrompt,
+      );
+    });
+    const tooltip = document.createElement("div");
+    tooltip.id = `${item.key}-install-prompt-tooltip`;
+    tooltip.className = "settings-connection-copy-prompt__tooltip";
+    tooltip.setAttribute("role", "tooltip");
+    tooltip.textContent = prompt;
+    copyPromptWrap.append(copyPrompt, tooltip);
+
+    const official = document.createElement("a");
+    official.className = "settings-command-button settings-command-button--secondary";
+    official.dataset.connectionAction = "open-installation";
+    official.href = guide.url;
+    official.target = "_blank";
+    official.rel = "noopener noreferrer";
+    official.append(
       messages.connectionOpenInstallation,
       createRendererSettingsIcon("external-link", 14),
     );
-    body.append(callout, install);
+    actions.append(install, copyPromptWrap, official);
+    body.append(callout, actions);
     return body;
   }
 
@@ -347,10 +410,10 @@ function createInlineErrorDetail(
   const copy = document.createElement("button");
   copy.type = "button";
   copy.className = "settings-command-button settings-command-button--secondary";
-  setCopyButtonLabel(copy, messages.connectionCopyDetails);
+  setActionButtonLabel(copy, "copy", messages.connectionCopyDetails);
   const report = diagnosticText(hostId, item);
   copy.addEventListener("click", () => {
-    copyDiagnosticsToClipboard(document, copy, report, messages, messages.connectionCopyDetails);
+    copyTextToClipboard(document, copy, report, messages, messages.connectionCopyDetails);
   });
   logHeader.append(logTitle, copy);
   const log = document.createElement("pre");
@@ -422,14 +485,18 @@ function createConnectionBlock(
     item.agentSnapshot?.availability === "notInstalled" ||
     item.openWebUi !== undefined;
   if (item.agentSnapshot?.availability === "notInstalled") {
-    const install = document.createElement("a");
+    const install = document.createElement("button");
+    install.type = "button";
     install.className = "settings-connection-install-link";
-    install.href = HARNESS_INSTALL_URLS[item.agentSnapshot.agent];
-    install.target = "_blank";
-    install.rel = "noopener noreferrer";
-    install.setAttribute("aria-label", `${messages.connectionOpenInstallation}: ${item.name}`);
-    install.title = messages.connectionOpenInstallation;
+    install.dataset.connectionAction = "show-install";
+    install.setAttribute("aria-label", `${messages.connectionInstall}: ${item.name}`);
+    install.setAttribute("aria-expanded", String(expanded));
+    install.title = messages.connectionInstall;
     install.append(createRendererSettingsIcon("download", 17));
+    install.addEventListener("click", (event) => {
+      event?.stopPropagation?.();
+      toggleExpand();
+    });
     action.append(install);
   } else if (item.error) {
     const viewError = document.createElement("button");

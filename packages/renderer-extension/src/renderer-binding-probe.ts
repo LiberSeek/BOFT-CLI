@@ -96,6 +96,7 @@ const externalHarnessIds = {
   grok: harnessIdSchema.parse("grok"),
   omp: harnessIdSchema.parse("omp"),
   antigravity: harnessIdSchema.parse("antigravity"),
+  hermes: harnessIdSchema.parse("hermes"),
 } as const;
 
 const externalAgents: readonly ExternalRendererAgent[] = [
@@ -106,6 +107,7 @@ const externalAgents: readonly ExternalRendererAgent[] = [
   "grok",
   "omp",
   "antigravity",
+  "hermes",
 ];
 type HarnessAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
 type HarnessAvailabilityErrors = Record<ExternalRendererAgent, CodexhostError | undefined>;
@@ -455,6 +457,15 @@ export function restoredThreadOwnership(inspection: ThreadInspection): RestoredT
       ...(permissionModeId ? { permissionModeId } : {}),
     };
   }
+  if (inspection.harnessId === "hermes") {
+    return {
+      agent: "hermes",
+      ...(inspection.effectiveModel ? { model: inspection.effectiveModel } : {}),
+      ...(inspection.effectivePermissionModeId
+        ? { permissionModeId: inspection.effectivePermissionModeId }
+        : {}),
+    };
+  }
   throw new Error("Thread owner is not a Renderer Agent");
 }
 
@@ -693,6 +704,7 @@ export function installRendererBindingProbe(
       grok: undefined,
       omp: undefined,
       antigravity: undefined,
+      hermes: undefined,
     },
     webUi: Object.fromEntries(
       externalAgents.map((agent) => [agent, false]),

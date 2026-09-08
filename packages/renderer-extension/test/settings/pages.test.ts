@@ -46,6 +46,7 @@ class FakeElement {
   className = "";
   hidden = false;
   href = "";
+  id = "";
   rel = "";
   target = "";
   textContent = "";
@@ -498,14 +499,50 @@ describe("Renderer Connections page", () => {
     await vi.waitFor(() => expect(refresh.disabled).toBe(false));
     expect(visibleNotesText(refresh)).toContain("扫描环境");
 
-    const installLink = descendants(content).find(
-      ({ tagName, href }) =>
-        tagName === "a" && href === "https://deepseek-harness.github.io/deepseek-harness/",
+    const rowInstall = descendants(content).find(
+      ({ tagName, dataset }) => tagName === "button" && dataset.connectionAction === "show-install",
     );
-    expect(installLink).toMatchObject({
+    if (!rowInstall) throw new Error("Persistent install button is not rendered");
+    expect(rowInstall.className.split(" ").includes("settings-connection-install-link")).toBe(true);
+    expect(rowInstall.getAttribute("aria-label")).toBe("安装: DeepSeek Harness");
+    rowInstall.dispatch("click");
+
+    const copyCommand = descendants(content).find(
+      ({ dataset }) => dataset.connectionAction === "install-command",
+    );
+    const copyPrompt = descendants(content).find(
+      ({ dataset }) => dataset.connectionAction === "copy-prompt",
+    );
+    const officialLink = descendants(content).find(
+      ({ dataset }) => dataset.connectionAction === "open-installation",
+    );
+    if (!copyCommand || !copyPrompt || !officialLink) {
+      throw new Error("Install actions are not rendered");
+    }
+    expect(visibleNotesText(copyCommand)).toContain("安装");
+    expect(visibleNotesText(copyPrompt)).toContain("复制 Prompt");
+    expect(visibleNotesText(officialLink)).toContain("前往官方安装页面");
+    expect(officialLink).toMatchObject({
+      href: "https://deepseek-harness.github.io/deepseek-harness/",
       target: "_blank",
       rel: "noopener noreferrer",
     });
+    const promptTooltip = descendants(content).find(({ className }) =>
+      className.split(" ").includes("settings-connection-copy-prompt__tooltip"),
+    );
+    expect(promptTooltip?.textContent).toContain("npm install -g @deepseek-ai/dsh");
+    expect(promptTooltip?.textContent).toContain("DeepSeek Harness");
+    expect(promptTooltip?.getAttribute("role")).toBe("tooltip");
+    expect(copyPrompt.getAttribute("aria-describedby")).toBe(promptTooltip?.id);
+
+    copyCommand.dispatch("click");
+    await vi.waitFor(() => expect(document.clipboardWriteText).toHaveBeenCalledTimes(2));
+    expect(document.clipboardWriteText).toHaveBeenLastCalledWith("npm install -g @deepseek-ai/dsh");
+    copyPrompt.dispatch("click");
+    await vi.waitFor(() => expect(document.clipboardWriteText).toHaveBeenCalledTimes(3));
+    expect(document.clipboardWriteText).toHaveBeenLastCalledWith(
+      expect.stringContaining("请帮我在本机安装 DeepSeek Harness"),
+    );
 
     const remoteTab = descendants(content).find(
       ({ tagName, dataset }) =>
@@ -864,6 +901,7 @@ describe("Renderer Codex Accounts page", () => {
     const add = descendants(content).find(
       ({ tagName, children }) => tagName === "button" && children.includes("Add Account"),
     );
+    expect(add?.className.split(" ").includes("settings-command-button--secondary")).toBe(true);
     add?.dispatch("click");
 
     await vi.waitFor(() => expect(client.createCodexAccount).toHaveBeenCalledWith({}));

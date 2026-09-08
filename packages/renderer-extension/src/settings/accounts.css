@@ -68,9 +68,6 @@
 .settings-account-header > .settings-command-button {
   flex: none;
   white-space: nowrap;
-  min-height: 36px;
-  padding: 8px 12px;
-  border-radius: 7px;
 }
 
 .settings-account-header .settings-section-label {

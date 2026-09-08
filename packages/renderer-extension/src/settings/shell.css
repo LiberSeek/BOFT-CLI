@@ -1141,21 +1141,18 @@ button {
   justify-content: center;
   width: 26px;
   height: 26px;
+  padding: 0;
   color: var(--settings-focus);
+  font: inherit;
   text-decoration: none;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 7px;
-  opacity: 0;
-  transition: opacity 120ms ease;
+  cursor: pointer;
 }
 
-.settings-connection-row:hover .settings-connection-install-link,
+.settings-connection-install-link:hover,
 .settings-connection-install-link:focus-visible {
-  opacity: 1;
-}
-
-.settings-connection-install-link:hover {
   color: var(--settings-focus);
   background: var(--settings-active);
   border-color: var(--settings-border);
@@ -1242,8 +1239,72 @@ button {
   line-height: 16px;
 }
 
-.settings-connection-install-button {
-  width: fit-content;
+.settings-connection-install-command {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.settings-connection-install-command span {
+  color: var(--settings-muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings-connection-install-command code {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--settings-text);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: pre-wrap;
+}
+
+.settings-connection-install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-connection-copy-prompt {
+  position: relative;
+}
+
+.settings-connection-copy-prompt__tooltip {
+  position: absolute;
+  z-index: 4;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  max-width: min(360px, 72vw);
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px 10px;
+  color: var(--settings-text);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: pre-wrap;
+  text-align: left;
+  background: var(--settings-elevated);
+  border: 1px solid var(--settings-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 22%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.settings-connection-copy-prompt:hover .settings-connection-copy-prompt__tooltip,
+.settings-connection-copy-prompt:focus-within .settings-connection-copy-prompt__tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 .settings-connection-error-summary {

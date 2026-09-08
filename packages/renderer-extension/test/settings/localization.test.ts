@@ -54,6 +54,11 @@ describe("Renderer settings localization", () => {
     expect(chinese.sessionImportTitle).toBe("会话导入");
     expect(chinese.pageLabels.plugins).toBe("插件");
     expect(chinese.connectionSection).toBe("连接");
+    expect(chinese.connectionCopyPrompt).toBe("复制 Prompt");
+    expect(english.connectionCopyPrompt).toBe("Copy prompt");
+    expect(chinese.connectionInstallCommand).toBe("安装命令");
+    expect(chinese.connectionInstallPrompt).toContain("{command}");
+    expect(english.connectionInstallPrompt).toContain("{command}");
     expect(chinese.generalSection).toBe("通用");
     expect(chinese.otherSection).toBe("其他");
     expect(chinese.sessionImportAvailabilityNote).toContain("可选 Harness 来自本地 Host");

@@ -71,7 +71,16 @@ afterEach(async () => {
 });
 
 describe("Harness plugin discovery and loading", () => {
-  it.each(["pi", "claude-code", "deepseek-harness", "opencode", "grok", "omp", "antigravity"])(
+  it.each([
+    "pi",
+    "claude-code",
+    "deepseek-harness",
+    "opencode",
+    "grok",
+    "omp",
+    "antigravity",
+    "hermes",
+  ])(
     "ships a valid %s manifest and resolvable compiled resources",
     async (id) => {
       const location = path.resolve("packages/adapters", id);

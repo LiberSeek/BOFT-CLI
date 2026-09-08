@@ -83,8 +83,8 @@ export function createAccountsSettingsPage(
       copy.append(heading, description);
       const add = document.createElement("button");
       add.type = "button";
-      add.className = "settings-command-button";
-      add.append(createRendererSettingsIcon("add", 16), messages.accountAdd);
+      add.className = "settings-command-button settings-command-button--secondary";
+      add.append(createRendererSettingsIcon("add", 15), messages.accountAdd);
       header.append(copy, add);
 
       const status = document.createElement("p");

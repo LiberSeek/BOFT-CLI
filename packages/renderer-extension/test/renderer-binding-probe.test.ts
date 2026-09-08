@@ -122,6 +122,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: "ready",
           omp: "ready",
           antigravity: "ready",
+          hermes: "ready",
         },
         {
           pi: undefined,
@@ -135,6 +136,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: undefined,
           omp: undefined,
           antigravity: undefined,
+          hermes: undefined,
         },
       ),
     ).toEqual([]);
@@ -149,6 +151,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: "ready",
           omp: "ready",
           antigravity: "ready",
+          hermes: "ready",
         },
         {
           pi: undefined,
@@ -162,6 +165,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: undefined,
           omp: undefined,
           antigravity: undefined,
+          hermes: undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);
@@ -176,6 +180,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: "ready",
           omp: "ready",
           antigravity: "ready",
+          hermes: "ready",
         },
         {
           pi: undefined,
@@ -189,6 +194,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: undefined,
           omp: undefined,
           antigravity: undefined,
+          hermes: undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);
@@ -205,6 +211,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: "checking",
           omp: "checking",
           antigravity: "checking",
+          hermes: "checking",
         },
         {
           pi: undefined,
@@ -214,9 +221,19 @@ describe("Renderer Composer DOM behavior", () => {
           grok: undefined,
           omp: undefined,
           antigravity: undefined,
+          hermes: undefined,
         },
       ),
-    ).toEqual(["pi", "claude-code", "deepseek-harness", "opencode", "grok", "omp", "antigravity"]);
+    ).toEqual([
+      "pi",
+      "claude-code",
+      "deepseek-harness",
+      "opencode",
+      "grok",
+      "omp",
+      "antigravity",
+      "hermes",
+    ]);
 
     expect(
       passiveHarnessAvailabilityAgents(
@@ -228,6 +245,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: "ready",
           omp: "ready",
           antigravity: "ready",
+          hermes: "ready",
         },
         {
           pi: undefined,
@@ -241,6 +259,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: undefined,
           omp: undefined,
           antigravity: undefined,
+          hermes: undefined,
         },
       ),
     ).toEqual([]);
@@ -255,6 +274,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: "ready",
           omp: "ready",
           antigravity: "ready",
+          hermes: "ready",
         },
         {
           pi: undefined,
@@ -268,6 +288,7 @@ describe("Renderer Composer DOM behavior", () => {
           grok: undefined,
           omp: undefined,
           antigravity: undefined,
+          hermes: undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);
@@ -1047,6 +1068,23 @@ describe("Renderer Composer DOM behavior", () => {
       model: { id: "gpt-5.6-sol" },
       thinkingOptionId: "high",
       permissionModeId: "configured",
+    });
+    expect(
+      restoredThreadOwnership({
+        owner: "external",
+        harnessId: "hermes",
+        transportModelId: "codexhost/plugin-v1@synthetic",
+        history: { fork: false, forkAcrossCwd: false, rollbackLastTurn: false },
+        effectiveModel: harnessModelRefSchema.parse({
+          id: "hermes-model-v1.emFpOmdsbS01LXR1cmJv",
+        }),
+        effectivePermissionModeId: harnessPermissionModeIdSchema.parse("accept_edits"),
+        locked: true,
+      }),
+    ).toEqual({
+      agent: "hermes",
+      model: { id: "hermes-model-v1.emFpOmdsbS01LXR1cmJv" },
+      permissionModeId: "accept_edits",
     });
     expect(() =>
       restoredThreadOwnership({

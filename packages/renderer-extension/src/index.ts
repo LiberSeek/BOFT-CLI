@@ -114,6 +114,7 @@ export {
   OPENCODE_TRANSPORT_MODEL_ID,
   OPENCODE_TRANSPORT_MODEL_PREFIX,
   antigravityTransportModelId,
+  hermesTransportModelId,
   claudeTransportModelId,
   activeRendererDraftPrewarmPolicy,
   decodeAntigravityTransportModelId,
