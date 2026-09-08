@@ -64,6 +64,7 @@ import type { RendererModelClient } from "./renderer-model-client.js";
 import { RendererMethodUnavailableError } from "./renderer-request-sender.js";
 import { thinkingOptionsForModel } from "./renderer-model-picker.js";
 import { installRendererApprovalStyle } from "./renderer-approval-style.js";
+import { installRendererSubagentRowMeta } from "./renderer-subagent-row-meta.js";
 import { RENDERER_AGENT_INSTALL_URLS } from "./renderer-agent-picker.js";
 import {
   readClaudePermissionModePreference,
@@ -650,6 +651,7 @@ export function installRendererBindingProbe(
   if (existing) return existing;
 
   const disposeApprovalStyle = installRendererApprovalStyle(document);
+  const subagentRowMeta = installRendererSubagentRowMeta();
   const enabledAgents = [...new Set(options.enabledAgents ?? DEFAULT_RENDERER_AGENTS)];
   const enabledAgentSet = new Set(enabledAgents);
   const controller = new DraftAgentController<Element>({
@@ -2871,6 +2873,7 @@ export function installRendererBindingProbe(
       if (disposed) return;
       disposed = true;
       disposeApprovalStyle();
+      subagentRowMeta.dispose();
       usageNotificationDispose?.();
       usageNotificationDispose = null;
       adapterDispose?.();

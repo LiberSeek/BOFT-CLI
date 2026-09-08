@@ -349,6 +349,8 @@ export interface HostSubagentState {
   nativeSubagentId?: string;
   description: string;
   role?: string;
+  model?: string;
+  reasoningEffort?: string;
   background: boolean;
   status: HostSubagentStatus;
   resultSummary?: string;

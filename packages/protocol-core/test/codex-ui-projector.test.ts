@@ -650,6 +650,8 @@ describe("Codex UI projector", () => {
           subagentId: "claude-agent-1",
           description: "Inspect implementation",
           role: "Explore",
+          model: "Grok 4.6",
+          reasoningEffort: "high",
           background: true,
           status: "pending",
         },
@@ -670,6 +672,8 @@ describe("Codex UI projector", () => {
             status: "inProgress",
             senderThreadId: "thread-1",
             receiverThreadIds: ["claude-agent-1"],
+            model: "Grok 4.6",
+            reasoningEffort: "high",
             agentsStates: {
               "claude-agent-1": { status: "pendingInit", message: null },
             },
