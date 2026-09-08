@@ -19,6 +19,7 @@ const classes = {
   omp: "OmpAdapter",
   antigravity: "AntigravityAdapter",
   hermes: "HermesAdapter",
+  muse: "MuseAdapter",
 };
 
 const unavailable: HarnessInspection = {
@@ -62,7 +63,7 @@ describe("installed Harness composition", () => {
   );
 
   // Cold bundle imports can exceed Vitest's 5s default on CI; the loader retains its 10s budget.
-  it("loads all eight preinstalled plugin factories without static registration or executable discovery", async () => {
+  it("loads all nine preinstalled plugin factories without static registration or executable discovery", async () => {
     const registry = await load();
     try {
       expect(
@@ -105,6 +106,7 @@ describe("installed Harness composition", () => {
         "/help",
       ],
       hermes: [],
+      muse: [],
     };
     const registry = await load();
     try {
@@ -130,6 +132,7 @@ describe("installed Harness composition", () => {
     ["omp", "CODEXHOST_OMP_COMMAND"],
     ["antigravity", "CODEXHOST_ANTIGRAVITY_COMMAND"],
     ["hermes", "CODEXHOST_HERMES_COMMAND"],
+    ["muse", "CODEXHOST_MUSE_COMMAND"],
   ])(
     "preserves the explicit %s command rather than finding another local installation",
     async (id, commandVariable) => {
@@ -179,7 +182,7 @@ describe("installed Harness composition", () => {
     try {
       for (const [id, adapter] of first.adapters) expect(adapter).not.toBe(second.adapters.get(id));
       await first.close();
-      expect(second.list()).toHaveLength(8);
+      expect(second.list()).toHaveLength(9);
     } finally {
       await Promise.all([first.close(), second.close()]);
     }

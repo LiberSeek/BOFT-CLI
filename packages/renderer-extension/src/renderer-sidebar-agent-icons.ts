@@ -4,7 +4,7 @@ import {
   type ThreadOwnership,
 } from "@codexhost/shared-contracts";
 
-import type { RendererAgent } from "./agent-selection-state.js";
+import { KNOWN_RENDERER_AGENTS, type RendererAgent } from "./agent-selection-state.js";
 import { createRendererAgentIcon, RENDERER_AGENT_LABELS } from "./renderer-agent-icon.js";
 import type { RendererModelClient } from "./renderer-model-client.js";
 import { RendererMethodUnavailableError } from "./renderer-request-sender.js";
@@ -134,15 +134,10 @@ export function rendererAgentForThreadOwnership(
   ownership: ThreadOwnership,
 ): Exclude<RendererAgent, "codex"> | null {
   if (ownership.owner === "codex") return null;
-  if (ownership.harnessId === "pi") return "pi";
-  if (ownership.harnessId === "claude-code") return "claude-code";
-  if (ownership.harnessId === "deepseek-harness") return "deepseek-harness";
-  if (ownership.harnessId === "opencode") return "opencode";
-  if (ownership.harnessId === "grok") return "grok";
-  if (ownership.harnessId === "omp") return "omp";
-  if (ownership.harnessId === "antigravity") return "antigravity";
-  if (ownership.harnessId === "hermes") return "hermes";
-  return null;
+  return KNOWN_RENDERER_AGENTS.includes(ownership.harnessId as RendererAgent) &&
+    ownership.harnessId !== "codex"
+    ? (ownership.harnessId as Exclude<RendererAgent, "codex">)
+    : null;
 }
 
 class BrowserSidebarAgentIconRow implements SidebarAgentIconRow {

@@ -7171,6 +7171,71 @@ describe("AppServerHost HarnessAdapter projection", () => {
     await stopFixture(fixture);
   });
 
+  it("keeps an external Turn active when native cancellation fails", async () => {
+    const fixture = createFixture();
+    const threadId = await startPiThread(fixture);
+    const turnId = await startPiTurn(fixture, threadId);
+    const session = fixture.adapter.sessions[0];
+    if (!session) throw new Error("Fake Pi Session was not opened");
+    await fixture.collector.waitFor((message) => turnEvent(message, "turn/started", turnId));
+    session.rejectNextCancel();
+    writeRequest(fixture.desktopInput, {
+      id: 3,
+      method: "turn/interrupt",
+      params: { threadId, turnId },
+    });
+    await expect(fixture.collector.waitFor((message) => requestId(message, 3))).resolves.toEqual({
+      id: 3,
+      error: { code: -32074, message: "No matching Turn" },
+    });
+    writeRequest(fixture.desktopInput, {
+      id: 4,
+      method: "turn/start",
+      params: { threadId, input: [{ type: "text", text: "must remain busy" }] },
+    });
+    await expect(
+      fixture.collector.waitFor((message) => requestId(message, 4)),
+    ).resolves.toMatchObject({ error: { code: -32072 } });
+    expect(
+      fixture.collector.messages.some((message) => turnEvent(message, "turn/completed", turnId)),
+    ).toBe(false);
+    session.appendText("still running");
+    await fixture.collector.waitFor((message) => method(message, "item/agentMessage/delta"));
+    session.succeedTurn();
+    await expect(
+      fixture.collector.waitFor((message) => turnEvent(message, "turn/completed", turnId)),
+    ).resolves.toMatchObject({ params: { turn: { status: "completed" } } });
+    await stopFixture(fixture);
+  });
+
+  it("reports thrown cancellation errors without blocking later native output", async () => {
+    const fixture = createFixture();
+    const threadId = await startPiThread(fixture);
+    const turnId = await startPiTurn(fixture, threadId);
+    const session = fixture.adapter.sessions[0];
+    if (!session) throw new Error("Fake Pi Session was not opened");
+    await fixture.collector.waitFor((message) => turnEvent(message, "turn/started", turnId));
+    vi.spyOn(session, "execute").mockRejectedValueOnce(new Error("Synthetic cancellation failure"));
+    try {
+      writeRequest(fixture.desktopInput, {
+        id: 3,
+        method: "turn/interrupt",
+        params: { threadId, turnId },
+      });
+      await expect(fixture.collector.waitFor((message) => requestId(message, 3))).resolves.toEqual({
+        id: 3,
+        error: { code: -32074, message: "Synthetic cancellation failure" },
+      });
+      session.appendText("still running");
+      session.succeedTurn();
+      await expect(
+        fixture.collector.waitFor((message) => turnEvent(message, "turn/completed", turnId)),
+      ).resolves.toMatchObject({ params: { turn: { status: "completed" } } });
+    } finally {
+      await stopFixture(fixture);
+    }
+  });
+
   it("rejects an interrupt that does not reference the active Pi Turn", async () => {
     const fixture = createFixture();
     const officialWrite = vi.fn();

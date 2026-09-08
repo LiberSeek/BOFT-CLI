@@ -252,6 +252,7 @@ export async function runDesktopController(
           "omp",
           "antigravity",
           "hermes",
+          "muse",
         ],
         timeoutMs: PRODUCTION_INSTALL_TIMEOUT_MS,
       },

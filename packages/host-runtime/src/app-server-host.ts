@@ -3903,17 +3903,17 @@ export class AppServerHost {
       resolve: cancellationGate.resolve,
     };
     thread.responseGates.set(turnId, gate);
-    const result = await thread.session.execute({ type: "turn.cancel", turnId });
-    if (!result.ok) {
-      try {
-        await this.#writer.json(rpcError(request, -32074, result.error.message));
-      } finally {
-        gate.resolve();
-      }
-      return;
+    let response: JsonObject;
+    try {
+      const result = await thread.session.execute({ type: "turn.cancel", turnId });
+      response = result.ok
+        ? rpcEnvelope(request, { result: {} })
+        : rpcError(request, -32074, result.error.message);
+    } catch (error) {
+      response = rpcError(request, -32074, errorMessage(error));
     }
     try {
-      await this.#writer.json(rpcEnvelope(request, { result: {} }));
+      await this.#writer.json(response);
     } finally {
       gate.resolve();
     }

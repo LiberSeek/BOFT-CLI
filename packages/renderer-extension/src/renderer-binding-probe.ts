@@ -1,4 +1,5 @@
 import {
+  decodeHarnessPluginRoute,
   harnessIdSchema,
   permissionModeFixedAtCreate,
   type HarnessCommandDescriptor,
@@ -19,6 +20,7 @@ import {
 import {
   DEFAULT_RENDERER_AGENTS,
   DraftAgentController,
+  KNOWN_RENDERER_AGENTS,
   type ComposerAgentPhase,
   type ExternalRendererAgent,
   type RendererAgent,
@@ -97,6 +99,7 @@ const externalHarnessIds = {
   omp: harnessIdSchema.parse("omp"),
   antigravity: harnessIdSchema.parse("antigravity"),
   hermes: harnessIdSchema.parse("hermes"),
+  muse: harnessIdSchema.parse("muse"),
 } as const;
 
 const externalAgents: readonly ExternalRendererAgent[] = [
@@ -108,6 +111,7 @@ const externalAgents: readonly ExternalRendererAgent[] = [
   "omp",
   "antigravity",
   "hermes",
+  "muse",
 ];
 type HarnessAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
 type HarnessAvailabilityErrors = Record<ExternalRendererAgent, CodexhostError | undefined>;
@@ -466,7 +470,44 @@ export function restoredThreadOwnership(inspection: ThreadInspection): RestoredT
         : {}),
     };
   }
-  throw new Error("Thread owner is not a Renderer Agent");
+  return restoredPluginRouteOwnership(inspection);
+}
+
+function isKnownExternalRendererAgent(value: string): value is ExternalRendererAgent {
+  return (KNOWN_RENDERER_AGENTS as readonly string[]).includes(value) && value !== "codex";
+}
+
+function restoredPluginRouteOwnership(inspection: ThreadInspection): RestoredThreadOwnership {
+  if (inspection.owner !== "external") {
+    throw new Error("Thread owner is not a Renderer Agent");
+  }
+  const agent = inspection.harnessId;
+  if (!isKnownExternalRendererAgent(agent)) {
+    throw new Error("Thread owner is not a Renderer Agent");
+  }
+  const transportSelection = decodeHarnessPluginRoute(inspection.transportModelId);
+  if (transportSelection && transportSelection.harnessId !== agent) {
+    throw new Error(`${agent} Thread reported an incompatible transport Model`);
+  }
+  if (
+    !transportSelection &&
+    !inspection.effectiveModel &&
+    !inspection.effectivePermissionModeId &&
+    !selectableThinkingOptionId(inspection)
+  ) {
+    throw new Error(`${agent} Thread reported an incompatible transport Model`);
+  }
+  const model = inspection.effectiveModel ?? transportSelection?.model;
+  const thinkingOptionId =
+    selectableThinkingOptionId(inspection) ?? transportSelection?.thinkingOptionId;
+  const permissionModeId =
+    inspection.effectivePermissionModeId ?? transportSelection?.permissionModeId;
+  return {
+    agent,
+    ...(model ? { model } : {}),
+    ...(thinkingOptionId ? { thinkingOptionId } : {}),
+    ...(permissionModeId ? { permissionModeId } : {}),
+  };
 }
 
 export function isOwnershipSubmissionBlocked(status: ComposerOwnershipStatus): boolean {
@@ -707,6 +748,7 @@ export function installRendererBindingProbe(
       omp: undefined,
       antigravity: undefined,
       hermes: undefined,
+      muse: undefined,
     },
     webUi: Object.fromEntries(
       externalAgents.map((agent) => [agent, false]),

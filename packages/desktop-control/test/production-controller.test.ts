@@ -151,6 +151,7 @@ describe("production Desktop Controller", () => {
         "omp",
         "antigravity",
         "hermes",
+        "muse",
       ],
       timeoutMs: 90_000,
     });

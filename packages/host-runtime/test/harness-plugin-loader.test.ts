@@ -80,6 +80,7 @@ describe("Harness plugin discovery and loading", () => {
     "omp",
     "antigravity",
     "hermes",
+    "muse",
   ])(
     "ships a valid %s manifest and resolvable compiled resources",
     async (id) => {

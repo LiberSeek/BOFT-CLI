@@ -65,6 +65,12 @@ const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInsta
       posix: "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
       windows: "iex (irm https://hermes-agent.nousresearch.com/install.ps1)",
     },
+    muse: {
+      url: "https://developer.meta.com/ai/products/muse-code/",
+      binary: "muse",
+      posix: "curl -fsSL https://dev.meta.ai/install.sh | bash",
+      windows: "curl -fsSL https://dev.meta.ai/install.sh | bash",
+    },
   });
 
 export function harnessInstallPlatform(

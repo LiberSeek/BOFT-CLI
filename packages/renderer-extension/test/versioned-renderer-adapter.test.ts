@@ -641,6 +641,33 @@ describe("current Codex Renderer Agent adapter", () => {
     ).toBe(carrier);
   });
 
+  it.each(["onRequest", "allowAll"])(
+    "routes Muse Model, Thinking, and %s permissions through the shared plugin carrier",
+    (permission) => {
+      const model = harnessModelRefSchema.parse({ id: "muse-spark-1.3-contributor" });
+      const thinkingOptionId = harnessThinkingOptionIdSchema.parse("high");
+      const permissionModeId = harnessPermissionModeIdSchema.parse(permission);
+      const selected = modelSelectionForAgent(
+        { model: "official-model", reasoningEffort: "low" },
+        "low",
+        "muse",
+        model,
+        thinkingOptionId,
+        permissionModeId,
+      );
+
+      expect(decodeHarnessPluginRoute(selected?.model)).toEqual({
+        harnessId: "muse",
+        model,
+        thinkingOptionId,
+        permissionModeId,
+      });
+      expect(decodeHarnessPluginRoute(modelSelectionForAgent(null, null, "muse")?.model)).toEqual({
+        harnessId: "muse",
+      });
+    },
+  );
+
   it("encodes Hermes Model and Permission Mode through the shared plugin route", () => {
     const model = harnessModelRefSchema.parse({ id: "hermes-model-v1.emFpOmdsbS01LXR1cmJv" });
     const permissionModeId = harnessPermissionModeIdSchema.parse("accept_edits");

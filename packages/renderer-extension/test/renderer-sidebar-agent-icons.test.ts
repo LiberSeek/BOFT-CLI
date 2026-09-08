@@ -25,6 +25,7 @@ const CLAUDE_CODE_HARNESS_ID = harnessIdSchema.parse("claude-code");
 const OPENCODE_HARNESS_ID = harnessIdSchema.parse("opencode");
 const ANTIGRAVITY_HARNESS_ID = harnessIdSchema.parse("antigravity");
 const HERMES_HARNESS_ID = harnessIdSchema.parse("hermes");
+const MUSE_HARNESS_ID = harnessIdSchema.parse("muse");
 const FUTURE_HARNESS_ID = harnessIdSchema.parse("future-agent");
 
 class FakeRow implements SidebarAgentIconRow {
@@ -708,6 +709,13 @@ describe("Renderer sidebar Agent ownership", () => {
         harnessId: HERMES_HARNESS_ID,
       }),
     ).toBe("hermes");
+    expect(
+      rendererAgentForThreadOwnership({
+        threadId: "muse-thread" as HostThreadId,
+        owner: "external",
+        harnessId: MUSE_HARNESS_ID,
+      }),
+    ).toBe("muse");
     expect(
       rendererAgentForThreadOwnership({
         threadId: "future-thread" as HostThreadId,

@@ -23,6 +23,7 @@ export const RENDERER_PROBE_AGENTS = Object.freeze([
   "grok",
   "antigravity",
   "hermes",
+  "muse",
 ]);
 
 function usage() {
