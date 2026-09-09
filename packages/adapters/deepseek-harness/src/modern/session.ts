@@ -110,6 +110,8 @@ import {
 } from "./wire.js";
 
 const DEEPSEEK_HARNESS_ID = harnessIdSchema.parse("deepseek-harness");
+const NATIVE_CLOSE_TIMEOUT_MS = 5_000;
+
 export const MODERN_PROMPT_CORRELATION_GRACE_MS = 5_000;
 export const MODERN_ACCEPTED_CORRELATION_TIMEOUT_MS = 300_000;
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
@@ -314,8 +316,11 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
   #usage: HostUsage | null;
   #historyBytes: number;
   #closed = false;
+  #closing = false;
+  #nativeCloseTerminal: (() => void) | undefined;
   #closedNotified = false;
   #faulted?: HarnessError;
+  #faultMayHaveNativeWork = false;
   #closePromise?: Promise<void>;
   readonly #pumpPromise: Promise<void>;
 
@@ -435,7 +440,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     this.#pumpPromise = this.#pump();
     if (resumedAutonomousBuffer) {
       queueMicrotask(() => {
-        if (!this.#closed && this.#buffer === resumedAutonomousBuffer) {
+        if (!this.#closed && !this.#closing && this.#buffer === resumedAutonomousBuffer) {
           this.#activateBufferedAutonomous(true);
         }
       });
@@ -443,7 +448,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
   }
 
   readSnapshot(): Promise<HarnessResult<HostThreadSnapshot>> {
-    if (this.#closed) return Promise.resolve({ ok: false, error: closedError() });
+    if (this.#closed || this.#closing) return Promise.resolve({ ok: false, error: closedError() });
     if (this.#reading) return Promise.resolve({ ok: false, error: busyError("read history") });
     this.#reading = true;
     try {
@@ -486,7 +491,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
       | PermissionModeSelectCompleted
     >
   > {
-    if (this.#closed) return Promise.resolve({ ok: false, error: closedError() });
+    if (this.#closed || this.#closing) return Promise.resolve({ ok: false, error: closedError() });
     switch (command.type) {
       case "turn.start":
         return this.#start(command);
@@ -504,6 +509,16 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
   }
 
   close(): Promise<void> {
+    const faultCleanup = this.#closePromise;
+    if (this.#faultMayHaveNativeWork && !this.#closing && faultCleanup) {
+      this.#closing = true;
+      // Fault cleanup retires local projection, but cannot certify native execution stopped.
+      this.#closePromise = faultCleanup.then(() => {
+        throw new Error(
+          "DeepSeek Harness native execution stop was not confirmed before the Session fault",
+        );
+      });
+    }
     this.#closePromise ??= this.#performClose();
     return this.#closePromise;
   }
@@ -529,7 +544,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
         "DeepSeek Harness event delivery was duplicated",
       );
     }
-    if (this.#closed) {
+    if (this.#closed || this.#closing) {
       this.#queuedDeliveries.set(delivery.eventId, delivery);
       return;
     }
@@ -862,12 +877,12 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     this.#operationControllers.add(abort);
     try {
       const result = await operation(abort.signal);
-      if (this.#closed) return { ok: false, error: closedError() };
+      if (this.#closed || this.#closing) return { ok: false, error: closedError() };
       this.#publishConfiguration(true);
       return { ok: true, value: result.value };
     } catch (error) {
       if (this.#faulted) return { ok: false, error: this.#faulted };
-      if (this.#closed) return { ok: false, error: closedError() };
+      if (this.#closed || this.#closing) return { ok: false, error: closedError() };
       const failure = configurationOrProtocolError(error, "DeepSeek Harness configuration failed");
       if (configurationFailureRequiresSessionFault(error)) this.#fault(failure);
       return { ok: false, error: failure };
@@ -1004,7 +1019,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
       return this.#acceptPrompt(pending);
     } catch (error) {
       if (this.#faulted) return { ok: false, error: this.#faulted };
-      if (this.#closed) return { ok: false, error: closedError() };
+      if (this.#closed || this.#closing) return { ok: false, error: closedError() };
       if (pending.admissionObserved) return this.#acceptPrompt(pending);
 
       // The Modern protocol has no requestId idempotency guarantee. Do not resend an uncertain prompt:
@@ -1019,7 +1034,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
       );
       if (resolution.kind === "accepted") {
         if (this.#faulted) return { ok: false, error: this.#faulted };
-        if (this.#closed) return { ok: false, error: closedError() };
+        if (this.#closed || this.#closing) return { ok: false, error: closedError() };
         return this.#acceptPrompt(pending);
       }
       if (resolution.kind === "closed") return { ok: false, error: closedError() };
@@ -1096,14 +1111,14 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
   async #listHarnessCommands(): Promise<
     HarnessResult<ReturnType<typeof deepSeekHarnessCommandCatalog>>
   > {
-    if (this.#closed) return { ok: false, error: closedError() };
+    if (this.#closed || this.#closing) return { ok: false, error: closedError() };
     return { ok: true, value: deepSeekHarnessCommandCatalog() };
   }
 
   async #executeHarnessCommand(
     command: HarnessCommandInvocation,
   ): Promise<HarnessResult<HarnessCommandAccepted>> {
-    if (this.#closed) return { ok: false, error: closedError() };
+    if (this.#closed || this.#closing) return { ok: false, error: closedError() };
     const parsed = parseDeepSeekHarnessCommand(command);
     if (!parsed.ok) return parsed;
     if (this.#hasCommandConflict() || this.#acceptedTurnIds.has(command.turnId)) {
@@ -1121,7 +1136,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     try {
       const catalog = await this.#listHarnessCommands();
       if (!catalog.ok) return catalog;
-      if (this.#closed) return { ok: false, error: closedError() };
+      if (this.#closed || this.#closing) return { ok: false, error: closedError() };
       if (admission.cancellationRequested) {
         return { ok: false, error: invalidState("DeepSeek Harness command was cancelled") };
       }
@@ -1561,7 +1576,14 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
 
   #scheduleBoundTurn(pending: PendingPrompt): void {
     const buffer = pending.buffer;
-    if (!buffer || !pending.admitted || pending.publishScheduled || buffer.active || this.#closed) {
+    if (
+      !buffer ||
+      !pending.admitted ||
+      pending.publishScheduled ||
+      buffer.active ||
+      this.#closed ||
+      this.#closing
+    ) {
       return;
     }
     pending.publishScheduled = true;
@@ -1572,6 +1594,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
         pending.publishScheduled = false;
         if (
           !this.#closed &&
+          !this.#closing &&
           pending.admitted &&
           pending.buffer === buffer &&
           this.#buffer === buffer &&
@@ -1600,7 +1623,13 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
       delete pending.buffer;
       if (buffer.reachedCorrelationBoundary || buffer.events.at(-1)?.type === "turn/end") {
         queueMicrotask(() => {
-          if (!this.#closed && this.#buffer === buffer && !buffer.active && !buffer.pending) {
+          if (
+            !this.#closed &&
+            !this.#closing &&
+            this.#buffer === buffer &&
+            !buffer.active &&
+            !buffer.pending
+          ) {
             this.#materializeAutonomous(buffer, false);
           }
         });
@@ -1626,6 +1655,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     const buffer = this.#buffer;
     if (
       this.#closed ||
+      this.#closing ||
       !buffer ||
       buffer.active ||
       buffer.pending ||
@@ -1640,6 +1670,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
   }
 
   #materializeAutonomous(buffer: NativeTurnBuffer, initialReplay: boolean): void {
+    if (this.#closed || this.#closing) return;
     const turnId = hostTurnIdSchema.parse(this.#randomUUID());
     this.#emit({
       type: "turn.autonomous.started",
@@ -1951,6 +1982,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     this.#completeOpenItems(active, itemOutcome);
     active.terminal = true;
     if (buffer.pending) buffer.pending.terminal = true;
+    this.#nativeCloseTerminal?.();
     const checkpoint = modernCheckpointRef(this.harnessId, this.#sessionId, seq);
     this.#emit({
       type: "turn.completed",
@@ -2015,6 +2047,13 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     if (this.#closed) return;
     const failure = sanitizedHarnessError(error);
     const acceptedPending = this.#acceptedPending();
+    this.#faultMayHaveNativeWork = Boolean(
+      (this.#active && !this.#active.terminal) ||
+      this.#pendingByRequestId.size > 0 ||
+      this.#buffer ||
+      this.#commandAdmission ||
+      this.#activeCommand,
+    );
     this.#faulted = failure;
     this.#closed = true;
     this.#journalLifetime.abort(new Error("DeepSeek Harness Session faulted"));
@@ -2093,6 +2132,60 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
   }
 
   async #performClose(): Promise<void> {
+    this.#closing = true;
+    let stopFailure: unknown;
+    const activeAtClose = this.#active;
+    const pendingAtClose = new Set(this.#pendingByRequestId.values());
+    if (this.#buffer?.pending) pendingAtClose.add(this.#buffer.pending);
+    const correlatedPending =
+      activeAtClose && this.#buffer?.active === activeAtClose ? this.#buffer.pending : undefined;
+    const uncorrelatedExecution =
+      [...pendingAtClose].some((pending) => !pending.terminal && pending !== correlatedPending) ||
+      (!activeAtClose && this.#buffer !== undefined) ||
+      this.#commandAdmission !== undefined ||
+      this.#activeCommand !== undefined;
+    if (!this.#closed && ((activeAtClose && !activeAtClose.terminal) || uncorrelatedExecution)) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const terminal = new Promise<void>((resolve) => {
+        this.#nativeCloseTerminal = () => {
+          if (activeAtClose?.terminal) resolve();
+        };
+      });
+      try {
+        await Promise.race([
+          (async () => {
+            const result = await (activeAtClose?.cancelPromise ??
+              this.#requestNativeCancel(activeAtClose));
+            if (!result.ok) throw new Error(result.error.message);
+            if (uncorrelatedExecution) {
+              throw new Error(
+                "DeepSeek Harness cannot confirm stop before the native Turn is correlated",
+              );
+            }
+            // A cancel receipt only confirms admission. Keep consuming native history until
+            // turn/end establishes that execution stopped before detaching the Session.
+            await terminal;
+          })(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () =>
+                reject(new Error("DeepSeek Harness did not confirm native Turn stop before close")),
+              NATIVE_CLOSE_TIMEOUT_MS,
+            );
+          }),
+        ]);
+      } catch (error) {
+        stopFailure = error;
+      } finally {
+        if (timer) clearTimeout(timer);
+        this.#nativeCloseTerminal = undefined;
+      }
+    }
+    if (this.#faulted) {
+      // A fault can close admission while this Promise already owns cleanup.
+      await this.#performFault(this.#faulted, this.#acceptedPending(pendingAtClose));
+      throw stopFailure ?? new Error(this.#faulted.message);
+    }
     if (!this.#closed) {
       const acceptedPending = this.#acceptedPending();
       this.#closed = true;
@@ -2147,6 +2240,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     }
     await Promise.allSettled([this.#journal.close(), this.#pumpPromise]);
     this.#notifyClosed();
+    if (stopFailure) throw stopFailure;
   }
 
   #abortOperations(): void {
@@ -2161,8 +2255,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     for (const unsubscribe of this.#removeControlSubscriptions.splice(0)) unsubscribe();
   }
 
-  #acceptedPending(): PendingPrompt[] {
-    const values = new Set(this.#pendingByRequestId.values());
+  #acceptedPending(values = new Set(this.#pendingByRequestId.values())): PendingPrompt[] {
     if (this.#buffer?.pending) values.add(this.#buffer.pending);
     return [...values].filter(
       (pending) =>

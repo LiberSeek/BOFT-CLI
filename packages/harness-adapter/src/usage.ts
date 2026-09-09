@@ -64,6 +64,15 @@ export function parseHostUsage(value: unknown): HostUsage {
       throw new Error(`Harness Usage contains unknown field '${key}'`);
     }
   }
+  for (const field of ["totalCredits", "contextUsagePercent"] as const) {
+    const candidate = value[field];
+    if (
+      candidate !== undefined &&
+      (typeof candidate !== "number" || !Number.isFinite(candidate) || candidate < 0)
+    ) {
+      throw new Error(`Harness Usage '${field}' must be a finite non-negative number`);
+    }
+  }
   for (const field of tokenFields) {
     const candidate = value[field];
     if (

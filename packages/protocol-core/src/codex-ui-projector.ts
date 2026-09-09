@@ -637,7 +637,15 @@ export function projectHistoricalTurn(input: HistoricalTurnProjectionInput): Jso
           additionalDetails: null,
         }
       : null;
-  const { startedAtMs, completedAtMs } = snapshot;
+  const startedAtMs = snapshot.startedAtMs;
+  const completedAtMs = snapshot.completedAtMs;
+  const hasTiming =
+    startedAtMs !== undefined &&
+    completedAtMs !== undefined &&
+    Number.isFinite(startedAtMs) &&
+    Number.isFinite(completedAtMs) &&
+    startedAtMs >= 0 &&
+    completedAtMs >= startedAtMs;
   return {
     id: turnId,
     status: historicalStatus(snapshot.outcome),
@@ -675,12 +683,9 @@ export function projectHistoricalTurn(input: HistoricalTurnProjectionInput): Jso
       }),
     ],
     error,
-    startedAt: startedAtMs === undefined ? null : Math.floor(startedAtMs / 1000),
-    completedAt: completedAtMs === undefined ? null : Math.floor(completedAtMs / 1000),
-    durationMs:
-      startedAtMs === undefined || completedAtMs === undefined
-        ? null
-        : Math.max(0, completedAtMs - startedAtMs),
+    startedAt: hasTiming ? Math.floor(startedAtMs / 1000) : null,
+    completedAt: hasTiming ? Math.floor(completedAtMs / 1000) : null,
+    durationMs: hasTiming ? completedAtMs - startedAtMs : null,
     itemsView: "full",
   };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HostApprovalInteraction } from "@codexhost/harness-adapter";
 import { hostInteractionIdSchema, hostTurnIdSchema } from "@codexhost/shared-contracts";
+import { ElicitRequestFormParamsSchema } from "@modelcontextprotocol/sdk/types.js";
 
 import { CodexTurnProjector, projectCodexApprovalRequest } from "../src/index.js";
 
@@ -36,6 +37,7 @@ describe("Codex native Approval wire projection", () => {
       interaction: approval,
       serverName: "Kiro CLI",
     });
+    expect(() => ElicitRequestFormParamsSchema.parse(projected.request.params)).not.toThrow();
     expect(projected.request).toMatchObject({
       params: {
         requestedSchema: {
