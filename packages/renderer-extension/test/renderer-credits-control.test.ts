@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  composerAccountCredits,
+  composerCreditsChipVisible,
   creditsPeriodLabel,
   formatAccountCreditsBalance,
   formatRendererCreditsReset,
@@ -12,6 +14,15 @@ describe("Renderer credits control", () => {
   it("formats remaining API credits with a currency unit", () => {
     expect(formatAccountCreditsBalance(12.5, "USD")).toBe("$12.5");
     expect(formatAccountCreditsBalance(8, "credits")).toBe("8 credits");
+  });
+
+  it("hides Composer credits for a lone Codex API remaining balance", () => {
+    const apiRemaining = { remaining: 148.12, unit: "USD", periodType: "unknown" as const };
+    expect(composerCreditsChipVisible(null)).toBe(false);
+    expect(composerCreditsChipVisible(apiRemaining)).toBe(false);
+    expect(composerAccountCredits(apiRemaining)).toBeNull();
+    expect(composerAccountCredits(undefined)).toBeNull();
+    expect(composerCreditsChipVisible({ usedPercent: 47, periodType: "weekly" })).toBe(true);
   });
 
   it("maps used percent into a status tone", () => {

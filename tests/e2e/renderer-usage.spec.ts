@@ -70,6 +70,13 @@ const { outputFiles } = await build({
             ],
           });
         };
+        globalThis.updateRendererApiCredits = () => {
+          renderRendererCreditsControl(credits, {
+            remaining: 148.12,
+            unit: "USD",
+            periodType: "unknown",
+          });
+        };
         globalThis.updateRendererCreditsChinese = () => {
           renderRendererCreditsControl(credits, {
             usedPercent: 27,
@@ -304,6 +311,23 @@ test("keeps Usage in place and shows credits after the leading composer control"
   await expect(popover.locator("[data-codexhost-credits-bar]")).toHaveCount(3);
   // One "Resets" line under the headline, one under the Build tile (Chat has none).
   await expect(popover.getByText("Resets", { exact: false })).toHaveCount(2);
+});
+
+test("hides remaining API credits from the Composer credits chip", async ({ page }) => {
+  await page.setContent('<!doctype html><body style="margin:0"></body>');
+  await page.addScriptTag({ content: browserBundle });
+  await page.evaluate(() => {
+    const setup = Reflect.get(globalThis, "setupRendererUsage");
+    if (typeof setup !== "function") throw new Error("Usage setup is unavailable");
+    setup();
+    const update = Reflect.get(globalThis, "updateRendererApiCredits");
+    if (typeof update !== "function") throw new Error("API Credits update is unavailable");
+    update();
+  });
+
+  const credits = page.locator('[data-codexhost-credits-control="usage-composer"]');
+  await expect(credits).toBeHidden();
+  await expect(credits).not.toContainText("$148.12");
 });
 
 test("renders remaining five-hour and seven-day credits clearly in Chinese", async ({ page }) => {

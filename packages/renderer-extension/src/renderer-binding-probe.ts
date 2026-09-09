@@ -44,6 +44,7 @@ import {
   type ExternalModelControlView,
   type ExternalPermissionModeControlView,
 } from "./renderer-composer-dom.js";
+import { composerAccountCredits } from "./renderer-credits-control.js";
 import { rendererHarnessMessages } from "./renderer-harness-localization.js";
 import { RendererCodexAccountState } from "./renderer-codex-account-state.js";
 import {
@@ -950,7 +951,7 @@ export function installRendererBindingProbe(
       if (threadIdFromComposerModelTarget(mounted.modelTarget) !== update.threadId) continue;
       mounted.usageRequestGeneration += 1;
       mounted.usage = update.usage;
-      mounted.accountCredits = update.accountCredits ?? null;
+      mounted.accountCredits = composerAccountCredits(update.accountCredits);
       usageRefreshAttempts.delete(mounted.composer);
       renderMounted(mounted);
     }
@@ -992,7 +993,7 @@ export function installRendererBindingProbe(
       )
         return;
       mounted.usage = result.usage;
-      mounted.accountCredits = result.accountCredits ?? null;
+      mounted.accountCredits = composerAccountCredits(result.accountCredits);
       renderMounted(mounted);
     } catch {
       // Leave unknown quota empty instead of retaining a different Account's values.
@@ -1029,7 +1030,7 @@ export function installRendererBindingProbe(
         return;
       }
       mounted.usage = result.usage;
-      mounted.accountCredits = result.accountCredits ?? null;
+      mounted.accountCredits = composerAccountCredits(result.accountCredits);
       const agent = controller.get(mounted.composer).agent;
       if (
         result.usage !== null &&
@@ -2400,7 +2401,7 @@ export function installRendererBindingProbe(
         : "not-required",
       threadConfiguration: inherited?.threadConfiguration,
       usage: inherited?.usage ?? null,
-      accountCredits: inherited?.accountCredits ?? null,
+      accountCredits: composerAccountCredits(inherited?.accountCredits),
       hostId: inherited?.hostId ?? hostId,
       usageRequestGeneration: 0,
       commandRequestGeneration: 0,
