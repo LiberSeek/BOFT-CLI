@@ -499,35 +499,33 @@ export function mountRendererCreditsControl(composerId: string): RendererCredits
   return control;
 }
 
+/**
+ * Composer only shows ChatGPT/Auth plan usage. API remaining-balance chips
+ * belong on the Accounts settings page, not next to the input — including
+ * when Codex has a single API Account and the picker does not expand.
+ */
+export function composerCreditsChipVisible(
+  accountCredits: AccountCreditsSnapshot | null,
+): accountCredits is AccountCreditsSnapshot & { usedPercent: number } {
+  return accountCredits !== null && accountCredits.usedPercent !== undefined;
+}
+
+export function composerAccountCredits(
+  accountCredits: AccountCreditsSnapshot | null | undefined,
+): AccountCreditsSnapshot | null {
+  const credits = accountCredits ?? null;
+  return composerCreditsChipVisible(credits) ? credits : null;
+}
+
 export function renderRendererCreditsControl(
   control: RendererCreditsControl,
   accountCredits: AccountCreditsSnapshot | null,
   locale: RendererSettingsLocale = "en",
 ): boolean {
-  if (accountCredits === null) {
+  if (!composerCreditsChipVisible(accountCredits)) {
     control.root.style.display = "none";
     closePopover(control);
     return false;
-  }
-  if (accountCredits.usedPercent === undefined) {
-    const amount =
-      accountCredits.remaining === undefined || !accountCredits.unit
-        ? null
-        : formatAccountCreditsBalance(accountCredits.remaining, accountCredits.unit);
-    if (!amount) {
-      control.root.style.display = "none";
-      closePopover(control);
-      return false;
-    }
-    const ringSlot = control.trigger.querySelector<HTMLElement>("[data-codexhost-credits-ring]");
-    const label = control.trigger.querySelector<HTMLElement>("[data-codexhost-credits-label]");
-    ringSlot?.replaceChildren();
-    if (label) label.textContent = amount;
-    control.root.style.display = "inline-flex";
-    control.trigger.setAttribute("aria-label", amount);
-    control.trigger.title = amount;
-    renderDetails(control.popover, accountCredits, locale);
-    return true;
   }
   const remaining = remainingPercent(accountCredits.usedPercent);
   const percent = formatRendererCreditsPercent(remaining);
