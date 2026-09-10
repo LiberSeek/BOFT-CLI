@@ -203,6 +203,58 @@ export function rendererUsageTriggerMaxWidth(): string {
   return "min(180px, 30vw)";
 }
 
+export type RendererUsageCompactMode = "default" | "context";
+
+/**
+ * Compact composer summary. `context` prefers native window occupancy
+ * (`35.8% / 256k`) when the snapshot has a context window; cache hit and cost
+ * stay in the popover.
+ */
+export function rendererUsageCompactParts(
+  usage: ThreadUsageSnapshot | null,
+  locale: RendererSettingsLocale = "en",
+  mode: RendererUsageCompactMode = "default",
+): string[] {
+  const messages = rendererUsageMessages(locale);
+  const hasContext =
+    usage?.contextUsedTokens !== undefined &&
+    usage.contextWindowTokens !== undefined &&
+    usage.contextWindowTokens > 0;
+  if (mode === "context" && usage && hasContext) {
+    return [
+      formatRendererContextSummary(usage.contextUsedTokens ?? 0, usage.contextWindowTokens ?? 0),
+    ];
+  }
+  const parts = [
+    usage?.totalCredits !== undefined ? formatRendererCredits(usage.totalCredits) : null,
+    usage?.cacheHitRatePercent !== undefined
+      ? formatRendererCacheHitRate(usage.cacheHitRatePercent)
+      : null,
+    usage?.outputTokensPerSecond !== undefined
+      ? formatRendererTokenRate(usage.outputTokensPerSecond, locale)
+      : null,
+    usage?.totalCostUsd !== undefined ? formatRendererCost(usage.totalCostUsd) : null,
+  ].filter((value): value is string => value !== null);
+  if (usage?.contextUsagePercent !== undefined && parts.length === 0) parts.push(messages.usage);
+  if (parts.length === 0 && hasContext && usage?.contextWindowTokens !== undefined) {
+    parts.push(
+      formatRendererContextSummary(usage.contextUsedTokens ?? 0, usage.contextWindowTokens),
+    );
+  }
+  if (parts.length === 0 && usage?.totalTokens !== undefined) {
+    parts.push(`${formatRendererTokenCount(usage.totalTokens)} ${messages.tokensSummary}`);
+  }
+  if (
+    parts.length === 0 &&
+    (usage?.inputTokens !== undefined || usage?.outputTokens !== undefined)
+  ) {
+    parts.push(
+      `${formatRendererTokenCount((usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0))} ${messages.tokensSummary}`,
+    );
+  }
+  return parts;
+}
+
 /** Whether a snapshot contains anything useful for the left Usage popover. */
 export function rendererUsageHasDisplayData(usage: ThreadUsageSnapshot | null): boolean {
   return (
@@ -534,22 +586,11 @@ export function renderRendererUsageControl(
   usage: ThreadUsageSnapshot | null,
   locale: RendererSettingsLocale = control.locale,
   accountName: string | null = null,
+  compactMode: RendererUsageCompactMode = "default",
 ): boolean {
   control.locale = locale;
   const messages = rendererUsageMessages(locale);
   control.popover.setAttribute("aria-label", messages.threadUsageDetails);
-  const cacheHitRatePercent = usage?.cacheHitRatePercent;
-  const outputTokensPerSecond = usage?.outputTokensPerSecond;
-  const totalCostUsd = usage?.totalCostUsd;
-  const hasContext =
-    usage?.contextUsedTokens !== undefined && usage.contextWindowTokens !== undefined;
-  const hasTokenUsage =
-    usage?.totalTokens !== undefined ||
-    usage?.inputTokens !== undefined ||
-    usage?.cachedInputTokens !== undefined ||
-    usage?.cacheWriteInputTokens !== undefined ||
-    usage?.outputTokens !== undefined ||
-    usage?.reasoningOutputTokens !== undefined;
   const visible = rendererUsageHasDisplayData(usage) || Boolean(accountName);
   control.root.style.display = visible ? "inline-flex" : "none";
   if (!visible) {
@@ -557,34 +598,8 @@ export function renderRendererUsageControl(
     return false;
   }
 
-  const summary = [
-    usage?.totalCredits !== undefined ? formatRendererCredits(usage.totalCredits) : null,
-    cacheHitRatePercent !== undefined ? formatRendererCacheHitRate(cacheHitRatePercent) : null,
-    outputTokensPerSecond !== undefined
-      ? formatRendererTokenRate(outputTokensPerSecond, locale)
-      : null,
-    totalCostUsd !== undefined ? formatRendererCost(totalCostUsd) : null,
-  ].filter((value): value is string => value !== null);
+  const summary = rendererUsageCompactParts(usage, locale, compactMode);
   const contextPercent = usage?.contextUsagePercent;
-  if (contextPercent !== undefined && summary.length === 0) summary.push(messages.usage);
-  if (
-    summary.length === 0 &&
-    hasContext &&
-    usage?.contextWindowTokens !== undefined &&
-    usage.contextWindowTokens > 0
-  ) {
-    summary.push(
-      formatRendererContextSummary(usage.contextUsedTokens ?? 0, usage.contextWindowTokens),
-    );
-  }
-  if (summary.length === 0 && usage?.totalTokens !== undefined) {
-    summary.push(`${formatRendererTokenCount(usage.totalTokens)} ${messages.tokensSummary}`);
-  }
-  if (summary.length === 0 && hasTokenUsage) {
-    summary.push(
-      `${formatRendererTokenCount((usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0))} ${messages.tokensSummary}`,
-    );
-  }
   const compactSummary = summary.join(" · ") || messages.usage;
   const accessibleSummary = `${messages.threadUsage}: ${compactSummary}${
     contextPercent !== undefined ? `; ${messages.context} ${decimal(contextPercent, 1)}%` : ""
