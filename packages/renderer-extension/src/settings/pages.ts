@@ -31,6 +31,7 @@ import {
   type RendererImportedThreadOpener,
 } from "./session-import-page.js";
 import { createPluginsSettingsPage } from "./plugins-page.js";
+import { createAppearanceSettingsPage } from "./appearance-page.js";
 import { createReleaseNotesElement } from "./release-notes.js";
 import { createAccountsSettingsPage, type RendererCodexAccountClient } from "./accounts-page.js";
 
@@ -82,6 +83,7 @@ export const DEFAULT_RENDERER_SETTINGS_PAGE_IDS = [
   "connections",
   "accounts",
   "session-import",
+  "appearance",
   "plugins",
   "updates",
   "about",
@@ -94,7 +96,7 @@ export const RENDERER_SETTINGS_NAV_SECTIONS = [
   },
   {
     id: "general",
-    pageIds: ["plugins", "updates"],
+    pageIds: ["appearance", "plugins", "updates"],
   },
   {
     id: "other",
@@ -698,6 +700,7 @@ export function createDefaultRendererSettingsPages(
     createConnectionsSettingsPage(messages, getDiagnostics),
     createAccountsSettingsPage(messages, getAccountClient),
     createSessionImportSettingsPage(messages, getSessionImportClient, openImportedThread),
+    createAppearanceSettingsPage(messages),
     createPluginsSettingsPage(messages, getDiagnostics),
     updatesPage(messages, getUpdateClient),
     aboutPage(messages),
