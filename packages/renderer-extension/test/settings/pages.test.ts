@@ -876,6 +876,14 @@ describe("Renderer Codex Accounts page", () => {
       ({ tagName, children }) => tagName === "button" && children.includes("Add Codex account"),
     );
     expect(add?.className.split(" ").includes("settings-command-button--secondary")).toBe(true);
+    expect(elementWithClass(content, "settings-connection-page-header")).toBeDefined();
+    const remaining = descendants(content).find(
+      ({ tagName, textContent }) => tagName === "button" && textContent === "Remaining",
+    );
+    expect(remaining?.className.split(" ").includes("settings-segmented__item")).toBe(true);
+    expect(remaining?.className.split(" ").includes("settings-segmented__item--selected")).toBe(
+      true,
+    );
     add?.dispatch("click");
 
     await vi.waitFor(() => expect(client.createCodexAccount).toHaveBeenCalledWith({}));

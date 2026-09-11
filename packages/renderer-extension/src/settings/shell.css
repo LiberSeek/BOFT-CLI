@@ -36,6 +36,9 @@
   --settings-danger-bg: light-dark(#fff1f0, rgb(239 68 68 / 8%));
   --settings-danger-border: light-dark(#f3c7c3, rgb(239 68 68 / 22%));
   --settings-success: light-dark(#16784a, #4ade80);
+  --settings-dialog-max-width: 1120px;
+  --settings-dialog-max-height: 780px;
+  --settings-dialog-inset: max(52px, env(titlebar-area-height, 0px));
   color: var(--settings-text);
   color-scheme: inherit;
   font:
@@ -69,8 +72,8 @@ button {
 }
 
 .codexhost-settings-dialog {
-  width: min(1120px, calc(100vw - 32px));
-  height: min(780px, calc(100vh - 32px));
+  width: min(var(--settings-dialog-max-width), calc(100vw - 2 * var(--settings-dialog-inset)));
+  height: min(var(--settings-dialog-max-height), calc(100vh - 2 * var(--settings-dialog-inset)));
   max-width: none;
   max-height: none;
   margin: auto;
@@ -2249,8 +2252,6 @@ button {
 
 @media (max-width: 720px) {
   .codexhost-settings-dialog {
-    width: calc(100vw - 16px);
-    height: calc(100vh - 16px);
     border-radius: 10px;
   }
 
@@ -2319,12 +2320,10 @@ button {
     gap: 16px;
   }
 
-  .settings-account-header,
   .settings-connection-page-header {
     flex-direction: column;
   }
 
-  .settings-account-header > .settings-command-button,
   .settings-connection-page-header > .settings-command-button {
     width: 100%;
   }

@@ -76,9 +76,9 @@ export function createAccountsSettingsPage(
     mount(context: RendererSettingsPageMountContext) {
       const document = context.content.ownerDocument;
       const header = document.createElement("div");
-      header.className = "settings-account-header";
+      header.className = "settings-connection-page-header";
       const copy = document.createElement("div");
-      const heading = document.createElement("h1");
+      const heading = document.createElement("div");
       heading.className = "settings-section-label";
       heading.textContent = messages.pageLabels.accounts;
       const description = document.createElement("p");
@@ -88,7 +88,7 @@ export function createAccountsSettingsPage(
       const add = document.createElement("button");
       add.type = "button";
       add.className = "settings-command-button settings-command-button--secondary";
-      add.append(createRendererSettingsIcon("add", 15), messages.accountAdd);
+      add.append(createRendererSettingsIcon("add", 16), messages.accountAdd);
       header.append(copy, add);
 
       const status = document.createElement("p");
@@ -113,11 +113,13 @@ export function createAccountsSettingsPage(
       search.setAttribute("aria-label", messages.accountSearch);
       searchWrapper.append(createRendererSettingsIcon("search", 16), search);
       const displayControls = document.createElement("div");
-      displayControls.className = "settings-account-display-controls";
+      displayControls.className = "settings-segmented";
+      displayControls.setAttribute("role", "group");
       const displayButtons = new Map<AccountUsageDisplay, HTMLButtonElement>();
       for (const display of ["used", "remaining"] as const) {
         const button = document.createElement("button");
         button.type = "button";
+        button.className = "settings-segmented__item";
         button.textContent =
           display === "used" ? messages.accountCreditsUsed : messages.accountCreditsRemaining;
         button.addEventListener("click", () => {
@@ -292,7 +294,11 @@ export function createAccountsSettingsPage(
         chatGroup.updateDisplay(usageDisplay);
         search.disabled = login !== null || loginStartingAccountId !== null;
         for (const [display, button] of displayButtons) {
-          button.setAttribute("aria-pressed", String(display === usageDisplay));
+          const selected = display === usageDisplay;
+          button.setAttribute("aria-pressed", String(selected));
+          button.className = selected
+            ? "settings-segmented__item settings-segmented__item--selected"
+            : "settings-segmented__item";
         }
         refreshUsage.disabled =
           ((!getClient()?.inspectCodexAccountUsage ||

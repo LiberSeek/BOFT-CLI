@@ -5,40 +5,6 @@
   height: 34px;
 }
 
-.settings-account-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.settings-account-header > :first-child {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.settings-account-header > .settings-command-button {
-  flex: none;
-  white-space: nowrap;
-  margin-top: 0;
-  min-height: 36px;
-  padding: 8px 12px;
-  border-radius: 7px;
-}
-
-.settings-account-header .settings-section-label {
-  margin: 0;
-  padding: 0;
-  font-size: 27px;
-  line-height: 1.4;
-  font-weight: 650;
-  letter-spacing: -0.035em;
-}
-.settings-account-header .settings-page-description {
-  margin: 8px 0 0;
-  font-size: 13px;
-}
-
 .settings-account-status {
   margin: 0;
   color: var(--settings-muted);
@@ -49,9 +15,8 @@
 }
 
 .settings-account-toolbar {
-  margin-top: 27px;
-  padding: 18px 0;
-  border-top: 1px solid var(--settings-border);
+  margin-top: 0;
+  padding: 0 0 16px;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -92,29 +57,6 @@
 }
 .settings-account-toolbar input::placeholder {
   color: var(--settings-muted);
-}
-.settings-account-display-controls {
-  display: flex;
-  padding: 3px;
-  border: 1px solid var(--settings-border);
-  border-radius: 7px;
-  background: var(--settings-inset);
-}
-.settings-account-display-controls button {
-  padding: 4px 10px;
-  color: var(--settings-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.settings-account-display-controls button:hover {
-  color: var(--settings-text);
-}
-.settings-account-display-controls button[aria-pressed="true"] {
-  color: var(--settings-text);
-  background: var(--settings-active);
 }
 
 .settings-account-groups {
@@ -508,7 +450,7 @@
   border-radius: 6px;
 }
 .settings-account-list :focus-visible,
-.settings-account-toolbar :focus-visible {
+.settings-account-toolbar :focus-visible:not(.settings-segmented__item) {
   outline: 2px solid var(--settings-focus);
   outline-offset: -2px;
 }
