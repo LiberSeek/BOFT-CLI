@@ -71,7 +71,7 @@ boft
 macOS 安装包里的应用名称是 **BOFT CLI**。把它拖到「应用程序」后，如果系统提示无法验证，先在终端执行：
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/BOFT CLI.app"
+xattr -d com.apple.quarantine "/Applications/BOFT CLI.app"
 ```
 
 然后再打开 BOFT CLI。

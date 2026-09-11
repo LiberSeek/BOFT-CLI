@@ -71,7 +71,7 @@ boft
 The macOS DMG contains **BOFT CLI**. After dragging it to Applications, if macOS says the app cannot be verified, run:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/BOFT CLI.app"
+xattr -d com.apple.quarantine "/Applications/BOFT CLI.app"
 ```
 
 Then open BOFT CLI again.
