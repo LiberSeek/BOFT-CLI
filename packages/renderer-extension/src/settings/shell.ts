@@ -224,7 +224,9 @@ export function mountRendererSettingsShell(
   for (const section of RENDERER_SETTINGS_NAV_SECTIONS) {
     const pages = section.pageIds
       .map((pageId) => resolvedRegistry.getPage(pageId))
-      .filter((definition): definition is RendererSettingsPageDefinition => definition !== undefined);
+      .filter(
+        (definition): definition is RendererSettingsPageDefinition => definition !== undefined,
+      );
     const leftovers =
       section.id === "other"
         ? resolvedRegistry.pages.filter((definition) => !assignedPageIds.has(definition.id))

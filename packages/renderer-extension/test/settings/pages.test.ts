@@ -1630,9 +1630,7 @@ describe("Renderer Session Import page", () => {
     await vi.waitFor(() => expect(visibleRows()).toHaveLength(5));
     expect(action("next").disabled).toBe(true);
     action("previous").dispatch("click");
-    await vi.waitFor(() =>
-      expect(action("page-summary").textContent).toBe("45 records / 21-40"),
-    );
+    await vi.waitFor(() => expect(action("page-summary").textContent).toBe("45 records / 21-40"));
     action("page-size").value = "50";
     action("page-size").dispatch("change");
     await vi.waitFor(() => expect(visibleRows()).toHaveLength(45));
@@ -1722,9 +1720,7 @@ describe("Renderer Session Import page", () => {
     await vi.waitFor(() => expect(control("page-summary")?.textContent).toBe("41 records / 41-41"));
     rows.splice(1);
     control("refresh")?.dispatch("click");
-    await vi.waitFor(() =>
-      expect(control("page-summary")?.textContent).toBe("1 records / 1-1"),
-    );
+    await vi.waitFor(() => expect(control("page-summary")?.textContent).toBe("1 records / 1-1"));
     expect(client.listHarnessSessions).toHaveBeenLastCalledWith({
       harnessId: "pi",
       query: "",
@@ -1976,9 +1972,7 @@ describe("Renderer Session Import page", () => {
     expect(visibleText(header)).toContain(
       "可选 Harness 来自当前 Host。运行状态未知时，请先在原生客户端关闭该会话再导入，避免同时写入。",
     );
-    expect(
-      descendants(content).some(({ textContent }) => textContent === "Harness"),
-    ).toBe(false);
+    expect(descendants(content).some(({ textContent }) => textContent === "Harness")).toBe(false);
     const harnessSelector = descendants(content).find(
       ({ dataset }) => dataset.sessionImportHarness === "selector",
     );

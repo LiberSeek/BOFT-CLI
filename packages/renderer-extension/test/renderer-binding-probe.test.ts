@@ -1175,7 +1175,11 @@ describe("Renderer Composer DOM behavior", () => {
     const foreignRoute = encodeHarnessPluginRoute({
       harnessId: harnessPluginIdSchema.parse("another-plugin"),
     });
-    for (const transportModelId of ["official-model", "codexhost/plugin-v1@invalid", foreignRoute]) {
+    for (const transportModelId of [
+      "official-model",
+      "codexhost/plugin-v1@invalid",
+      foreignRoute,
+    ]) {
       expect(() =>
         restoredThreadOwnership({
           owner: "external",

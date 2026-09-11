@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { KNOWN_RENDERER_AGENTS, type ExternalRendererAgent } from "../../src/agent-selection-state.js";
+import {
+  KNOWN_RENDERER_AGENTS,
+  type ExternalRendererAgent,
+} from "../../src/agent-selection-state.js";
 import {
   fillHarnessInstallPrompt,
   harnessInstallGuide,
@@ -43,15 +46,12 @@ describe("Harness install guides", () => {
   });
 
   it("fills the install prompt without leftover placeholders", () => {
-    const prompt = fillHarnessInstallPrompt(
-      "Install {name} ({binary})\n{command}\n{url}",
-      {
-        name: "DeepSeek Harness",
-        binary: "dsh",
-        command: "npm install -g @deepseek-ai/dsh",
-        url: "https://deepseek-harness.github.io/deepseek-harness/",
-      },
-    );
+    const prompt = fillHarnessInstallPrompt("Install {name} ({binary})\n{command}\n{url}", {
+      name: "DeepSeek Harness",
+      binary: "dsh",
+      command: "npm install -g @deepseek-ai/dsh",
+      url: "https://deepseek-harness.github.io/deepseek-harness/",
+    });
     expect(prompt).toBe(
       "Install DeepSeek Harness (dsh)\nnpm install -g @deepseek-ai/dsh\nhttps://deepseek-harness.github.io/deepseek-harness/",
     );

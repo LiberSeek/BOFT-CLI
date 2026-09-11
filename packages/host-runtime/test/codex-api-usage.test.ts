@@ -11,7 +11,9 @@ import {
 describe("Codex API usage", () => {
   it("joins /v1/usage onto a provider base URL and dedupes an existing /v1 suffix", () => {
     expect(codexApiUsageUrl("https://example.invalid")).toBe("https://example.invalid/v1/usage");
-    expect(codexApiUsageUrl("https://example.invalid/v1/")).toBe("https://example.invalid/v1/usage");
+    expect(codexApiUsageUrl("https://example.invalid/v1/")).toBe(
+      "https://example.invalid/v1/usage",
+    );
   });
 
   it("extracts remaining, unit, and validity from the native usage payload", () => {
@@ -27,9 +29,7 @@ describe("Codex API usage", () => {
       unit: "credits",
     });
     expect(extractCodexApiUsage({ balance: 0 })).toEqual({ remaining: 0, unit: "USD" });
-    expect(() => extractCodexApiUsage({ remaining: 1, isValid: false })).toThrow(
-      /inactive/u,
-    );
+    expect(() => extractCodexApiUsage({ remaining: 1, isValid: false })).toThrow(/inactive/u);
   });
 
   it("reads API usage credentials from the local provider without putting the secret in auth summaries", () => {

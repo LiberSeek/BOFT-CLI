@@ -1,9 +1,6 @@
 import type { AccountCreditsSnapshot } from "@codexhost/shared-contracts";
 
-import {
-  inspectCodexHomeApiUsageSource,
-  type CodexApiUsageSource,
-} from "./codex-home-auth.js";
+import { inspectCodexHomeApiUsageSource, type CodexApiUsageSource } from "./codex-home-auth.js";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 

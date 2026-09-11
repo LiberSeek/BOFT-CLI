@@ -38,7 +38,10 @@ describe("Codex home auth inspection", () => {
     expect(
       inspectCodexAuthDocuments({
         configToml: 'preferred_auth_method = "apikey"\n',
-        authJson: JSON.stringify({ api_key: "sk-secret", tokens: { access_token: "secret-token" } }),
+        authJson: JSON.stringify({
+          api_key: "sk-secret",
+          tokens: { access_token: "secret-token" },
+        }),
       }),
     ).toMatchObject({ kind: "api" });
   });
@@ -47,7 +50,10 @@ describe("Codex home auth inspection", () => {
     expect(
       inspectCodexAuthDocuments({
         configToml: 'preferred_auth_method = "chatgpt"\n',
-        authJson: JSON.stringify({ api_key: "sk-secret", tokens: { access_token: "secret-token" } }),
+        authJson: JSON.stringify({
+          api_key: "sk-secret",
+          tokens: { access_token: "secret-token" },
+        }),
       }),
     ).toMatchObject({ kind: "chatgpt" });
   });
@@ -111,7 +117,10 @@ experimental_bearer_token = "sk-fixture-token"
       path.join(directory, "config.toml"),
       'preferred_auth_method = "apikey"\nmodel_provider = "openai"\n',
     );
-    await writeFile(path.join(directory, "auth.json"), `${JSON.stringify({ api_key: "sk-secret" })}\n`);
+    await writeFile(
+      path.join(directory, "auth.json"),
+      `${JSON.stringify({ api_key: "sk-secret" })}\n`,
+    );
     await expect(inspectCodexHomeAuth(directory)).resolves.toEqual({
       kind: "api",
       identity: CODEX_API_AUTH_IDENTITY_FALLBACK,

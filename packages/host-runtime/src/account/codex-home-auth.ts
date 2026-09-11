@@ -68,9 +68,7 @@ function tomlProviderTableNames(providerId: string): Set<string> {
   ]);
 }
 
-function parseModelProviderAuth(
-  source: string | undefined,
-): CodexModelProviderAuth | undefined {
+function parseModelProviderAuth(source: string | undefined): CodexModelProviderAuth | undefined {
   if (!source) return undefined;
   const providerId = tomlTopLevelAssignment(source, "model_provider");
   if (!providerId) return undefined;
@@ -183,7 +181,9 @@ function authJsonApiKey(authJson: string | undefined): string | undefined {
   if (!authJson) return undefined;
   try {
     const auth = JSON.parse(authJson) as Record<string, unknown>;
-    return typeof auth.api_key === "string" && auth.api_key.trim() ? auth.api_key.trim() : undefined;
+    return typeof auth.api_key === "string" && auth.api_key.trim()
+      ? auth.api_key.trim()
+      : undefined;
   } catch {
     return undefined;
   }

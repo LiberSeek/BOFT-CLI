@@ -312,13 +312,7 @@ function createInlineErrorDetail(
     copyPrompt.setAttribute("aria-describedby", `${item.key}-install-prompt-tooltip`);
     setActionButtonLabel(copyPrompt, "copy", messages.connectionCopyPrompt);
     copyPrompt.addEventListener("click", () => {
-      copyTextToClipboard(
-        document,
-        copyPrompt,
-        prompt,
-        messages,
-        messages.connectionCopyPrompt,
-      );
+      copyTextToClipboard(document, copyPrompt, prompt, messages, messages.connectionCopyPrompt);
     });
     const tooltip = document.createElement("div");
     tooltip.id = `${item.key}-install-prompt-tooltip`;

@@ -79,9 +79,7 @@ const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInsta
     },
   });
 
-export function harnessInstallPlatform(
-  window: Window | null | undefined,
-): HarnessInstallPlatform {
+export function harnessInstallPlatform(window: Window | null | undefined): HarnessInstallPlatform {
   const navigator = window?.navigator;
   if (!navigator) return "posix";
   const identity = `${navigator.platform ?? ""} ${navigator.userAgent}`;
