@@ -11,10 +11,12 @@ describe("Claude Probe runner profiles", () => {
       cwd: path.resolve(import.meta.dirname, "../.."),
       encoding: "utf8",
       env: { ...process.env, CODEXHOST_CLAUDE_LIVE: "" },
+      timeout: 25_000,
     });
+    expect(result.error).toBeUndefined();
     expect(result.status).toBe(0);
     expect(result.stderr).not.toContain("may use network/model quota");
-  });
+  }, 30_000);
 
   it("rejects unknown profiles", () => {
     const result = spawnSync(process.execPath, [runner, "unknown"], {
