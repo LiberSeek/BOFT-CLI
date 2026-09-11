@@ -79,30 +79,33 @@ describe("Hermes inventory process", () => {
     ).toBe("C:\\Users\\test\\.hermes\\hermes-agent\\venv\\Scripts\\python.exe");
   });
 
-  it("passes the Adapter environment to the inventory subprocess", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-inventory-env-"));
-    temporaryDirectories.push(directory);
-    const binDirectory = path.join(directory, "venv", "bin");
-    await mkdir(binDirectory, { recursive: true });
-    const launcher = path.join(binDirectory, "hermes");
-    const python = path.join(binDirectory, "python");
-    await writeFile(launcher, "#!/bin/sh\nexit 0\n");
-    await writeFile(
-      python,
-      `#!/usr/bin/env node
+  it.skipIf(process.platform === "win32")(
+    "passes the Adapter environment to the inventory subprocess",
+    async () => {
+      const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-inventory-env-"));
+      temporaryDirectories.push(directory);
+      const binDirectory = path.join(directory, "venv", "bin");
+      await mkdir(binDirectory, { recursive: true });
+      const launcher = path.join(binDirectory, "hermes");
+      const python = path.join(binDirectory, "python");
+      await writeFile(launcher, "#!/bin/sh\nexit 0\n");
+      await writeFile(
+        python,
+        `#!/usr/bin/env node
 if (process.env.HERMES_TEST_INVENTORY !== "visible") process.exit(4);
 console.log(JSON.stringify({ models: [], currentModelId: null }));
 `,
-    );
-    await chmod(launcher, 0o755);
-    await chmod(python, 0o755);
+      );
+      await chmod(launcher, 0o755);
+      await chmod(python, 0o755);
 
-    await expect(
-      readHermesModelInventory(launcher, 10_000, {
-        environment: { ...process.env, HERMES_TEST_INVENTORY: "visible" },
-      }),
-    ).resolves.toEqual({ models: [], currentModelId: null });
-  });
+      await expect(
+        readHermesModelInventory(launcher, 10_000, {
+          environment: { ...process.env, HERMES_TEST_INVENTORY: "visible" },
+        }),
+      ).resolves.toEqual({ models: [], currentModelId: null });
+    },
+  );
 });
 
 describe("Hermes Session Model projection", () => {

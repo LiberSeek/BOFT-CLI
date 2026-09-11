@@ -53,6 +53,21 @@ afterEach(async () => {
   );
 });
 
+async function writeFakeHermes(directory: string, source: string): Promise<string> {
+  temporaryDirectories.push(directory);
+  const scriptPath = path.join(directory, "fake-hermes.mjs");
+  await writeFile(scriptPath, source);
+  if (process.platform === "win32") {
+    const command = path.join(directory, "fake-hermes.cmd");
+    await writeFile(command, `@echo off\r\n"${process.execPath}" "${scriptPath}" %*\r\n`);
+    return command;
+  }
+  const executable = path.join(directory, "fake-hermes");
+  await writeFile(executable, `#!/usr/bin/env node\n${source}`);
+  await chmod(executable, 0o755);
+  return executable;
+}
+
 function openResult(): HermesOpenResult {
   return {
     initialize: {
@@ -82,11 +97,9 @@ async function collectUntilTurnCompleted(
 
 async function fakeHermesExecutable(): Promise<string> {
   const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-test-"));
-  temporaryDirectories.push(directory);
-  const executable = path.join(directory, "fake-hermes");
-  await writeFile(
-    executable,
-    `#!/usr/bin/env node
+  return writeFakeHermes(
+    directory,
+    `
 import readline from "node:readline";
 const lines = readline.createInterface({ input: process.stdin });
 for await (const line of lines) {
@@ -117,17 +130,13 @@ for await (const line of lines) {
 }
 `,
   );
-  await chmod(executable, 0o755);
-  return executable;
 }
 
 async function failingHermesExecutable(): Promise<string> {
   const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-error-test-"));
-  temporaryDirectories.push(directory);
-  const executable = path.join(directory, "fake-hermes");
-  await writeFile(
-    executable,
-    `#!/usr/bin/env node
+  return writeFakeHermes(
+    directory,
+    `
 import readline from "node:readline";
 const lines = readline.createInterface({ input: process.stdin });
 for await (const line of lines) {
@@ -157,17 +166,13 @@ for await (const line of lines) {
 }
 `,
   );
-  await chmod(executable, 0o755);
-  return executable;
 }
 
 async function modelSelectionHermesExecutable(): Promise<string> {
   const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-model-counter-"));
-  temporaryDirectories.push(directory);
-  const executable = path.join(directory, "fake-hermes");
-  await writeFile(
-    executable,
-    `#!/usr/bin/env node
+  return writeFakeHermes(
+    directory,
+    `
 import { appendFileSync } from "node:fs";
 import readline from "node:readline";
 const lines = readline.createInterface({ input: process.stdin });
@@ -196,17 +201,13 @@ for await (const line of lines) {
 }
 `,
   );
-  await chmod(executable, 0o755);
-  return executable;
 }
 
 async function permissionModeHermesExecutable(): Promise<string> {
   const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-mode-counter-"));
-  temporaryDirectories.push(directory);
-  const executable = path.join(directory, "fake-hermes");
-  await writeFile(
-    executable,
-    `#!/usr/bin/env node
+  return writeFakeHermes(
+    directory,
+    `
 import { appendFileSync } from "node:fs";
 import readline from "node:readline";
 const lines = readline.createInterface({ input: process.stdin });
@@ -238,17 +239,13 @@ for await (const line of lines) {
 }
 `,
   );
-  await chmod(executable, 0o755);
-  return executable;
 }
 
 async function failingModelSelectionHermesExecutable(): Promise<string> {
   const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-model-error-"));
-  temporaryDirectories.push(directory);
-  const executable = path.join(directory, "fake-hermes");
-  await writeFile(
-    executable,
-    `#!/usr/bin/env node
+  return writeFakeHermes(
+    directory,
+    `
 import readline from "node:readline";
 const lines = readline.createInterface({ input: process.stdin });
 for await (const line of lines) {
@@ -285,17 +282,13 @@ for await (const line of lines) {
 }
 `,
   );
-  await chmod(executable, 0o755);
-  return executable;
 }
 
 async function delayedHermesExecutable(): Promise<string> {
   const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-delayed-"));
-  temporaryDirectories.push(directory);
-  const executable = path.join(directory, "fake-hermes");
-  await writeFile(
-    executable,
-    `#!/usr/bin/env node
+  return writeFakeHermes(
+    directory,
+    `
 import readline from "node:readline";
 const lines = readline.createInterface({ input: process.stdin });
 for await (const line of lines) {
@@ -322,8 +315,6 @@ for await (const line of lines) {
 }
 `,
   );
-  await chmod(executable, 0o755);
-  return executable;
 }
 
 describe("HermesSession text projection", () => {
