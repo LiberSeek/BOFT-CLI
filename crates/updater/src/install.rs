@@ -164,6 +164,8 @@ fn install_macos(request: &UpdateRequest, macos: &MacOsInstallation) -> Result<(
     }
 
     let prepare_result = (|| -> Result<(), Box<dyn Error>> {
+        // Keep this list aligned with scripts/release/macos/package.sh.
+        // Updaters before 0.6.6 look only for codexhost.app.
         let source = ["BOFT.app", "BOFT CLI.app", "codexhost.app"]
             .into_iter()
             .map(|name| mount.join(name))

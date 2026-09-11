@@ -140,6 +140,20 @@ function createPanelHead(document: Document, view: string, title: string): HTMLE
   return head;
 }
 
+function appendUniqueUpdateError(
+  document: Document,
+  panel: HTMLElement,
+  error: string | null | undefined,
+  shown: Set<string>,
+): void {
+  if (!error || shown.has(error)) return;
+  shown.add(error);
+  const detail = document.createElement("p");
+  detail.className = "settings-update-error";
+  detail.textContent = error;
+  panel.append(detail);
+}
+
 function createPanelActions(document: Document, ...buttons: readonly HTMLElement[]): HTMLElement {
   const actions = document.createElement("div");
   actions.className = "settings-update-actions";
@@ -594,27 +608,32 @@ function updatesPage(
           scheduleStatusPoll(client, true);
           return;
         }
-        const actionableStatus =
+        const failedLatest =
           result.status?.phase === "failed" && result.status.version === result.latestVersion
             ? result.status
             : null;
-        const view = result.error ? "error" : result.updateAvailable ? "available" : "current";
+        // Ignore a leftover failure once this install already matches latest.
+        const actionableStatus = result.updateAvailable ? failedLatest : null;
+        const view = result.error
+          ? "error"
+          : actionableStatus
+            ? "failed"
+            : result.updateAvailable
+              ? "available"
+              : "current";
         panel.dataset.updateState = view;
         panel.replaceChildren();
         setManualFallback(Boolean(result.error) || actionableStatus !== null);
+        const title = actionableStatus
+          ? messages.updateFailed
+          : result.error
+            ? messages.updateFailed
+            : result.updateAvailable
+              ? messages.updateWindowsManualRequired
+              : messages.updateUpToDate;
         const head =
           result.error || !result.updateAvailable || windows || actionableStatus
-            ? createPanelHead(
-                document,
-                view,
-                actionableStatus
-                  ? (statusMessage(actionableStatus, messages) ?? messages.updateFailed)
-                  : result.error
-                    ? messages.updateFailed
-                    : result.updateAvailable
-                      ? messages.updateWindowsManualRequired
-                      : messages.updateUpToDate,
-              )
+            ? createPanelHead(document, view, title)
             : null;
         const buttons: HTMLElement[] = [];
         if (!windows && result.updateAvailable && result.installationAvailable) {
@@ -640,18 +659,9 @@ function updatesPage(
         } else if (buttons.length > 0) {
           panel.append(createPanelActions(document, ...buttons));
         }
-        if (actionableStatus?.error) {
-          const error = document.createElement("p");
-          error.className = "settings-update-error";
-          error.textContent = actionableStatus.error;
-          panel.append(error);
-        }
-        if (result.error) {
-          const error = document.createElement("p");
-          error.className = "settings-update-error";
-          error.textContent = result.error;
-          panel.append(error);
-        }
+        const shownErrors = new Set<string>([title]);
+        appendUniqueUpdateError(document, panel, actionableStatus?.error, shownErrors);
+        appendUniqueUpdateError(document, panel, result.error, shownErrors);
         notes.replaceChildren();
         if (result.releaseNotes) {
           notes.append(createReleaseNotesElement(document, result.releaseNotes));

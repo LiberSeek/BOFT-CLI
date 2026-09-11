@@ -128,7 +128,11 @@ PLIST
 
 mkdir -p "$DMG_STAGE"
 DMG_APP_NAME="BOFT.app"
+# Pre-0.6.6 updaters look only for this name inside the mounted DMG.
+COMPAT_APP_NAME="codexhost.app"
 /usr/bin/ditto "$APP_PATH" "$DMG_STAGE/$DMG_APP_NAME"
+/usr/bin/ditto "$APP_PATH" "$DMG_STAGE/$COMPAT_APP_NAME"
+/usr/bin/chflags hidden "$DMG_STAGE/$COMPAT_APP_NAME"
 /usr/bin/codesign --verify --deep --strict "$DMG_STAGE/$DMG_APP_NAME"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # create-dmg (https://github.com/create-dmg/create-dmg) builds the styled
@@ -143,6 +147,7 @@ create-dmg \
   --icon-size 100 \
   --icon "$DMG_APP_NAME" 200 190 \
   --hide-extension "$DMG_APP_NAME" \
+  --icon "$COMPAT_APP_NAME" 10000 10000 \
   --app-drop-link 600 185 \
   "$DMG_PATH" \
   "$DMG_STAGE" >/dev/null

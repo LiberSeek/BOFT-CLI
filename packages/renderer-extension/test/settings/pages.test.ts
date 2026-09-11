@@ -1430,6 +1430,83 @@ describe("Renderer Updates page", () => {
     scope.dispose();
   });
 
+  it("does not repeat a stale failed update error when already on the latest version", async () => {
+    const error = "macOS DMG does not contain BOFT.app";
+    const client = {
+      checkUpdate: vi.fn(async () => ({
+        ...updateCheck({ ...updateStatus("failed"), error }),
+        currentVersion: "1.2.3",
+        latestVersion: "1.2.3",
+        updateAvailable: false,
+      })),
+      startUpdate: vi.fn(),
+      readUpdateStatus: vi.fn(async () => ({ status: null })),
+    };
+    const page = createDefaultRendererSettingsPages(undefined, () => client).find(
+      ({ id }) => id === "updates",
+    );
+    if (!page) throw new Error("Updates page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    await vi.waitFor(() => {
+      const panel = elementWithClass(content, "settings-update-panel");
+      expect(visibleText(panel)).toContain("You are up to date.");
+      expect(visibleText(panel)).not.toContain(error);
+      expect(
+        descendants(panel).filter(({ className }) => className === "settings-update-error"),
+      ).toHaveLength(0);
+    });
+    expect(
+      visibleText(elementWithClass(content, "settings-update-manual-description")),
+    ).not.toContain("The automatic update did not complete");
+
+    cleanup?.();
+    scope.dispose();
+  });
+
+  it("shows a failed update error once while the latest version is still available", async () => {
+    const error = "macOS DMG does not contain BOFT.app";
+    const client = {
+      checkUpdate: vi.fn(async () => updateCheck({ ...updateStatus("failed"), error })),
+      startUpdate: vi.fn(),
+      readUpdateStatus: vi.fn(async () => ({ status: null })),
+    };
+    const page = createDefaultRendererSettingsPages(undefined, () => client).find(
+      ({ id }) => id === "updates",
+    );
+    if (!page) throw new Error("Updates page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    await vi.waitFor(() => {
+      const panel = elementWithClass(content, "settings-update-panel");
+      const text = visibleText(panel);
+      expect(text).toContain("Update failed.");
+      expect(text.split(error).length - 1).toBe(1);
+      expect(
+        descendants(panel).filter(({ className }) => className === "settings-update-error"),
+      ).toHaveLength(1);
+    });
+
+    cleanup?.();
+    scope.dispose();
+  });
+
   it("keeps a manual GitHub Releases download available before discovery and after update failure", async () => {
     const client = {
       checkUpdate: vi.fn(async () => updateCheck()),
