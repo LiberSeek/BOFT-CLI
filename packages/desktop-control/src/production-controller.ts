@@ -255,6 +255,7 @@ export async function runDesktopController(
           "muse",
           "kiro-cli",
           "codebuddy",
+          "cursor-cli",
         ],
         timeoutMs: PRODUCTION_INSTALL_TIMEOUT_MS,
       },

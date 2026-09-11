@@ -47,6 +47,7 @@ interface ServerSession {
   generation: number;
   owner: string;
   cwd: string;
+  environment?: OpenSessionInput["environment"];
   nativeId?: string;
   nativeRef?: HarnessSession["initialState"]["nativeRef"];
   writerKey?: string;
@@ -627,6 +628,7 @@ export async function startHarnessBrokerServer(input: {
           generation: 1,
           owner: state.id,
           cwd: openInput.cwd,
+          ...(openInput.environment ? { environment: openInput.environment } : {}),
           ...(nativeId ? { nativeId } : {}),
           ...(opened.value.initialState.nativeRef
             ? { nativeRef: opened.value.initialState.nativeRef }
@@ -782,7 +784,12 @@ export async function startHarnessBrokerServer(input: {
         record.forwarderEpoch += 1;
         await oldSession.close().catch(() => undefined);
         await oldOutputTask.catch(() => undefined);
-        const reopened = await input.adapter.open({ kind: "resume", cwd: record.cwd, nativeRef });
+        const reopened = await input.adapter.open({
+          kind: "resume",
+          cwd: record.cwd,
+          nativeRef,
+          ...(record.environment ? { environment: record.environment } : {}),
+        });
         if (!reopened.ok) return reopened;
         const reopenedRef = reopened.value.initialState.nativeRef;
         if (

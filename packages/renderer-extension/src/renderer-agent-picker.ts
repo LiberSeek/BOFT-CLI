@@ -88,6 +88,7 @@ export const RENDERER_AGENT_INSTALL_URLS: Readonly<Record<ExternalRendererAgent,
   muse: "https://www.meta.ai/",
   "kiro-cli": "https://kiro.dev/docs/cli/",
   codebuddy: "https://www.codebuddy.ai/docs/zh/cli/overview",
+  "cursor-cli": "https://cursor.com/docs/cli/installation",
 };
 
 type AgentAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;

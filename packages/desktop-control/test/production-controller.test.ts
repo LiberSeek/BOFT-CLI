@@ -154,6 +154,7 @@ describe("production Desktop Controller", () => {
         "muse",
         "kiro-cli",
         "codebuddy",
+        "cursor-cli",
       ],
       timeoutMs: 90_000,
     });

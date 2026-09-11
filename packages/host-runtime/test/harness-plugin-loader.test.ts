@@ -114,6 +114,7 @@ describe("Harness plugin discovery and loading", () => {
     "muse",
     "kiro-cli",
     "codebuddy",
+    "cursor-cli",
   ])("ships a valid %s manifest and resolvable compiled resources", async (id) => {
     const location = path.resolve("packages/adapters", id);
     const manifest = harnessPluginManifestSchema.parse(

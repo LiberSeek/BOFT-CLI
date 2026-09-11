@@ -106,6 +106,7 @@ const externalHarnessIds = {
   muse: harnessIdSchema.parse("muse"),
   "kiro-cli": harnessIdSchema.parse("kiro-cli"),
   codebuddy: harnessIdSchema.parse("codebuddy"),
+  "cursor-cli": harnessIdSchema.parse("cursor-cli"),
 } as const;
 
 const externalAgents: readonly ExternalRendererAgent[] = [
@@ -120,6 +121,7 @@ const externalAgents: readonly ExternalRendererAgent[] = [
   "muse",
   "kiro-cli",
   "codebuddy",
+  "cursor-cli",
 ];
 type HarnessAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
 type HarnessAvailabilityErrors = Record<ExternalRendererAgent, CodexhostError | undefined>;
@@ -478,16 +480,22 @@ export function restoredThreadOwnership(inspection: ThreadInspection): RestoredT
         : {}),
     };
   }
-  if (inspection.harnessId === "kiro-cli" || inspection.harnessId === "codebuddy") {
+  if (
+    inspection.harnessId === "kiro-cli" ||
+    inspection.harnessId === "codebuddy" ||
+    inspection.harnessId === "cursor-cli"
+  ) {
     const route = decodeHarnessPluginRoute(inspection.transportModelId);
     if (!route || route.harnessId !== inspection.harnessId) {
       throw new Error("Plugin Thread reported an incompatible transport Model");
     }
     const model = inspection.effectiveModel ?? route.model;
     const thinkingOptionId =
-      inspection.availableThinkingOptions !== undefined
-        ? selectableThinkingOptionId(inspection)
-        : (inspection.effectiveThinkingOptionId ?? route.thinkingOptionId);
+      inspection.harnessId === "cursor-cli"
+        ? undefined
+        : inspection.availableThinkingOptions !== undefined
+          ? selectableThinkingOptionId(inspection)
+          : (inspection.effectiveThinkingOptionId ?? route.thinkingOptionId);
     const permissionModeId = inspection.effectivePermissionModeId ?? route.permissionModeId;
     return {
       agent: inspection.harnessId,
@@ -780,6 +788,7 @@ export function installRendererBindingProbe(
       muse: undefined,
       "kiro-cli": undefined,
       codebuddy: undefined,
+      "cursor-cli": undefined,
     },
     webUi: Object.fromEntries(
       externalAgents.map((agent) => [agent, false]),

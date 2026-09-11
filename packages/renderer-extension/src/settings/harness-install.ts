@@ -83,6 +83,12 @@ const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInsta
       posix: "npm install -g @tencent-ai/codebuddy-code",
       windows: "npm install -g @tencent-ai/codebuddy-code",
     },
+    "cursor-cli": {
+      url: "https://cursor.com/docs/cli/installation",
+      binary: "cursor-agent",
+      posix: "curl https://cursor.com/install -fsS | bash",
+      windows: "irm https://cursor.com/install.ps1 | iex",
+    },
   });
 
 export function harnessInstallPlatform(window: Window | null | undefined): HarnessInstallPlatform {
