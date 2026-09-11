@@ -68,18 +68,16 @@ boft
 
 **또는** [설치 프로그램](https://github.com/LiberSeek/BOFT-CLI/releases) 다운로드 (macOS, Windows)
 
-<details>
-<summary>설치 문제 해결</summary>
-
-**macOS** - Apple 인증 문제
-
-처음 열 때 앱을 확인할 수 없다는 메시지가 표시되면 다음을 실행하세요:
+macOS DMG의 앱 이름은 **BOFT CLI**입니다. Applications로 드래그한 뒤 확인되지 않는다는 메시지가 나타나면 다음을 실행하세요:
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/codexhost.app
+xattr -dr com.apple.quarantine "/Applications/BOFT CLI.app"
 ```
 
-그런 다음 `boft`를 다시 실행하세요. `codexhost`는 호환성 별칭으로 계속 사용할 수 있습니다.
+그런 다음 BOFT CLI를 다시 여세요.
+
+<details>
+<summary>기타 설치 문제</summary>
 
 **Windows** - 휴대용/압축 해제 Codex Desktop
 

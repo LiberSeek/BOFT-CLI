@@ -68,18 +68,16 @@ boft
 
 **Or download** [installers](https://github.com/LiberSeek/BOFT-CLI/releases) (macOS, Windows)
 
-<details>
-<summary>Installation troubleshooting</summary>
-
-**macOS** - Apple verification issue
-
-If the app cannot be verified when you first open it, run:
+The macOS DMG contains **BOFT CLI**. After dragging it to Applications, if macOS says the app cannot be verified, run:
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/codexhost.app
+xattr -dr com.apple.quarantine "/Applications/BOFT CLI.app"
 ```
 
-Then run `boft` again. `codexhost` remains available as a compatibility alias.
+Then open BOFT CLI again.
+
+<details>
+<summary>Other installation issues</summary>
 
 **Windows** - Portable/extracted Codex Desktop
 

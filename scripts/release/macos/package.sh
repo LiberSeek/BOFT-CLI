@@ -127,8 +127,9 @@ PLIST
 "$RESOURCES/runtime/node" -e 'if (process.version !== "v24.13.1") process.exit(1)'
 
 mkdir -p "$DMG_STAGE"
-/usr/bin/ditto "$APP_PATH" "$DMG_STAGE/codexhost.app"
-/usr/bin/codesign --verify --deep --strict "$DMG_STAGE/codexhost.app"
+DMG_APP_NAME="BOFT CLI.app"
+/usr/bin/ditto "$APP_PATH" "$DMG_STAGE/$DMG_APP_NAME"
+/usr/bin/codesign --verify --deep --strict "$DMG_STAGE/$DMG_APP_NAME"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # create-dmg (https://github.com/create-dmg/create-dmg) builds the styled
 # standard DMG: window size, icon positions, Applications drop link, volume
@@ -140,8 +141,8 @@ create-dmg \
   --window-pos 200 120 \
   --window-size 800 400 \
   --icon-size 100 \
-  --icon "codexhost.app" 200 190 \
-  --hide-extension "codexhost.app" \
+  --icon "$DMG_APP_NAME" 200 190 \
+  --hide-extension "$DMG_APP_NAME" \
   --app-drop-link 600 185 \
   "$DMG_PATH" \
   "$DMG_STAGE" >/dev/null

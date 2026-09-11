@@ -21,7 +21,10 @@ describe("platform packagers", () => {
     expect(source).toContain("create-dmg");
     expect(source).toContain("--window-size 800 400");
     expect(source).toContain("--window-pos 200 120");
-    expect(source).toContain('--icon "codexhost.app" 200 190');
+    expect(source).toContain('DMG_APP_NAME="BOFT CLI.app"');
+    expect(source).toContain('--icon "$DMG_APP_NAME" 200 190');
+    expect(source).toContain('--hide-extension "$DMG_APP_NAME"');
+    expect(source).not.toContain('--icon "codexhost.app"');
     expect(source).toContain("--app-drop-link 600 185");
     expect(source).toContain("installer-background.png");
     expect(source).not.toContain("layout_dmg_window");

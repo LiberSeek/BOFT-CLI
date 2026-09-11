@@ -68,16 +68,16 @@ boft
 
 **或下载** [安装包](https://github.com/LiberSeek/BOFT-CLI/releases)（macOS、Windows）
 
-<details>
-<summary>安装问题排查</summary>
-
-**macOS** - Apple 验证问题
-
-首次打开时如提示应用无法验证，请执行：
+macOS 安装包里的应用名称是 **BOFT CLI**。把它拖到「应用程序」后，如果系统提示无法验证，先在终端执行：
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/codexhost.app
+xattr -dr com.apple.quarantine "/Applications/BOFT CLI.app"
 ```
+
+然后再打开 BOFT CLI。
+
+<details>
+<summary>其他安装问题</summary>
 
 **Windows** - 绿色解压版 Codex Desktop
 
