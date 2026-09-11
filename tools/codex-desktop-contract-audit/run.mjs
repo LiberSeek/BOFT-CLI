@@ -145,7 +145,7 @@ function readDesktopIdentity(options) {
       asarIntegrity: options.asarIntegrity,
     };
   }
-  const launcher = options.launcher ?? path.join(repositoryRoot, "target", "debug", "codexhost");
+  const launcher = options.launcher ?? path.join(repositoryRoot, "target", "debug", "boft");
   if (!path.isAbsolute(launcher) || !fs.existsSync(launcher)) {
     throw new Error(
       "Desktop identity requires --desktop-version, --desktop-build, and --asar-integrity, or a built --launcher",

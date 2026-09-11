@@ -4,9 +4,9 @@ import path from "node:path";
 export const LINUX_GLIBC_BASELINE = "2.35";
 
 export const LINUX_NATIVE_EXECUTABLES = Object.freeze([
-  "bin/codexhost",
-  "libexec/codexhost-shim",
-  "libexec/codexhost-updater",
+  "bin/boft",
+  "libexec/boft-shim",
+  "libexec/boft-updater",
 ]);
 
 function compareVersion(left, right) {

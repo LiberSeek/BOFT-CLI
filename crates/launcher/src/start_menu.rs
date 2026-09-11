@@ -12,7 +12,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let directory = executable
         .parent()
         .ok_or("codexhost Start Menu executable has no parent directory")?;
-    let launcher = canonical_existing_file(&directory.join("codexhost.exe"))?;
+    let launcher = canonical_existing_file(&directory.join("boft.exe"))?;
     let mut command = Command::new(launcher);
     command.arg("--start-menu");
     configure_background_command(&mut command);

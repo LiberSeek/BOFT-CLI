@@ -54,8 +54,8 @@ afterEach(async () => {
 
 async function commonOptions(root: string): Promise<CommonUpdateOptions> {
   const files = {
-    launcherExecutable: path.join(root, "installed", "bin", "codexhost"),
-    updaterExecutable: path.join(root, "installed", "libexec", "codexhost-updater"),
+    launcherExecutable: path.join(root, "installed", "bin", "boft"),
+    updaterExecutable: path.join(root, "installed", "libexec", "boft-updater"),
   };
   for (const filePath of Object.values(files)) {
     await mkdir(path.dirname(filePath), { recursive: true });

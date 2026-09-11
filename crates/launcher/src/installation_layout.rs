@@ -67,7 +67,7 @@ impl InstalledResources {
         Ok(Self {
             shim: resource_root
                 .join("libexec")
-                .join(format!("codexhost-shim{executable_suffix}")),
+                .join(format!("boft-shim{executable_suffix}")),
             node: resource_root
                 .join("runtime")
                 .join(format!("node{executable_suffix}")),
@@ -92,7 +92,7 @@ impl InstalledResources {
             .unwrap_or_else(|| repository_root.join("packages/host-runtime/dist/main.js"));
 
         Some(Self {
-            shim: build_directory.join(format!("codexhost-shim{executable_suffix}")),
+            shim: build_directory.join(format!("boft-shim{executable_suffix}")),
             node,
             host_runtime,
             desktop_controller: repository_root
@@ -129,14 +129,14 @@ mod tests {
         let root = env::temp_dir().join("codexhost release");
         let executable = root
             .join("bin")
-            .join(format!("codexhost{}", env::consts::EXE_SUFFIX));
+            .join(format!("boft{}", env::consts::EXE_SUFFIX));
 
         assert_eq!(
             InstalledResources::from_executable(&executable).expect("release layout"),
             InstalledResources {
                 shim: root
                     .join("libexec")
-                    .join(format!("codexhost-shim{}", env::consts::EXE_SUFFIX)),
+                    .join(format!("boft-shim{}", env::consts::EXE_SUFFIX)),
                 node: root
                     .join("runtime")
                     .join(format!("node{}", env::consts::EXE_SUFFIX)),
@@ -152,7 +152,7 @@ mod tests {
         let contents = env::temp_dir().join("codexhost.app/Contents");
         let executable = contents
             .join("MacOS")
-            .join(format!("codexhost{}", env::consts::EXE_SUFFIX));
+            .join(format!("boft{}", env::consts::EXE_SUFFIX));
 
         assert_eq!(
             InstalledResources::from_executable(&executable)
@@ -167,7 +167,7 @@ mod tests {
         let root = env::temp_dir().join("codexhost source checkout");
         let executable = root
             .join("target/debug")
-            .join(format!("codexhost{}", env::consts::EXE_SUFFIX));
+            .join(format!("boft{}", env::consts::EXE_SUFFIX));
 
         assert_eq!(
             InstalledResources::from_source_checkout(&executable, None, None)
@@ -175,7 +175,7 @@ mod tests {
             InstalledResources {
                 shim: root
                     .join("target/debug")
-                    .join(format!("codexhost-shim{}", env::consts::EXE_SUFFIX)),
+                    .join(format!("boft-shim{}", env::consts::EXE_SUFFIX)),
                 node: PathBuf::from(format!("node{}", env::consts::EXE_SUFFIX)),
                 host_runtime: root.join("packages/host-runtime/dist/main.js"),
                 desktop_controller: root.join("packages/desktop-control/dist/release-main.js"),
@@ -189,7 +189,7 @@ mod tests {
         let root = env::temp_dir().join("codexhost source overrides");
         let executable = root
             .join("target/release")
-            .join(format!("codexhost{}", env::consts::EXE_SUFFIX));
+            .join(format!("boft{}", env::consts::EXE_SUFFIX));
         let node = root.join("custom/node");
         let host_runtime = root.join("custom/host-runtime.mjs");
 

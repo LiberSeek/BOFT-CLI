@@ -9,11 +9,11 @@ publish.workspace = true
 test-utils = []
 
 [[bin]]
-name = "codexhost-shim"
+name = "boft-shim"
 path = "src/main.rs"
 
 [[bin]]
-name = "codexhost-node-repl"
+name = "boft-node-repl"
 path = "src/node_repl_main.rs"
 
 [[bin]]

@@ -27,7 +27,7 @@ can work while trusted service HTTP requests or later page-state operations
 fail. `nodeRepl.fetch request failed` and debugger errors must be diagnosed
 separately from actual administrator-policy denials.
 
-The Windows package includes `libexec/codexhost-node-repl.exe`. The launcher uses
+The Windows package includes `libexec/boft-node-repl.exe`. The launcher uses
 Desktop's supported `CODEX_NODE_REPL_PATH` override when the wrapper is present,
 unless the user has selected a different custom runtime. Explicit custom values,
 including empty values, are forwarded unchanged in the AppX activation environment;

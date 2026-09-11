@@ -21,9 +21,9 @@ case "$DMG_PATH" in
 esac
 
 for relative in \
-  bin/codexhost \
-  libexec/codexhost-shim \
-  libexec/codexhost-updater \
+  bin/boft \
+  libexec/boft-shim \
+  libexec/boft-updater \
   runtime/node \
   app/codexhost-distribution.json \
   app/desktop-controller.mjs \
@@ -56,16 +56,16 @@ rm -rf "$APP_PATH" "$DMG_STAGE"
 rm -f "$DMG_PATH"
 mkdir -p "$CONTENTS/MacOS" "$RESOURCES" "$OUTPUT_DIRECTORY"
 
-cp "$PAYLOAD_ROOT/bin/codexhost" "$CONTENTS/MacOS/codexhost"
+cp "$PAYLOAD_ROOT/bin/boft" "$CONTENTS/MacOS/boft"
 cp -R "$PAYLOAD_ROOT/libexec" "$RESOURCES/libexec"
 cp -R "$PAYLOAD_ROOT/runtime" "$RESOURCES/runtime"
 cp -R "$PAYLOAD_ROOT/app" "$RESOURCES/app"
 cp -R "$PAYLOAD_ROOT/licenses" "$RESOURCES/licenses"
 cp "$PAYLOAD_ROOT/THIRD_PARTY_NOTICES.txt" "$RESOURCES/THIRD_PARTY_NOTICES.txt"
 chmod 755 \
-  "$CONTENTS/MacOS/codexhost" \
-  "$RESOURCES/libexec/codexhost-shim" \
-  "$RESOURCES/libexec/codexhost-updater" \
+  "$CONTENTS/MacOS/boft" \
+  "$RESOURCES/libexec/boft-shim" \
+  "$RESOURCES/libexec/boft-updater" \
   "$RESOURCES/runtime/node"
 
 mkdir -p "$ASSETS_DIR"
@@ -92,7 +92,7 @@ cat > "$CONTENTS/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key>
   <string>BOFT</string>
   <key>CFBundleExecutable</key>
-  <string>codexhost</string>
+  <string>boft</string>
   <key>CFBundleIconFile</key>
   <string>codexhost.icns</string>
   <key>CFBundleIdentifier</key>
@@ -119,9 +119,9 @@ PLIST
 
 /usr/bin/plutil -lint "$CONTENTS/Info.plist" >/dev/null
 /usr/bin/codesign --force --sign - "$RESOURCES/runtime/node"
-/usr/bin/codesign --force --sign - "$RESOURCES/libexec/codexhost-shim"
-/usr/bin/codesign --force --sign - "$RESOURCES/libexec/codexhost-updater"
-/usr/bin/codesign --force --sign - "$CONTENTS/MacOS/codexhost"
+/usr/bin/codesign --force --sign - "$RESOURCES/libexec/boft-shim"
+/usr/bin/codesign --force --sign - "$RESOURCES/libexec/boft-updater"
+/usr/bin/codesign --force --sign - "$CONTENTS/MacOS/boft"
 /usr/bin/codesign --force --sign - "$APP_PATH"
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 "$RESOURCES/runtime/node" -e 'if (process.version !== "v24.13.1") process.exit(1)'

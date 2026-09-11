@@ -79,7 +79,7 @@ The tool does not retain prompts, transcripts, input or rendered text, Model val
 
 ## Supplying Desktop identity
 
-By default the command uses a built `target/debug/codexhost inspect`. A different Launcher may be provided with `--launcher`. For fixture or remote endpoint audits, all three bounded values may be supplied directly:
+By default the command uses a built `target/debug/boft inspect`. A different Launcher may be provided with `--launcher`. For fixture or remote endpoint audits, all three bounded values may be supplied directly:
 
 ```bash
 npm run audit:codex-desktop -- \

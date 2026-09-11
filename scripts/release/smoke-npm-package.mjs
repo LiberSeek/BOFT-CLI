@@ -19,7 +19,7 @@ import {
 import { releaseTarget } from "./targets.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
-const executablePaths = ["bin/codexhost", "libexec/codexhost-shim", "libexec/codexhost-updater"];
+const executablePaths = ["bin/boft", "libexec/boft-shim", "libexec/boft-updater"];
 
 function requireArgument(arguments_, name) {
   const index = arguments_.indexOf(name);
@@ -86,13 +86,13 @@ export async function smokeNpmPackage({ targetName, version, workDirectory }) {
       directory,
       "node_modules",
       ".bin",
-      process.platform === "win32" ? "codexhost.cmd" : "codexhost",
+      process.platform === "win32" ? "boft.cmd" : "boft",
     );
     const output = execFileSync(command, ["--version"], {
       cwd: directory,
       encoding: "utf8",
     }).trim();
-    if (output !== version) throw new Error(`installed codexhost reported '${output}'`);
+    if (output !== version) throw new Error(`installed boft reported '${output}'`);
     return { platformTarball, metaTarball, packageName };
   } finally {
     await rm(directory, { recursive: true, force: true });

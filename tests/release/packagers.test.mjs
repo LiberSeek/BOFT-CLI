@@ -122,7 +122,9 @@ describe("platform packagers", () => {
     expect(installer).toContain("UninstallDisplayName=BOFT");
     expect(installer).toContain('Name: "{userprograms}\\BOFT"');
     expect(installer).not.toContain("AppName=BOFT CLI");
-    expect(installer).toContain("DefaultDirName={localappdata}\\Programs\\codexhost");
+    expect(installer).toContain("DefaultDirName={localappdata}\\Programs\\boft");
+    expect(installer).toContain("UsePreviousAppDir=no");
+    expect(installer).toContain('Filename: "{app}\\bin\\boft-start.exe"');
     expect(installer).toContain("PrivilegesRequired=lowest");
     expect(installer).toContain("DisableProgramGroupPage=yes");
     expect(installer).toContain("ArchitecturesAllowed=x64compatible");

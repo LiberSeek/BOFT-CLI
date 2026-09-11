@@ -3,9 +3,10 @@ AppId={{8A7B4E80-A650-4D47-9D05-8D4D7F13E67E}
 AppName=BOFT
 AppVersion={#ProductVersion}
 AppPublisher=LiberSeek
-DefaultDirName={localappdata}\Programs\codexhost
+DefaultDirName={localappdata}\Programs\boft
 DefaultGroupName=BOFT
 DisableProgramGroupPage=yes
+UsePreviousAppDir=no
 PrivilegesRequired=lowest
 OutputDir={#OutputDir}
 OutputBaseFilename={#OutputBaseFilename}
@@ -26,7 +27,7 @@ ArchitecturesInstallIn64BitMode=arm64
 Source: "{#PayloadRoot}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{userprograms}\BOFT"; Filename: "{app}\bin\codexhost-start.exe"; WorkingDir: "{app}"
+Name: "{userprograms}\BOFT"; Filename: "{app}\bin\boft-start.exe"; WorkingDir: "{app}"
 
 [Dirs]
 Name: "{app}"

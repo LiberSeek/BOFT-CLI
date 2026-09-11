@@ -23,7 +23,7 @@ use crate::runtime_instance::default_descriptor_path;
 const ACTIVE_UPDATE_LOCK_FILE: &str = "active-update-v1.lock";
 const STATUS_FILE: &str = "status-v1.json";
 const REQUEST_FILE: &str = "request-v1.json";
-const UPDATER_FILE: &str = "codexhost-updater";
+const UPDATER_FILE: &str = "boft-updater";
 const MAX_STATE_FILE_BYTES: u64 = 4 * 1024;
 #[cfg(target_os = "macos")]
 const UPDATER_READY_TIMEOUT: Duration = Duration::from_secs(10);
@@ -351,7 +351,7 @@ mod tests {
     fn write_pending_update(root: &Path, launcher: &Path, launcher_pid: u32) -> PendingUpdate {
         let operation = root.join("update-1.2.3-fixture");
         fs::create_dir_all(&operation).expect("create update operation fixture");
-        let helper_path = operation.join("codexhost-updater");
+        let helper_path = operation.join("boft-updater");
         fs::write(&helper_path, b"helper").expect("write Helper fixture");
         let status_path = operation.join("status-v1.json");
         fs::write(

@@ -27,7 +27,7 @@ use fs2::FileExt;
 use std::os::unix::fs::MetadataExt;
 
 fn shim_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_codexhost-shim"))
+    PathBuf::from(env!("CARGO_BIN_EXE_boft-shim"))
 }
 
 fn fake_codex_path() -> PathBuf {
@@ -41,7 +41,7 @@ fn node_repl_proxy_preserves_stdio_and_explicit_proxy_configuration() {
     let node = directory.join("node.exe");
     fs::copy(fake_codex_path(), &node).unwrap();
     fs::copy(fake_codex_path(), directory.join("node_repl.exe")).unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_codexhost-node-repl"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_boft-node-repl"))
         .args(["--fixture-option", "two words"])
         .env("NODE_REPL_NODE_PATH", &node)
         .env("HTTP_PROXY", "http://explicit.invalid:3128")
@@ -77,7 +77,7 @@ fn node_repl_proxy_preserves_stdio_and_explicit_proxy_configuration() {
 #[cfg(target_os = "windows")]
 #[test]
 fn node_repl_proxy_does_not_search_path_for_missing_runtime() {
-    let output = Command::new(env!("CARGO_BIN_EXE_codexhost-node-repl"))
+    let output = Command::new(env!("CARGO_BIN_EXE_boft-node-repl"))
         .env_remove("NODE_REPL_NODE_PATH")
         .stdin(Stdio::null())
         .output()

@@ -78,7 +78,7 @@ fn managed_desktop_environment(
 
 #[cfg(target_os = "windows")]
 fn managed_node_repl_override(shim: &Path, existing: Option<OsString>) -> Option<OsString> {
-    const WRAPPER: &str = "codexhost-node-repl.exe";
+    const WRAPPER: &str = "boft-node-repl.exe";
     if existing.as_ref().is_some_and(|value| {
         !Path::new(value)
             .file_name()
@@ -128,9 +128,9 @@ mod node_repl_override_tests {
         let directory =
             std::env::temp_dir().join(format!("codexhost-appx-node-env-{}", std::process::id()));
         std::fs::create_dir(&directory).expect("isolated AppX fixture");
-        let shim = directory.join("codexhost-shim.exe");
+        let shim = directory.join("boft-shim.exe");
         std::fs::write(&shim, b"fixture").unwrap();
-        std::fs::write(directory.join("codexhost-node-repl.exe"), b"fixture").unwrap();
+        std::fs::write(directory.join("boft-node-repl.exe"), b"fixture").unwrap();
         let installation = DesktopInstallation {
             identity: DesktopIdentity::WindowsPackage {
                 package_name: "fixture".into(),
@@ -170,17 +170,14 @@ mod node_repl_override_tests {
         let directory =
             std::env::temp_dir().join(format!("codexhost-tool-override-{}", std::process::id()));
         std::fs::create_dir(&directory).expect("isolated launcher fixture");
-        let shim = directory.join("codexhost-shim.exe");
-        let wrapper = directory.join("codexhost-node-repl.exe");
+        let shim = directory.join("boft-shim.exe");
+        let wrapper = directory.join("boft-node-repl.exe");
         assert!(managed_node_repl_override(&shim, None).is_none());
         std::fs::write(&wrapper, b"fixture").unwrap();
         let expected = Some(canonical_existing_file(&wrapper).unwrap().into_os_string());
         assert_eq!(managed_node_repl_override(&shim, None), expected);
         assert_eq!(
-            managed_node_repl_override(
-                &shim,
-                Some("C:/old/libexec/codexhost-node-repl.exe".into())
-            ),
+            managed_node_repl_override(&shim, Some("C:/old/libexec/boft-node-repl.exe".into())),
             expected
         );
         assert_eq!(
@@ -1212,7 +1209,7 @@ mod tests {
     #[test]
     fn launch_services_forwards_only_the_ephemeral_inspector_argument() {
         let directory = temporary_directory("codexhost-desktop-launch-args");
-        let shim = directory.join("codexhost-shim");
+        let shim = directory.join("boft-shim");
         fs::write(&shim, b"shim").expect("write fake Shim");
         let installation = DesktopInstallation {
             #[cfg(target_os = "macos")]

@@ -52,7 +52,7 @@ if ($remainingDesktopProcesses.Count -ne 0) {
 
 $graceDeadline = [DateTime]::UtcNow.AddSeconds(2)
 do {
-  $runtimeProcesses = @(Get-Process -Name 'codexhost', 'codexhost-shim' -ErrorAction SilentlyContinue)
+  $runtimeProcesses = @(Get-Process -Name 'boft', 'boft-shim' -ErrorAction SilentlyContinue)
   if ($runtimeProcesses.Count -eq 0) {
     break
   }
@@ -66,7 +66,7 @@ do {
 } while ($true)
 
 $remainingRuntimeProcesses = @(
-  Get-Process -Name 'codexhost', 'codexhost-shim' -ErrorAction SilentlyContinue
+  Get-Process -Name 'boft', 'boft-shim' -ErrorAction SilentlyContinue
 )
 if ($remainingRuntimeProcesses.Count -ne 0) {
   throw 'The previous codexhost runtime did not exit before timeout.'
@@ -129,8 +129,8 @@ controller_pid() {
 }
 
 runtime_running() {
-  /usr/bin/pgrep -x codexhost >/dev/null 2>&1 ||
-    /usr/bin/pgrep -x codexhost-shim >/dev/null 2>&1 ||
+  /usr/bin/pgrep -x boft >/dev/null 2>&1 ||
+    /usr/bin/pgrep -x boft-shim >/dev/null 2>&1 ||
     [ -n "$(controller_pid)" ]
 }
 
@@ -149,8 +149,8 @@ if runtime_running; then
   if [ -n "$controller" ]; then
     /bin/kill -KILL "$controller" >/dev/null 2>&1 || true
   fi
-  /usr/bin/pkill -KILL -x codexhost >/dev/null 2>&1 || true
-  /usr/bin/pkill -KILL -x codexhost-shim >/dev/null 2>&1 || true
+  /usr/bin/pkill -KILL -x boft >/dev/null 2>&1 || true
+  /usr/bin/pkill -KILL -x boft-shim >/dev/null 2>&1 || true
 fi
 
 attempt=0
@@ -205,8 +205,8 @@ export function developmentArtifacts(
 ) {
   const executableSuffix = platform === "win32" ? ".exe" : "";
   return {
-    launcher: path.join(root, "target", "debug", `codexhost${executableSuffix}`),
-    shim: path.join(root, "target", "debug", `codexhost-shim${executableSuffix}`),
+    launcher: path.join(root, "target", "debug", `boft${executableSuffix}`),
+    shim: path.join(root, "target", "debug", `boft-shim${executableSuffix}`),
     node: nodePath,
     hostRuntime: path.join(root, "packages", "host-runtime", "dist", "main.js"),
     desktopController: path.join(root, "packages", "desktop-control", "dist", "release-main.js"),

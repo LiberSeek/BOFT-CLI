@@ -39,6 +39,6 @@ describe("Linux glibc release baseline", () => {
             ? "0000 w DF *UND* 0000 (GLIBC_2.39) pidfd_spawnp\n"
             : "0000 DF *UND* 0000 (GLIBC_2.35) stat\n",
       }),
-    ).toThrow("bin/codexhost requires GLIBC_2.39, exceeding the GLIBC_2.35 release baseline");
+    ).toThrow("bin/boft requires GLIBC_2.39, exceeding the GLIBC_2.35 release baseline");
   });
 });

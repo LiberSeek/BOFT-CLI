@@ -45,7 +45,7 @@ async function npmFixture(): Promise<{
   };
   await Promise.all([
     file(hostRuntimePath),
-    file(path.join(packageRoot, "libexec", "codexhost-updater")),
+    file(path.join(packageRoot, "libexec", "boft-updater")),
     file(environment.CODEXHOST_LAUNCHER_EXECUTABLE),
     file(environment.CODEXHOST_NPM_NODE_PATH),
     file(environment.CODEXHOST_NPM_CLI_PATH),
@@ -87,7 +87,7 @@ async function macFixture(): Promise<{
   };
   await Promise.all([
     file(hostRuntimePath),
-    file(path.join(resources, "libexec", "codexhost-updater")),
+    file(path.join(resources, "libexec", "boft-updater")),
     file(environment.CODEXHOST_LAUNCHER_EXECUTABLE),
     file(
       path.join(resources, "app", "codexhost-distribution.json"),

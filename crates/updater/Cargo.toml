@@ -6,7 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [[bin]]
-name = "codexhost-updater"
+name = "boft-updater"
 path = "src/main.rs"
 
 [dependencies]

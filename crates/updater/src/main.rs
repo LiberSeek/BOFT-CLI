@@ -135,7 +135,7 @@ fn apply(request_path: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 fn usage() {
-    eprintln!("usage: codexhost-updater apply --request <absolute-json-file>");
+    eprintln!("usage: boft-updater apply --request <absolute-json-file>");
 }
 
 fn run(arguments: &[String]) -> Result<(), Box<dyn Error>> {

@@ -23,7 +23,7 @@ function runtimeEnvironment(root: string): NodeJS.ProcessEnv {
   return {
     HOME: path.join(root, "home"),
     [UPDATE_RUNTIME_ENV.launcherPid]: "4321",
-    [UPDATE_RUNTIME_ENV.launcherExecutable]: path.join(root, "bin", "codexhost"),
+    [UPDATE_RUNTIME_ENV.launcherExecutable]: path.join(root, "bin", "boft"),
     [UPDATE_RUNTIME_ENV.runtimeDescriptorPath]: path.join(
       root,
       "runtime",
@@ -41,8 +41,8 @@ describe("installed update context", () => {
     const app = path.join(root, "codexhost.app");
     const host = path.join(app, "Contents", "Resources", "app", "host-runtime.mjs");
     await file(host);
-    await file(path.join(app, "Contents", "Resources", "libexec", "codexhost-updater"));
-    await file(path.join(root, "bin", "codexhost"));
+    await file(path.join(app, "Contents", "Resources", "libexec", "boft-updater"));
+    await file(path.join(root, "bin", "boft"));
     await file(
       path.join(app, "Contents", "Resources", "app", "codexhost-distribution.json"),
       JSON.stringify({
@@ -82,8 +82,8 @@ describe("installed update context", () => {
     });
     await Promise.all([
       file(host),
-      file(path.join(packageRoot, "libexec", "codexhost-updater")),
-      file(path.join(root, "bin", "codexhost")),
+      file(path.join(packageRoot, "libexec", "boft-updater")),
+      file(path.join(root, "bin", "boft")),
       file(path.join(root, "node")),
       file(path.join(root, "npm-cli.js")),
       file(path.join(root, "codexhost.js")),
@@ -128,8 +128,8 @@ describe("installed update context", () => {
       });
       await Promise.all([
         file(host),
-        file(path.join(packageRoot, "libexec", "codexhost-updater")),
-        file(path.join(root, "bin", "codexhost")),
+        file(path.join(packageRoot, "libexec", "boft-updater")),
+        file(path.join(root, "bin", "boft")),
         file(path.join(root, "node")),
         file(path.join(root, "npm-cli.js")),
         file(path.join(root, "codexhost.js")),

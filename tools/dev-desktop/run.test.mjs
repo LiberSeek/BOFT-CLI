@@ -86,7 +86,7 @@ describe("development Desktop start", () => {
     const nodePath = path.join(root, "runtime", "node.exe");
     const artifacts = materializeArtifacts(root, "win32", nodePath);
 
-    expect(artifacts.launcher).toBe(path.join(root, "target", "debug", "codexhost.exe"));
+    expect(artifacts.launcher).toBe(path.join(root, "target", "debug", "boft.exe"));
     expect(artifacts.hostRuntime).toBe(
       path.join(root, "packages", "host-runtime", "dist", "main.js"),
     );
@@ -126,7 +126,7 @@ describe("development Desktop start", () => {
     expect(windowsScript).toContain("Get-CimInstance Win32_Process");
     expect(windowsScript).toContain("\\windowsapps\\openai.codex_");
     expect(windowsScript).toContain("Stop-Process -Id");
-    expect(windowsScript).toContain("'codexhost', 'codexhost-shim'");
+    expect(windowsScript).toContain("'boft', 'boft-shim'");
 
     const macOsInvocation = runningDesktopCleanupInvocation("darwin");
     expect(macOsInvocation?.command).toBe("/bin/sh");
@@ -211,7 +211,7 @@ describe("development Desktop start", () => {
       command: nodePath,
       arguments: [path.join(root, "npm-cli.js"), "run", "build"],
     });
-    expect(invocations[2].command).toBe(path.join(root, "target", "debug", "codexhost.exe"));
+    expect(invocations[2].command).toBe(path.join(root, "target", "debug", "boft.exe"));
     expect(invocations[2].arguments).toContain(piPath);
     expect(invocations[2].options).toMatchObject({
       cwd: root,
@@ -394,7 +394,7 @@ describe("development Desktop start", () => {
     const nodePath = path.join(root, "node.exe");
     materializeArtifacts(root, "win32", nodePath);
     const spawnImplementation = vi.fn((command) => {
-      if (command === path.join(root, "target", "debug", "codexhost.exe")) {
+      if (command === path.join(root, "target", "debug", "boft.exe")) {
         return exitingChild(9);
       }
       return exitingChild();

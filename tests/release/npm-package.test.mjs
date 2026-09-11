@@ -129,8 +129,8 @@ async function createGlobalCodexhostInstall(prefix) {
   );
   const executableSuffix = process.platform === "win32" ? ".exe" : "";
   for (const relative of [
-    path.join("bin", `codexhost${executableSuffix}`),
-    path.join("libexec", `codexhost-shim${executableSuffix}`),
+    path.join("bin", `boft${executableSuffix}`),
+    path.join("libexec", `boft-shim${executableSuffix}`),
     path.join("app", "host-runtime.mjs"),
     path.join("app", "desktop-controller.mjs"),
     path.join("app", "renderer-extension.js"),
@@ -184,8 +184,8 @@ async function createLauncherLifecycleFixture(root, platform) {
     `${JSON.stringify({ name: platformPackage, version: "0.1.0" })}\n`,
   );
   for (const relative of [
-    path.join("bin", `codexhost${executableSuffix}`),
-    path.join("libexec", `codexhost-shim${executableSuffix}`),
+    path.join("bin", `boft${executableSuffix}`),
+    path.join("libexec", `boft-shim${executableSuffix}`),
     path.join("app", "host-runtime.mjs"),
     path.join("app", "desktop-controller.mjs"),
     path.join("app", "renderer-extension.js"),
@@ -438,7 +438,7 @@ describe("npm package release", () => {
     const source = createNpmBinLauncherSource({ version: "0.1.0" });
     expect(source).toContain('"darwin-arm64": "@liberseek/boft-cli-darwin-arm64"');
     expect(source).toContain(
-      'const launcher = path.join(packageRoot, "bin", `codexhost${executableSuffix}`);',
+      'const launcher = path.join(packageRoot, "bin", `boft${executableSuffix}`);',
     );
     expect(source).toContain('"linux-x64": "@liberseek/boft-cli-linux-x64"');
     expect(source).toContain('"linux-arm64": "@liberseek/boft-cli-linux-arm64"');
@@ -638,13 +638,13 @@ describe("npm package release", () => {
       expect(paths).toEqual(expectedNpmPackagePaths(target));
       expect(paths).toContain("licenses/OpenCode-SDK-LICENSE.txt");
       expect(paths).not.toContain("runtime/node");
-      expect(paths).toContain("bin/codexhost");
-      expect(paths).toContain("libexec/codexhost-shim");
+      expect(paths).toContain("bin/boft");
+      expect(paths).toContain("libexec/boft-shim");
       expect(expectedNpmPackagePaths(releaseTarget("windows-x64"))).toContain(
-        "libexec/codexhost-node-repl.exe",
+        "libexec/boft-node-repl.exe",
       );
-      expect(paths).not.toContain("libexec/codexhost-node-repl");
-      expect(paths).toContain("libexec/codexhost-updater");
+      expect(paths).not.toContain("libexec/boft-node-repl");
+      expect(paths).toContain("libexec/boft-updater");
       expect(paths).toContain("app/codexhost-distribution.json");
       await mkdir(path.join(root, "runtime"), { recursive: true });
       await writeFile(path.join(root, "runtime/node"), "unexpected");

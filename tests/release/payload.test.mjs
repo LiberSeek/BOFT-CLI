@@ -82,13 +82,11 @@ describe("release Payload", () => {
       expect(paths).toContain("app/plugins/enabled.json");
       expect(paths).toContain("app/plugins/claude-code/plugin.mjs");
       expect(expectedPayloadPaths(releaseTarget("windows-x64"))).toContain(
-        "libexec/codexhost-node-repl.exe",
+        "libexec/boft-node-repl.exe",
       );
-      expect(paths).not.toContain("libexec/codexhost-node-repl");
-      expect(expectedPayloadPaths(releaseTarget("windows-x64"))).toContain(
-        "bin/codexhost-start.exe",
-      );
-      expect(paths).toContain("libexec/codexhost-updater");
+      expect(paths).not.toContain("libexec/boft-node-repl");
+      expect(expectedPayloadPaths(releaseTarget("windows-x64"))).toContain("bin/boft-start.exe");
+      expect(paths).toContain("libexec/boft-updater");
       expect(paths).toContain("app/codexhost-distribution.json");
       expect(paths).not.toContain("release-manifest.json");
       expect(paths).not.toContain("SHA256SUMS.txt");

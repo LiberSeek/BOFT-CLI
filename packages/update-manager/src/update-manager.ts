@@ -321,7 +321,7 @@ export function createBackgroundUpdateManager(
     const workDirectory = path.join(stateDirectory, `update-${version}-${randomId()}`);
     await mkdir(workDirectory, { recursive: false, mode: 0o700 });
     const executableSuffix = platform === "win32" ? ".exe" : "";
-    const helperPath = path.join(workDirectory, `codexhost-updater${executableSuffix}`);
+    const helperPath = path.join(workDirectory, `boft-updater${executableSuffix}`);
     await copyFile(updaterExecutable, helperPath);
     if (platform !== "win32") await chmod(helperPath, 0o700);
     const requestPath = path.join(workDirectory, "request-v1.json");

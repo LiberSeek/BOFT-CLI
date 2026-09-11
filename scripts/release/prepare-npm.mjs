@@ -195,10 +195,10 @@ export function expectedNpmPackagePaths(target) {
   return [
     "package.json",
     "README.md",
-    `bin/codexhost${target.executableSuffix}`,
-    `libexec/codexhost-shim${target.executableSuffix}`,
-    ...(target.hostPlatform === "win32" ? ["libexec/codexhost-node-repl.exe"] : []),
-    `libexec/codexhost-updater${target.executableSuffix}`,
+    `bin/boft${target.executableSuffix}`,
+    `libexec/boft-shim${target.executableSuffix}`,
+    ...(target.hostPlatform === "win32" ? ["libexec/boft-node-repl.exe"] : []),
+    `libexec/boft-updater${target.executableSuffix}`,
     "app/codexhost-distribution.json",
     "app/desktop-controller.mjs",
     "app/host-runtime.mjs",
@@ -311,8 +311,8 @@ try {
 
 startupTrace("platform package resolved");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
-const launcher = path.join(packageRoot, "bin", \`codexhost\${executableSuffix}\`);
-const shim = path.join(packageRoot, "libexec", \`codexhost-shim\${executableSuffix}\`);
+const launcher = path.join(packageRoot, "bin", \`boft\${executableSuffix}\`);
+const shim = path.join(packageRoot, "libexec", \`boft-shim\${executableSuffix}\`);
 const hostRuntime = path.join(packageRoot, "app", "host-runtime.mjs");
 const desktopController = path.join(packageRoot, "app", "desktop-controller.mjs");
 const rendererExtension = path.join(packageRoot, "app", "renderer-extension.js");
@@ -933,28 +933,28 @@ export async function prepareNpmPackage({
 
   const rustOutput = path.join(root, "target", target.rustTarget, "release");
   await copyReleaseFile(
-    path.join(rustOutput, `codexhost${target.executableSuffix}`),
-    path.join(packageRoot, "bin", `codexhost${target.executableSuffix}`),
+    path.join(rustOutput, `boft${target.executableSuffix}`),
+    path.join(packageRoot, "bin", `boft${target.executableSuffix}`),
     "npm Launcher",
     true,
   );
   await copyReleaseFile(
-    path.join(rustOutput, `codexhost-shim${target.executableSuffix}`),
-    path.join(packageRoot, "libexec", `codexhost-shim${target.executableSuffix}`),
+    path.join(rustOutput, `boft-shim${target.executableSuffix}`),
+    path.join(packageRoot, "libexec", `boft-shim${target.executableSuffix}`),
     "npm Shim",
     true,
   );
   if (target.hostPlatform === "win32") {
     await copyReleaseFile(
-      path.join(rustOutput, "codexhost-node-repl.exe"),
-      path.join(packageRoot, "libexec", "codexhost-node-repl.exe"),
+      path.join(rustOutput, "boft-node-repl.exe"),
+      path.join(packageRoot, "libexec", "boft-node-repl.exe"),
       "npm Desktop tool proxy",
       true,
     );
   }
   await copyReleaseFile(
-    path.join(rustOutput, `codexhost-updater${target.executableSuffix}`),
-    path.join(packageRoot, "libexec", `codexhost-updater${target.executableSuffix}`),
+    path.join(rustOutput, `boft-updater${target.executableSuffix}`),
+    path.join(packageRoot, "libexec", `boft-updater${target.executableSuffix}`),
     "npm Updater",
     true,
   );

@@ -161,7 +161,7 @@ export async function resolveInstalledUpdateContext(
   const updaterExecutable = path.join(
     resourcesRoot,
     "libexec",
-    platform === "win32" ? "codexhost-updater.exe" : "codexhost-updater",
+    platform === "win32" ? "boft-updater.exe" : "boft-updater",
   );
   const common = {
     version: metadata.version,

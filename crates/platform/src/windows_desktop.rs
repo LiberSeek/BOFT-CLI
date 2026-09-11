@@ -116,17 +116,19 @@ impl PackageEnvironment {
     }
 
     fn disable(&mut self) -> Result<(), PlatformError> {
-        if self.armed {
-            if let Err(error) = unsafe { self.settings.DisableDebugging(&self.package_full_name) } {
-                if !is_appx_debug_already_cleared(&error) {
-                    return Err(windows_error(
-                        "cannot remove the temporary AppX environment",
-                        error,
-                    ));
-                }
-            }
-            self.armed = false;
+        if !self.armed {
+            return Ok(());
         }
+        match unsafe { self.settings.DisableDebugging(&self.package_full_name) } {
+            Err(error) if !is_appx_debug_already_cleared(&error) => {
+                return Err(windows_error(
+                    "cannot remove the temporary AppX environment",
+                    error,
+                ));
+            }
+            _ => {}
+        }
+        self.armed = false;
         Ok(())
     }
 }

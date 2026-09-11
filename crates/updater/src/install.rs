@@ -247,7 +247,7 @@ pub(crate) fn relaunch(request: &UpdateRequest) -> Result<(), Box<dyn Error>> {
             command
         }
         Installation::WindowsInstaller(windows) => {
-            let mut command = Command::new(windows.install_root.join("bin/codexhost-start.exe"));
+            let mut command = Command::new(windows.install_root.join("bin/boft-start.exe"));
             configure_background_command(&mut command);
             command
         }

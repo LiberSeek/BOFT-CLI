@@ -95,7 +95,7 @@ echo "codexhost local install: installing npm packages"
 npm install --global --offline "$PLATFORM_TARBALL" "$META_TARBALL"
 
 NPM_PREFIX="$(npm prefix --global)"
-CODEXHOST_BIN="$NPM_PREFIX/bin/codexhost"
+CODEXHOST_BIN="$NPM_PREFIX/bin/boft"
 if [[ ! -x "$CODEXHOST_BIN" ]]; then
   echo "error: installed codexhost command is unavailable: $CODEXHOST_BIN" >&2
   exit 1
@@ -144,8 +144,8 @@ controller_pid() {
 }
 
 runtime_running() {
-  /usr/bin/pgrep -x codexhost >/dev/null 2>&1 ||
-    /usr/bin/pgrep -x codexhost-shim >/dev/null 2>&1 ||
+  /usr/bin/pgrep -x boft >/dev/null 2>&1 ||
+    /usr/bin/pgrep -x boft-shim >/dev/null 2>&1 ||
     [[ -n "$(controller_pid)" ]]
 }
 
@@ -182,8 +182,8 @@ if runtime_running; then
   if [[ -n "$CONTROLLER_PID" ]]; then
     /bin/kill -KILL "$CONTROLLER_PID" >/dev/null 2>&1 || true
   fi
-  /usr/bin/pkill -KILL -x codexhost >/dev/null 2>&1 || true
-  /usr/bin/pkill -KILL -x codexhost-shim >/dev/null 2>&1 || true
+  /usr/bin/pkill -KILL -x boft >/dev/null 2>&1 || true
+  /usr/bin/pkill -KILL -x boft-shim >/dev/null 2>&1 || true
 fi
 
 for _ in {1..100}; do

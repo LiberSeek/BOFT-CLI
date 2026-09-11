@@ -24,8 +24,8 @@ if (gatePlatform === "linux" && !["x64", "arm64"].includes(process.arch)) {
   throw new Error("Gate A Linux support currently requires x64 or arm64");
 }
 const platformName = gatePlatform === "darwin" ? "macos" : gatePlatform;
-const launcherPath = path.join(repositoryRoot, "target", "debug", `codexhost${executableSuffix}`);
-const shimPath = path.join(repositoryRoot, "target", "debug", `codexhost-shim${executableSuffix}`);
+const launcherPath = path.join(repositoryRoot, "target", "debug", `boft${executableSuffix}`);
+const shimPath = path.join(repositoryRoot, "target", "debug", `boft-shim${executableSuffix}`);
 const probePath = path.join(
   repositoryRoot,
   "target",

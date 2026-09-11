@@ -210,10 +210,10 @@ export async function writeThirdPartyNotices(root, payloadRoot) {
 
 export function expectedPayloadPaths(target) {
   const paths = [
-    `bin/codexhost${target.executableSuffix}`,
-    `libexec/codexhost-shim${target.executableSuffix}`,
-    ...(target.hostPlatform === "win32" ? ["libexec/codexhost-node-repl.exe"] : []),
-    `libexec/codexhost-updater${target.executableSuffix}`,
+    `bin/boft${target.executableSuffix}`,
+    `libexec/boft-shim${target.executableSuffix}`,
+    ...(target.hostPlatform === "win32" ? ["libexec/boft-node-repl.exe"] : []),
+    `libexec/boft-updater${target.executableSuffix}`,
     `runtime/node${target.executableSuffix}`,
     "app/codexhost-distribution.json",
     "app/desktop-controller.mjs",
@@ -233,7 +233,7 @@ export function expectedPayloadPaths(target) {
     "THIRD_PARTY_NOTICES.txt",
   ];
   if (target.hostPlatform === "win32") {
-    paths.push(`bin/codexhost-start${target.executableSuffix}`);
+    paths.push(`bin/boft-start${target.executableSuffix}`);
   }
   return paths.sort();
 }
@@ -297,36 +297,36 @@ export async function prepareReleasePayload({ target, root = repositoryRoot }) {
 
   const rustOutput = path.join(root, "target", target.rustTarget, "release");
   await copyReleaseFile(
-    path.join(rustOutput, `codexhost${target.executableSuffix}`),
-    path.join(payloadRoot, "bin", `codexhost${target.executableSuffix}`),
+    path.join(rustOutput, `boft${target.executableSuffix}`),
+    path.join(payloadRoot, "bin", `boft${target.executableSuffix}`),
     "release Launcher",
     true,
   );
   if (target.hostPlatform === "win32") {
     await copyReleaseFile(
-      path.join(rustOutput, `codexhost-start${target.executableSuffix}`),
-      path.join(payloadRoot, "bin", `codexhost-start${target.executableSuffix}`),
+      path.join(rustOutput, `boft-start${target.executableSuffix}`),
+      path.join(payloadRoot, "bin", `boft-start${target.executableSuffix}`),
       "release Start Menu Launcher",
       true,
     );
   }
   await copyReleaseFile(
-    path.join(rustOutput, `codexhost-shim${target.executableSuffix}`),
-    path.join(payloadRoot, "libexec", `codexhost-shim${target.executableSuffix}`),
+    path.join(rustOutput, `boft-shim${target.executableSuffix}`),
+    path.join(payloadRoot, "libexec", `boft-shim${target.executableSuffix}`),
     "release Shim",
     true,
   );
   if (target.hostPlatform === "win32") {
     await copyReleaseFile(
-      path.join(rustOutput, "codexhost-node-repl.exe"),
-      path.join(payloadRoot, "libexec", "codexhost-node-repl.exe"),
+      path.join(rustOutput, "boft-node-repl.exe"),
+      path.join(payloadRoot, "libexec", "boft-node-repl.exe"),
       "release Desktop tool proxy",
       true,
     );
   }
   await copyReleaseFile(
-    path.join(rustOutput, `codexhost-updater${target.executableSuffix}`),
-    path.join(payloadRoot, "libexec", `codexhost-updater${target.executableSuffix}`),
+    path.join(rustOutput, `boft-updater${target.executableSuffix}`),
+    path.join(payloadRoot, "libexec", `boft-updater${target.executableSuffix}`),
     "release Updater",
     true,
   );

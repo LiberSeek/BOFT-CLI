@@ -4,7 +4,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn launcher_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_BIN_EXE_codexhost"))
+    PathBuf::from(env!("CARGO_BIN_EXE_boft"))
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn production_launcher_resolves_resources_beside_its_installed_location() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("bundled Shim"));
     assert!(stderr.contains("libexec"));
-    assert!(stderr.contains("codexhost-shim"));
+    assert!(stderr.contains("boft-shim"));
     assert!(!stderr.contains("--shim is required"));
 }
 
@@ -75,7 +75,7 @@ fn finder_launch_resolves_standard_app_resources_and_defaults_to_codex() {
     ));
     let macos = root.join("codexhost.app/Contents/MacOS");
     fs::create_dir_all(&macos).expect("create app executable directory");
-    let installed = macos.join("codexhost");
+    let installed = macos.join("boft");
     fs::copy(launcher_path(), &installed).expect("copy app launcher");
 
     let output = Command::new(&installed)
@@ -86,6 +86,6 @@ fn finder_launch_resolves_standard_app_resources_and_defaults_to_codex() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("bundled Shim"));
-    assert!(stderr.contains("Contents/Resources/libexec/codexhost-shim"));
+    assert!(stderr.contains("Contents/Resources/libexec/boft-shim"));
     assert!(!stderr.contains("invalid launcher arguments"));
 }
