@@ -91,6 +91,10 @@ xattr -dr com.apple.quarantine /Applications/codexhost.app
 
 </details>
 
+### 外观设置
+
+在 `设置 → 外观` 中可以开启 **换行显示思考文本**，让思考块中的长行自动换行。该选项默认关闭，选择保存在本机并立即生效，普通 Shell 输出不受影响。
+
 ### 交互展示
 
 <table>
@@ -222,6 +226,8 @@ BOFT CLI 尽量不走这条路：
 </details>
 
 ## 开发
+
+提交 Issue 或 PR 前可阅读[贡献说明](CONTRIBUTING.md)；分类标签、状态提示和发布前校验见[仓库维护自动化](docs/repository-maintenance.md)。
 
 环境要求：官方 Codex Desktop、Node.js 22.19+ 或 24、Rust。
 

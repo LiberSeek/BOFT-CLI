@@ -7,6 +7,7 @@ import {
   formatRendererPlanWindow,
   formatRendererTokenCount,
   formatRendererTokenRate,
+  rendererUsageCompactParts,
   rendererUsageHasDisplayData,
   rendererUsageMessages,
 } from "../src/renderer-usage-control.js";
@@ -65,6 +66,17 @@ describe("Renderer Usage credits formatting", () => {
 describe("Renderer Usage context-summary formatting", () => {
   it("shows the used percentage and the context window", () => {
     expect(formatRendererContextSummary(15_000, 934_500)).toBe("1.6% / 934.5k");
+  });
+
+  it("prefers native context occupancy on external compact chips even when cache hit is present", () => {
+    const usage = {
+      cacheHitRatePercent: 77.7,
+      totalCostUsd: 0.331,
+      contextUsedTokens: 91_648,
+      contextWindowTokens: 256_000,
+    };
+    expect(rendererUsageCompactParts(usage)).toEqual(["CH 77.7%", "$0.331"]);
+    expect(rendererUsageCompactParts(usage, "en", "context")).toEqual(["35.8% / 256k"]);
   });
 });
 

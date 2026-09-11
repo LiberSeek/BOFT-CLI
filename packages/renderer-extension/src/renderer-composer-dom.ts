@@ -97,6 +97,7 @@ export interface ComposerAgentControl {
   harnessCommands: RendererHarnessCommandControl;
   sendButton: HTMLButtonElement;
   sendDisabledBeforeSwitch: boolean | null;
+  leftoverNativeModelControls: NativeControlState[];
 }
 
 export function eventElement(target: EventTarget | null): Element | null {
@@ -118,6 +119,15 @@ function buttonText(button: HTMLButtonElement): string {
   return controlDescription(button);
 }
 
+const OWNED_RENDERER_CONTROL_SELECTOR = [
+  `[${CONTROL_ATTRIBUTE}]`,
+  "[data-codexhost-model-control]",
+  "[data-codexhost-permission-mode-control]",
+  "[data-codexhost-usage-control]",
+  "[data-codexhost-credits-control]",
+  "[data-codexhost-harness-command-control]",
+].join(", ");
+
 function isOwnedRendererControl(element: Element): boolean {
   return (
     element.hasAttribute(CONTROL_ATTRIBUTE) ||
@@ -127,6 +137,12 @@ function isOwnedRendererControl(element: Element): boolean {
     element.hasAttribute("data-codexhost-credits-control") ||
     element.hasAttribute("data-codexhost-harness-command-control")
   );
+}
+
+function isInsideOwnedRendererControl(element: Element): boolean {
+  return typeof element.closest === "function"
+    ? Boolean(element.closest(OWNED_RENDERER_CONTROL_SELECTOR))
+    : isOwnedRendererControl(element);
 }
 
 export function isComposerSubmitButton(button: HTMLButtonElement): boolean {
@@ -563,6 +579,35 @@ function refreshNativePermissionModeControl(control: ComposerAgentControl): void
   }
 }
 
+function leftoverNativeModelButtons(composer: Element): HTMLElement[] {
+  return [...composer.querySelectorAll<HTMLElement>('button[aria-haspopup="menu"]')].filter(
+    (element) => !isInsideOwnedRendererControl(element) && !isNativeModelControlCandidate(element),
+  );
+}
+
+function syncLeftoverNativeModelControls(control: ComposerAgentControl, hide: boolean): void {
+  control.leftoverNativeModelControls ??= [];
+  if (!hide) {
+    for (const state of control.leftoverNativeModelControls) restoreNativeControl(state);
+    control.leftoverNativeModelControls = [];
+    return;
+  }
+  const buttons = leftoverNativeModelButtons(control.composer);
+  const keep = new Set(buttons);
+  control.leftoverNativeModelControls = control.leftoverNativeModelControls.filter((state) => {
+    if (keep.has(state.element)) return true;
+    restoreNativeControl(state);
+    return false;
+  });
+  const known = new Set(control.leftoverNativeModelControls.map((state) => state.element));
+  for (const button of buttons) {
+    if (known.has(button)) continue;
+    const captured = captureNativeControl(button);
+    if (captured) control.leftoverNativeModelControls.push(captured);
+  }
+  for (const state of control.leftoverNativeModelControls) setNativeControlHidden(state, true);
+}
+
 function setNativeControlHidden(
   state: NativeControlState | null | undefined,
   hidden: boolean,
@@ -601,6 +646,9 @@ export function reconcileComposerNativeControls(
   refreshUsagePlacement(control);
   refreshCreditsPlacement(control);
   setNativeControlHidden(control.nativeModelControl, hideModel);
+  // Codex API Account chips can miss the fiber-based Model candidate. Hide any
+  // leftover native menu buttons so external Agents do not keep showing them.
+  syncLeftoverNativeModelControls(control, hideModel);
   // Context usage is shared by Codex and external Harnesses. External Usage
   // data is projected into the same native Codex indicator, so it must remain
   // visible when the external Model control is substituted.
@@ -678,6 +726,7 @@ export function mountComposerAgentControl(
     harnessCommands,
     sendButton,
     sendDisabledBeforeSwitch: null,
+    leftoverNativeModelControls: [],
   } satisfies ComposerAgentControl;
   refreshTrailingClusterPlacement(control);
   refreshUsagePlacement(control);
@@ -767,6 +816,7 @@ export function renderComposerAgentControl(
       usage,
       locale,
       selectedCodexAccount?.email ?? selectedCodexAccount?.label ?? null,
+      state.agent === "codex" ? "default" : "context",
     );
   }
   control.harnessCommands.setLocale(locale);
@@ -789,6 +839,8 @@ export function disposeComposerAgentControl(control: ComposerAgentControl): void
   restoreNativeControl(control.nativeModelControl);
   restoreNativeControl(control.nativeContextUsageControl);
   restoreNativeControl(control.nativePermissionModeControl);
+  for (const state of control.leftoverNativeModelControls) restoreNativeControl(state);
+  control.leftoverNativeModelControls = [];
   control.credits.dispose();
   control.usage?.dispose();
   control.usage = null;

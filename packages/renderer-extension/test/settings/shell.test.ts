@@ -28,6 +28,7 @@ describe("Renderer settings foundation", () => {
       "Agents",
       "Accounts",
       "Sessions",
+      "Appearance",
       "Plugins",
       "Updates",
       "About",
@@ -36,6 +37,7 @@ describe("Renderer settings foundation", () => {
       "connections",
       "accounts",
       "session-import",
+      "settings",
       "plugins",
       "updates",
       "about",
@@ -43,7 +45,7 @@ describe("Renderer settings foundation", () => {
     expect(registry.defaultPageId).toBe("connections");
     expect(RENDERER_SETTINGS_NAV_SECTIONS.map(({ id, pageIds }) => [id, [...pageIds]])).toEqual([
       ["connection", ["connections", "accounts", "session-import"]],
-      ["general", ["plugins", "updates"]],
+      ["general", ["appearance", "plugins", "updates"]],
       ["other", ["about"]],
     ]);
     const chinese = rendererSettingsMessages("zh-CN");
@@ -79,6 +81,7 @@ describe("Renderer settings foundation", () => {
       "connections",
       "accounts",
       "session-import",
+      "appearance",
       "plugins",
       "updates",
       "about",

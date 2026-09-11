@@ -15,7 +15,6 @@
     "@agentclientprotocol/sdk",
     "@anthropic-ai/claude-agent-sdk",
     "@deepseek-ai/cosmokit",
-    "@deepseek-ai/dsh-host-apiproxy",
     "@deepseek-ai/schemastery",
     "@opencode-ai/sdk",
     "diff",

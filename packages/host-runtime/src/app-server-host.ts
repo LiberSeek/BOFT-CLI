@@ -619,9 +619,11 @@ export class AppServerHost {
       cancelOfficial: (input) => this.#cancelOfficialDelegationThread(input),
       startOfficial: (input) => this.#startOfficialDelegation(input),
       listOfficial: (input) => this.#listDelegationThreads(input),
+      officialThreadCwd: (threadId) => this.#readOfficialThreadCwd(threadId),
       activeOfficialParents: () => [...this.#activeOfficialTurns.keys()],
     });
     const unregisterDelegationApi = options.onDelegationApi?.({
+      listHarnesses: () => this.#delegationCoordinator.listHarnesses(),
       inspect: (input) => this.#delegationCoordinator.inspect(input),
       start: (input) => this.#delegationCoordinator.start(input),
       send: (input) => this.#delegationCoordinator.send(input),
@@ -1832,6 +1834,14 @@ export class AppServerHost {
     return thread !== null || childDelegation !== null || delegation !== null;
   }
 
+  async #readOfficialThreadCwd(threadId: string): Promise<string | undefined> {
+    const response = await this.#requestOfficial("thread/read", { threadId });
+    if (isRecord(response.error)) return undefined;
+    const result = isRecord(response.result) ? response.result : null;
+    const thread = result && isRecord(result.thread) ? result.thread : null;
+    return thread && typeof thread.cwd === "string" && thread.cwd.trim() ? thread.cwd : undefined;
+  }
+
   async #inspectOfficialDelegationTarget(
     input: HarnessInspectInput,
   ): Promise<HarnessInspectResult> {
@@ -1912,7 +1922,7 @@ export class AppServerHost {
   }
 
   async #startOfficialDelegation(
-    input: DelegationStartInput & { parentThreadId: string },
+    input: DelegationStartInput & { parentThreadId: string; cwd: string },
   ): Promise<DelegationStartResult> {
     let requestedModel: HarnessModelRef | undefined;
     try {
@@ -2058,6 +2068,7 @@ export class AppServerHost {
         harnessId: "codex",
         deepLink: `codex://threads/${threadId}`,
         status: pendingTerminal ?? "running",
+        cwd: thread && typeof thread.cwd === "string" ? thread.cwd : input.cwd,
         ...(requestedModel || input.thinkingOptionId
           ? {
               configuration: {

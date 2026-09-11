@@ -176,7 +176,7 @@ export interface GrokNativeSessionLocation {
 }
 
 export type GrokOpenInput =
-  | { kind: "create"; permissionModeId: HarnessPermissionModeId }
+  | { kind: "create"; permissionModeId: HarnessPermissionModeId; modelId?: string }
   | { kind: "resume"; sessionId: string; permissionModeId: HarnessPermissionModeId }
   | GrokForkOpenInput
   | GrokRewindOpenInput;
@@ -531,6 +531,7 @@ export class GrokAcpTransport {
   #initialize: InitializeResponse | null = null;
   #replay: GrokTransportEvent[] | null = null;
   #sessionId: string | null = null;
+  #startupModelId: string | undefined;
   #stderrTail = "";
 
   constructor(options: GrokAcpTransportOptions) {
@@ -600,6 +601,7 @@ export class GrokAcpTransport {
     if (this.#sessionId || this.#closed)
       throw new Error("Grok ACP Transport cannot be opened twice");
     try {
+      if (input.kind === "create") this.#startupModelId = input.modelId;
       const initialize = await this.#ensureInitialized();
       const connection = this.#connection;
       if (!connection) throw new GrokTransportError("unavailable", "Grok ACP is unavailable");
@@ -766,7 +768,7 @@ export class GrokAcpTransport {
       ...(this.#options.command ? { command: this.#options.command } : {}),
       environment: this.#options.environment ?? process.env,
     });
-    const invocation = grokInvocation(executable);
+    const invocation = grokInvocation(executable, process.platform, this.#startupModelId);
     const child = spawn(invocation.command, invocation.arguments, {
       cwd: this.#options.cwd,
       env: { ...process.env, ...this.#options.environment },
