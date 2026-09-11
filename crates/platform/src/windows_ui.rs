@@ -132,7 +132,7 @@ fn running_desktop_text_for_locale(locale: &str) -> RunningDesktopText {
 
 fn message_box(message: &str, kind: u32) -> i32 {
     let message = wide_null(message);
-    let caption = wide_null("BOFT CLI");
+    let caption = wide_null("BOFT");
     unsafe { MessageBoxW(null_mut(), message.as_ptr(), caption.as_ptr(), kind) }
 }
 
@@ -173,7 +173,7 @@ fn choice_dialog(
     buttons: &[(i32, &str)],
     default_button: i32,
 ) -> io::Result<i32> {
-    let title = wide_null("BOFT CLI");
+    let title = wide_null("BOFT");
     let instruction = wide_null(instruction);
     let content = wide_null(content);
     let button_text = buttons

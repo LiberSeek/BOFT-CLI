@@ -68,13 +68,13 @@ boft
 
 **또는** [설치 프로그램](https://github.com/LiberSeek/BOFT-CLI/releases) 다운로드 (macOS, Windows)
 
-macOS DMG의 앱 이름은 **BOFT CLI**입니다. Applications로 드래그한 뒤 확인되지 않는다는 메시지가 나타나면 다음을 실행하세요:
+macOS DMG의 앱 이름은 **BOFT**입니다. Applications로 드래그한 뒤 확인되지 않는다는 메시지가 나타나면 다음을 실행하세요:
 
 ```bash
-xattr -d com.apple.quarantine "/Applications/BOFT CLI.app"
+xattr -d com.apple.quarantine /Applications/BOFT.app
 ```
 
-그런 다음 BOFT CLI를 다시 여세요.
+그런 다음 BOFT를 다시 여세요.
 
 <details>
 <summary>기타 설치 문제</summary>

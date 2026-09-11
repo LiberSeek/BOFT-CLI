@@ -68,13 +68,13 @@ boft
 
 **Or download** [installers](https://github.com/LiberSeek/BOFT-CLI/releases) (macOS, Windows)
 
-The macOS DMG contains **BOFT CLI**. After dragging it to Applications, if macOS says the app cannot be verified, run:
+The macOS DMG contains **BOFT**. After dragging it to Applications, if macOS says the app cannot be verified, run:
 
 ```bash
-xattr -d com.apple.quarantine "/Applications/BOFT CLI.app"
+xattr -d com.apple.quarantine /Applications/BOFT.app
 ```
 
-Then open BOFT CLI again.
+Then open BOFT again.
 
 <details>
 <summary>Other installation issues</summary>

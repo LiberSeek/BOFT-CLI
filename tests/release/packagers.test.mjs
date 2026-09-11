@@ -21,7 +21,9 @@ describe("platform packagers", () => {
     expect(source).toContain("create-dmg");
     expect(source).toContain("--window-size 800 400");
     expect(source).toContain("--window-pos 200 120");
-    expect(source).toContain('DMG_APP_NAME="BOFT CLI.app"');
+    expect(source).toContain('DMG_APP_NAME="BOFT.app"');
+    expect(source).toContain('--volname "BOFT"');
+    expect(source).toContain("<string>BOFT</string>");
     expect(source).toContain('--icon "$DMG_APP_NAME" 200 190');
     expect(source).toContain('--hide-extension "$DMG_APP_NAME"');
     expect(source).not.toContain('--icon "codexhost.app"');
@@ -116,6 +118,10 @@ describe("platform packagers", () => {
     expect(script).toContain('ValidateSet("x64", "arm64")');
     expect(script).toContain("Inno Setup 6\\ISCC.exe");
     expect(script).toContain("Inno Setup build");
+    expect(installer).toContain("AppName=BOFT");
+    expect(installer).toContain("UninstallDisplayName=BOFT");
+    expect(installer).toContain('Name: "{userprograms}\\BOFT"');
+    expect(installer).not.toContain("AppName=BOFT CLI");
     expect(installer).toContain("DefaultDirName={localappdata}\\Programs\\codexhost");
     expect(installer).toContain("PrivilegesRequired=lowest");
     expect(installer).toContain("DisableProgramGroupPage=yes");

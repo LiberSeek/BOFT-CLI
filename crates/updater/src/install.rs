@@ -164,11 +164,11 @@ fn install_macos(request: &UpdateRequest, macos: &MacOsInstallation) -> Result<(
     }
 
     let prepare_result = (|| -> Result<(), Box<dyn Error>> {
-        let source = ["BOFT CLI.app", "codexhost.app"]
+        let source = ["BOFT.app", "BOFT CLI.app", "codexhost.app"]
             .into_iter()
             .map(|name| mount.join(name))
             .find(|path| path.is_dir())
-            .ok_or("macOS DMG does not contain BOFT CLI.app")?;
+            .ok_or("macOS DMG does not contain BOFT.app")?;
         run_checked(
             Command::new("/usr/bin/ditto").arg(&source).arg(&staged),
             "macOS application staging",
