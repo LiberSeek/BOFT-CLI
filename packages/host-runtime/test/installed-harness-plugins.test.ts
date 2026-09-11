@@ -21,6 +21,7 @@ const classes = {
   hermes: "HermesAdapter",
   muse: "MuseAdapter",
   "kiro-cli": "KiroAdapter",
+  codebuddy: "CodeBuddyAdapter",
 };
 
 const unavailable: HarnessInspection = {
@@ -64,7 +65,7 @@ describe("installed Harness composition", () => {
   );
 
   // Cold bundle imports can exceed Vitest's 5s default on CI; the loader retains its 10s budget.
-  it("loads all ten preinstalled plugin factories without static registration or executable discovery", async () => {
+  it("loads all eleven preinstalled plugin factories without static registration or executable discovery", async () => {
     const registry = await load();
     try {
       expect(
@@ -90,6 +91,7 @@ describe("installed Harness composition", () => {
 
   it("provides every built-in command catalog before inspection or Session creation", async () => {
     const expected = {
+      codebuddy: [],
       pi: ["/compact"],
       "claude-code": ["/compact", "/init", "/recap"],
       "deepseek-harness": ["/compact", "/dsh-goal", "/plan"],
@@ -143,6 +145,7 @@ describe("installed Harness composition", () => {
     ["hermes", "CODEXHOST_HERMES_COMMAND"],
     ["muse", "CODEXHOST_MUSE_COMMAND"],
     ["kiro-cli", "CODEXHOST_KIRO_COMMAND"],
+    ["codebuddy", "CODEXHOST_CODEBUDDY_COMMAND"],
   ])(
     "preserves the explicit %s command rather than finding another local installation",
     async (id, commandVariable) => {
@@ -192,7 +195,7 @@ describe("installed Harness composition", () => {
     try {
       for (const [id, adapter] of first.adapters) expect(adapter).not.toBe(second.adapters.get(id));
       await first.close();
-      expect(second.list()).toHaveLength(10);
+      expect(second.list()).toHaveLength(11);
     } finally {
       await Promise.all([first.close(), second.close()]);
     }

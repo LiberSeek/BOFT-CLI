@@ -9,7 +9,8 @@
     "packages/adapters/antigravity",
     "packages/adapters/hermes",
     "packages/adapters/muse",
-    "packages/adapters/kiro-cli"
+    "packages/adapters/kiro-cli",
+    "packages/adapters/codebuddy"
   ],
   "runtimePackages": [
     "@agentclientprotocol/sdk",

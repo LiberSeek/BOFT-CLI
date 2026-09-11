@@ -153,6 +153,7 @@ describe("production Desktop Controller", () => {
         "hermes",
         "muse",
         "kiro-cli",
+        "codebuddy",
       ],
       timeoutMs: 90_000,
     });

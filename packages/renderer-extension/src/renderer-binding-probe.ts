@@ -105,6 +105,7 @@ const externalHarnessIds = {
   hermes: harnessIdSchema.parse("hermes"),
   muse: harnessIdSchema.parse("muse"),
   "kiro-cli": harnessIdSchema.parse("kiro-cli"),
+  codebuddy: harnessIdSchema.parse("codebuddy"),
 } as const;
 
 const externalAgents: readonly ExternalRendererAgent[] = [
@@ -118,6 +119,7 @@ const externalAgents: readonly ExternalRendererAgent[] = [
   "hermes",
   "muse",
   "kiro-cli",
+  "codebuddy",
 ];
 type HarnessAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
 type HarnessAvailabilityErrors = Record<ExternalRendererAgent, CodexhostError | undefined>;
@@ -476,6 +478,24 @@ export function restoredThreadOwnership(inspection: ThreadInspection): RestoredT
         : {}),
     };
   }
+  if (inspection.harnessId === "kiro-cli" || inspection.harnessId === "codebuddy") {
+    const route = decodeHarnessPluginRoute(inspection.transportModelId);
+    if (!route || route.harnessId !== inspection.harnessId) {
+      throw new Error("Plugin Thread reported an incompatible transport Model");
+    }
+    const model = inspection.effectiveModel ?? route.model;
+    const thinkingOptionId =
+      inspection.availableThinkingOptions !== undefined
+        ? selectableThinkingOptionId(inspection)
+        : (inspection.effectiveThinkingOptionId ?? route.thinkingOptionId);
+    const permissionModeId = inspection.effectivePermissionModeId ?? route.permissionModeId;
+    return {
+      agent: inspection.harnessId,
+      ...(model ? { model } : {}),
+      ...(thinkingOptionId ? { thinkingOptionId } : {}),
+      ...(permissionModeId ? { permissionModeId } : {}),
+    };
+  }
   return restoredPluginRouteOwnership(inspection);
 }
 
@@ -759,6 +779,7 @@ export function installRendererBindingProbe(
       hermes: undefined,
       muse: undefined,
       "kiro-cli": undefined,
+      codebuddy: undefined,
     },
     webUi: Object.fromEntries(
       externalAgents.map((agent) => [agent, false]),

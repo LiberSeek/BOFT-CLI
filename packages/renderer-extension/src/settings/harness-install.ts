@@ -77,6 +77,12 @@ const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInsta
       posix: "curl -fsSL https://cli.kiro.dev/install | bash",
       windows: "irm 'https://cli.kiro.dev/install.ps1' | iex",
     },
+    codebuddy: {
+      url: "https://www.codebuddy.ai/docs/zh/cli/overview",
+      binary: "codebuddy",
+      posix: "npm install -g @tencent-ai/codebuddy-code",
+      windows: "npm install -g @tencent-ai/codebuddy-code",
+    },
   });
 
 export function harnessInstallPlatform(window: Window | null | undefined): HarnessInstallPlatform {

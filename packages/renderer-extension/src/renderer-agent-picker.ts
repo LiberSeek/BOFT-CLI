@@ -87,6 +87,7 @@ export const RENDERER_AGENT_INSTALL_URLS: Readonly<Record<ExternalRendererAgent,
   hermes: "https://hermes-agent.nousresearch.com/docs",
   muse: "https://www.meta.ai/",
   "kiro-cli": "https://kiro.dev/docs/cli/",
+  codebuddy: "https://www.codebuddy.ai/docs/zh/cli/overview",
 };
 
 type AgentAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
