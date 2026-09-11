@@ -305,7 +305,8 @@ describe("muse adapter", () => {
       items: [item, { kind: "agentMessage", itemId: "a1", text: "ok" }],
     });
     expect(snapshot.turns[0]?.nativeTurnRef.nativeTurnKey).toBe("cmd-1");
-    expect(snapshot.turns[0]?.input[0]?.text).toBe("hello");
+    const firstInput = snapshot.turns[0]?.input[0];
+    expect(firstInput?.type === "text" ? firstInput.text : undefined).toBe("hello");
     const childOnly = snapshotFromMuseHistory(nativeRef, {
       items: [{ kind: "agentMessage", itemId: "a2", text: "child reply", turnId: "t-child" }],
     });
@@ -1163,7 +1164,8 @@ describe("muse adapter", () => {
     });
     expect(snapshot.ok).toBe(true);
     if (!snapshot.ok) throw new Error("expected child snapshot");
-    expect(snapshot.value.turns[0]?.input[0]?.text).toBe("inspect");
+    const childInput = snapshot.value.turns[0]?.input[0];
+    expect(childInput?.type === "text" ? childInput.text : undefined).toBe("inspect");
     expect(snapshot.value.turns[0]?.items[0]?.item).toMatchObject({
       type: "agentMessage",
       text: "child done",

@@ -43,7 +43,8 @@ describe("kiro native history", () => {
         cwd: directory,
         sessionMeta: { id: "session", workspacePaths: [directory] },
       });
-      expect(snapshot.turns[0]?.input[0]?.text).toBe(marker);
+      const firstInput = snapshot.turns[0]?.input[0];
+      expect(firstInput?.type === "text" ? firstInput.text : undefined).toBe(marker);
       expect(snapshot.turns[0]?.items.map(({ item }) => item.type)).toEqual([
         "agentMessage",
         "toolExecution",
@@ -239,11 +240,12 @@ describe("kiro native history", () => {
         "cancelled",
         "unknown",
       ]);
-      expect(snapshot.turns.map((t) => t.input[0]?.text)).toEqual([
-        "first input",
-        "second input",
-        "incomplete input",
-      ]);
+      expect(
+        snapshot.turns.map((t) => {
+          const input = t.input[0];
+          return input?.type === "text" ? input.text : undefined;
+        }),
+      ).toEqual(["first input", "second input", "incomplete input"]);
       expect(snapshot.turns[0]?.items.map((i) => i.item.type)).toEqual([
         "agentMessage",
         "toolExecution",

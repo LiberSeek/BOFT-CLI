@@ -779,6 +779,7 @@ describe("Renderer Codex Accounts page", () => {
         codexHome: string;
         active: boolean;
         isDefault: boolean;
+        authKind?: "api" | "chatgpt";
       }>;
     }>();
     const cachedAccount = {
@@ -1115,7 +1116,7 @@ describe("Renderer Codex Accounts page", () => {
           codexHome: "/tmp/personal",
           active: active === "personal",
           isDefault: true,
-          authKind: "chatgpt",
+          authKind: "chatgpt" as const,
         },
         {
           accountId: "work",
@@ -1124,7 +1125,7 @@ describe("Renderer Codex Accounts page", () => {
           codexHome: "/tmp/work",
           active: active === "work",
           isDefault: false,
-          authKind: "chatgpt",
+          authKind: "chatgpt" as const,
         },
       ],
     }));

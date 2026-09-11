@@ -88,6 +88,7 @@ async function fixture(turns = 1) {
     }),
     getSessionInfo: async ({ sessionId }) =>
       histories.has(sessionId) ? { cwd: directory } : undefined,
+    listSessions: vi.fn(async () => []),
     readSessionMessages: vi.fn(async ({ sessionId }) =>
       structuredClone(histories.get(sessionId) ?? []),
     ),
@@ -114,7 +115,11 @@ async function fixture(turns = 1) {
         compact: async () => ({ status: "succeeded" as const }),
         init: async () => ({ status: "succeeded" as const }),
         recap: async () => ({ status: "succeeded" as const }),
-        runTurn: async (text, userMessageId, onEvent) => {
+        runTurn: async (turnInput, userMessageId, onEvent) => {
+          const text =
+            typeof turnInput === "string"
+              ? turnInput
+              : turnInput.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
           const next = messages(input.sessionId, text);
           assert.ok(next[0]);
           assert.ok(next[1]);
