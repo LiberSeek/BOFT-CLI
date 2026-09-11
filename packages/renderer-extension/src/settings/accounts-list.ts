@@ -64,25 +64,42 @@ export function accountListFocusRestorer(list: HTMLElement, fallback: HTMLElemen
   };
 }
 
-export function createAccountsTable(document: Document, messages: RendererSettingsMessages) {
+export type AccountTableKind = "api" | "chatgpt";
+
+export function createAccountsTable(
+  document: Document,
+  messages: RendererSettingsMessages,
+  kind: AccountTableKind,
+) {
   const table = document.createElement("table");
-  table.className = "settings-account-table";
-  table.setAttribute("aria-label", messages.pageLabels.accounts);
+  table.className = `settings-account-table settings-account-table--${kind}`;
+  table.setAttribute(
+    "aria-label",
+    kind === "api" ? messages.accountSectionApi : messages.accountSectionChat,
+  );
   const head = document.createElement("thead");
   const row = document.createElement("tr");
-  const headers = Array.from({ length: 4 }, () => {
+  const columnCount = kind === "api" ? 3 : 4;
+  const headers = Array.from({ length: columnCount }, () => {
     const cell = document.createElement("th");
     cell.scope = "col";
     row.append(cell);
     return cell;
   });
   const updateDisplay = (display: AccountUsageDisplay): void => {
-    const labels = [
-      messages.accountColumnAccount,
-      accountUsageColumnLabel("five_hour", display, messages),
-      accountUsageColumnLabel("seven_day", display, messages),
-      messages.accountColumnActions,
-    ];
+    const labels =
+      kind === "api"
+        ? [
+            messages.accountColumnAccount,
+            messages.accountCreditsRemaining,
+            messages.accountColumnActions,
+          ]
+        : [
+            messages.accountColumnAccount,
+            accountUsageColumnLabel("five_hour", display, messages),
+            accountUsageColumnLabel("seven_day", display, messages),
+            messages.accountColumnActions,
+          ];
     headers.forEach((cell, index) => {
       cell.textContent = labels[index] ?? "";
     });
@@ -92,6 +109,25 @@ export function createAccountsTable(document: Document, messages: RendererSettin
   const body = document.createElement("tbody");
   table.append(head, body);
   return { table, body, updateDisplay };
+}
+
+export function createAccountsGroup(
+  document: Document,
+  messages: RendererSettingsMessages,
+  kind: AccountTableKind,
+) {
+  const root = document.createElement("section");
+  root.className = "settings-account-group";
+  root.dataset.accountGroup = kind;
+  const title = document.createElement("h2");
+  title.className = "settings-account-group__title";
+  title.textContent = kind === "api" ? messages.accountSectionApi : messages.accountSectionChat;
+  const list = document.createElement("div");
+  list.className = "settings-account-list";
+  const { table, body, updateDisplay } = createAccountsTable(document, messages, kind);
+  list.append(table);
+  root.append(title, list);
+  return { root, body, updateDisplay };
 }
 
 function createAccountPerson(
@@ -194,7 +230,15 @@ export function renderAccountRows(
       mark,
     }),
   );
-  const usage = renderAccountUsage(document, input.usage, messages, input.display, input.onRetry);
+  const usageColumns = authKind === "api" ? 1 : 2;
+  const usage = renderAccountUsage(
+    document,
+    input.usage,
+    messages,
+    input.display,
+    input.onRetry,
+    usageColumns,
+  );
   if (usage.additional) personCell.append(usage.additional);
   const actionsCell = document.createElement("td");
   actionsCell.className = "settings-account-management-cell";
@@ -213,7 +257,8 @@ export function renderAccountRows(
     activate.addEventListener("click", input.onActivate);
     actions.append(activate);
   }
-  if (!account.email) {
+  // API Accounts authenticate with a key, not ChatGPT device login.
+  if (authKind !== "api" && !account.email) {
     const signIn = document.createElement("button");
     signIn.type = "button";
     signIn.className = "settings-account-action";
@@ -271,7 +316,7 @@ export function renderAccountRows(
   detailsRow.id = `settings-account-reset-${++resetDetailsSequence}`;
   detailsRow.hidden = !input.resetExpanded;
   const detailsCell = document.createElement("td");
-  detailsCell.colSpan = 4;
+  detailsCell.colSpan = authKind === "api" ? 3 : 4;
   detailsCell.append(reset.details);
   detailsRow.append(detailsCell);
   reset.summary.dataset.accountFocus = `${account.accountId}:reset`;

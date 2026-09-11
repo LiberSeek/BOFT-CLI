@@ -170,10 +170,11 @@ export function renderAccountUsage(
   messages: RendererSettingsMessages,
   display: AccountUsageDisplay,
   onRetry: () => void,
+  usageColumns: 1 | 2 = 2,
 ): { cells: HTMLTableCellElement[]; additional: HTMLElement | null } {
   if (state?.status !== "ready") {
     const cell = document.createElement("td");
-    cell.colSpan = 2;
+    cell.colSpan = usageColumns;
     cell.className = "settings-account-usage-cell settings-account-usage-cell--message";
     const usage = document.createElement("div");
     usage.className = "settings-account-usage";
@@ -203,7 +204,7 @@ export function renderAccountUsage(
   const credits = state.credits;
   if (credits.remaining !== undefined && credits.unit && credits.usedPercent === undefined) {
     const cell = document.createElement("td");
-    cell.colSpan = 2;
+    cell.colSpan = usageColumns;
     cell.className = "settings-account-usage-cell";
     const usage = document.createElement("div");
     usage.className = "settings-account-usage";

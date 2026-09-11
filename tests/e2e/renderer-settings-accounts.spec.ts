@@ -17,9 +17,9 @@ const { outputFiles } = await build({
       globalThis.setupAccounts = ({ locale = "zh-CN", theme = "dark", scenario = "normal" } = {}) => {
         document.documentElement.style.colorScheme = theme;
         const accounts = [
-          { accountId:"native",label:"Native",email:"zhaobin_jiang@163.com",planType:"pro",codexHome:"/private/native",active:true,isDefault:true },
-          { accountId:"team",label:"Team",email:"chongwen623@gmail.com",planType:"team",codexHome:"/private/team",active:false,isDefault:false },
-          { accountId:"pending",label:"Pending login",codexHome:"/private/pending",active:false,isDefault:false },
+          { accountId:"native",label:"Native",email:"zhaobin_jiang@163.com",planType:"pro",codexHome:"/private/native",active:true,isDefault:true,authKind:"chatgpt" },
+          { accountId:"team",label:"Team",email:"chongwen623@gmail.com",planType:"team",codexHome:"/private/team",active:false,isDefault:false,authKind:"chatgpt" },
+          { accountId:"pending",label:"Pending login",codexHome:"/private/pending",active:false,isDefault:false,authKind:"chatgpt" },
         ];
         const snapshots = {
           native: { usedPercent:9,periodType:"seven_day",resetsAt:"2026-09-13T13:16:00Z",resetCredits:{availableCount:2,nextExpiresAt:"2026-10-04T01:54:00Z",expiresAt:["2026-10-04T01:54:00Z","2026-10-08T01:54:00Z"]} },
@@ -605,8 +605,14 @@ for (const locale of ["zh-CN", "en"]) {
       });
       for (const width of [1440, 900, 720, 500, 390]) {
         await page.setViewportSize({ width, height: 1000 });
-        const list = page.locator(".settings-account-list:has(.settings-account-table)");
-        expect(await list.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+        const list = page.locator(
+          '[data-account-group="chatgpt"] .settings-account-list:has(.settings-account-table)',
+        );
+        expect(
+          await page
+            .locator(".settings-account-list:has(.settings-account-table)")
+            .evaluateAll((els) => els.every((el) => el.scrollWidth <= el.clientWidth)),
+        ).toBe(true);
         expect(
           await list
             .locator(".settings-account-usage__meter")

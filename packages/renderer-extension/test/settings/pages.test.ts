@@ -1092,6 +1092,106 @@ describe("Renderer Codex Accounts page", () => {
     );
     await vi.waitFor(() => expect(visibleText(content)).toContain("$42.125"));
     expect(visibleText(content)).toContain("API - BANK OF TOKEN");
+    expect(visibleText(content)).toContain("API 接入");
+    expect(visibleText(content)).not.toContain("5 小时剩余");
+    expect(visibleText(content)).not.toContain("7 天剩余");
+    expect(
+      descendants(content).some(
+        ({ tagName, textContent }) => tagName === "button" && textContent === "登录",
+      ),
+    ).toBe(false);
+
+    scope.dispose();
+  });
+
+  it("renders API remaining and ChatGPT windows in separate tables", async () => {
+    const inspectCodexAccountUsage = vi.fn(async ({ accountId }: { accountId: string }) => {
+      if (accountId === "bank") {
+        return {
+          accountId,
+          usage: null,
+          accountCredits: { remaining: 12.5, unit: "USD", periodType: "unknown" as const },
+        };
+      }
+      return {
+        accountId,
+        usage: null,
+        accountCredits: {
+          usedPercent: 25,
+          periodType: "seven_day" as const,
+          productUsage: [{ product: "5-hour window", usagePercent: 10 }],
+        },
+      };
+    });
+    const client = {
+      listCodexAccounts: vi.fn(async () => ({
+        accounts: [
+          {
+            accountId: "bank",
+            label: "BOFT API",
+            authKind: "api" as const,
+            authIdentity: "BOFT API",
+            codexHome: "/tmp/api-home",
+            active: true,
+            isDefault: true,
+          },
+          {
+            accountId: "work",
+            label: "Work",
+            email: "work@example.com",
+            authKind: "chatgpt" as const,
+            codexHome: "/tmp/work",
+            active: false,
+            isDefault: false,
+          },
+        ],
+      })),
+      inspectCodexAccountUsage,
+      createCodexAccount: vi.fn(),
+      deleteCodexAccount: vi.fn(),
+      activateCodexAccount: vi.fn(),
+      startCodexAccountLogin: vi.fn(),
+      cancelCodexAccountLogin: vi.fn(),
+    };
+    const page = createDefaultRendererSettingsPages(
+      rendererSettingsMessages("zh-CN"),
+      () => null,
+      () => null,
+      () => client,
+    ).find(({ id }) => id === "accounts");
+    if (!page) throw new Error("Accounts page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    await vi.waitFor(() => expect(visibleText(content)).toContain("$12.5"));
+    await vi.waitFor(() => expect(visibleText(content)).toContain("7 天"));
+    const apiGroup = descendants(content).find((element) => element.dataset.accountGroup === "api");
+    const chatGroup = descendants(content).find(
+      (element) => element.dataset.accountGroup === "chatgpt",
+    );
+    if (!apiGroup || !chatGroup) throw new Error("Account groups were not rendered");
+    expect(
+      descendants(apiGroup)
+        .filter(({ tagName }) => tagName === "th")
+        .map(({ textContent }) => textContent),
+    ).toEqual(["账号", "剩余", "管理"]);
+    expect(
+      descendants(chatGroup)
+        .filter(({ tagName }) => tagName === "th")
+        .map(({ textContent }) => textContent),
+    ).toEqual(["账号", "5 小时剩余", "7 天剩余", "管理"]);
+    expect(visibleText(apiGroup)).toContain("API - BOFT API");
+    expect(visibleText(apiGroup)).toContain("$12.5");
+    expect(visibleText(apiGroup)).not.toContain("5 小时剩余");
+    expect(visibleText(chatGroup)).toContain("work@example.com");
+    expect(visibleText(chatGroup)).not.toContain("$12.5");
 
     scope.dispose();
   });

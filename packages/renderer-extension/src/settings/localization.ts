@@ -107,6 +107,8 @@ export interface RendererSettingsMessages {
   readonly accountAuthApiPrefix: string;
   readonly accountAuthChatPrefix: string;
   readonly accountAuthApiIdentityFallback: string;
+  readonly accountSectionApi: string;
+  readonly accountSectionChat: string;
   readonly accountCreditsUsed: string;
   readonly accountCreditsResetAt: string;
   readonly accountCreditsResetIn: string;
@@ -332,6 +334,8 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountAuthApiPrefix: "API",
   accountAuthChatPrefix: "Account",
   accountAuthApiIdentityFallback: "BANK OF TOKEN",
+  accountSectionApi: "API",
+  accountSectionChat: "Accounts",
   accountCreditsUsed: "Used",
   accountCreditsResetAt: "Quota resets: {time}",
   accountCreditsResetIn: "Quota resets in {time}",
@@ -581,6 +585,8 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountAuthApiPrefix: "API",
   accountAuthChatPrefix: "账号",
   accountAuthApiIdentityFallback: "BANK OF TOKEN",
+  accountSectionApi: "API 接入",
+  accountSectionChat: "账号接入",
   accountCreditsUsed: "已用",
   accountCreditsResetAt: "额度重置时间：{time}",
   accountCreditsResetIn: "距重置还有 {time}",

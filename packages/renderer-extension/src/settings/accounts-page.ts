@@ -17,10 +17,11 @@ import type {
   CodexAccountResetCreditConsumeResult,
 } from "@codexhost/shared-contracts";
 
+import { codexAccountAuthKind } from "../renderer-codex-account-options.js";
 import {
   accountListFocusRestorer,
   accountPlanLabel,
-  createAccountsTable,
+  createAccountsGroup,
   renderAccountRows,
   renderHarnessAccountRow,
 } from "./accounts-list.js";
@@ -139,12 +140,12 @@ export function createAccountsSettingsPage(
       });
       search.addEventListener("input", () => render());
       toolbar.append(connected, searchWrapper, displayControls, refreshUsage);
-      const list = document.createElement("div");
-      list.className = "settings-account-list";
-      const { table, body, updateDisplay } = createAccountsTable(document, messages);
-      list.append(table);
-      context.content.append(header, status, toolbar, list);
-      const stopCountdowns = mountAccountResetCountdowns(list, messages, context.signal);
+      const groups = document.createElement("div");
+      groups.className = "settings-account-groups";
+      const apiGroup = createAccountsGroup(document, messages, "api");
+      const chatGroup = createAccountsGroup(document, messages, "chatgpt");
+      context.content.append(header, status, toolbar, groups);
+      const stopCountdowns = mountAccountResetCountdowns(groups, messages, context.signal);
 
       let accounts: readonly CodexAccountSummary[] = [];
       let accountCreating = false;
@@ -202,12 +203,93 @@ export function createAccountsSettingsPage(
         }, 750);
       };
 
+      const appendCodexAccount = (body: HTMLElement, account: CodexAccountSummary): void => {
+        body.append(
+          ...renderAccountRows(document, account, messages, {
+            usage: usageByAccountId.get(account.accountId),
+            display: usageDisplay,
+            actionsDisabled: accountBusy(),
+            usingReset: usingResetAccountId === account.accountId,
+            resetDisabled: accountBusy(),
+            resetExpanded: expandedResetAccounts.has(account.accountId),
+            onActivate: () =>
+              mutate(() => client().activateCodexAccount({ accountId: account.accountId })),
+            onSignIn: () => startLogin(account.accountId),
+            onDelete: () => deleteAccount(account.accountId),
+            onRetry: () => {
+              usageByAccountId.delete(account.accountId);
+              loadUsage(accounts);
+            },
+            onResetExpanded: (open) => {
+              if (open) expandedResetAccounts.add(account.accountId);
+              else expandedResetAccounts.delete(account.accountId);
+            },
+            ...(getClient()?.consumeCodexAccountResetCredit
+              ? { onUseReset: () => useReset(account.accountId) }
+              : {}),
+          }),
+        );
+        if (login?.accountId !== account.accountId) return;
+        const verification = document.createElement("div");
+        verification.className = "settings-account-verification";
+        const prompt = document.createElement("span");
+        prompt.textContent = messages.accountVerificationDescription;
+        const link = document.createElement("a");
+        link.href = login.verificationUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = login.verificationUrl;
+        link.addEventListener("click", (event) => {
+          const bridge = (document.defaultView as CodexDesktopLinkWindow | null)?.electronBridge;
+          if (typeof bridge?.sendMessageFromView !== "function") return;
+          event.preventDefault();
+          void Promise.resolve(
+            bridge.sendMessageFromView({
+              type: "open-in-browser",
+              url: login?.verificationUrl ?? link.href,
+              initiator: "open_in_browser_bridge",
+              openTarget: "external-browser",
+              source: "manual",
+            }),
+          ).catch(() => undefined);
+        });
+        const code = document.createElement("code");
+        code.textContent = login.userCode;
+        const copyCode = document.createElement("button");
+        copyCode.type = "button";
+        copyCode.className = "settings-command-button settings-command-button--secondary";
+        copyCode.textContent = messages.accountCopyCode;
+        copyCode.addEventListener("click", () => {
+          void document.defaultView?.navigator.clipboard
+            ?.writeText(login?.userCode ?? "")
+            .then(() => {
+              copyCode.textContent = messages.accountCopied;
+            });
+        });
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "settings-command-button settings-command-button--secondary";
+        cancel.textContent = messages.accountLoginCancel;
+        cancel.addEventListener("click", () =>
+          cancelLogin(login?.accountId ?? "", login?.loginId ?? ""),
+        );
+        verification.append(prompt, link, code, copyCode, cancel);
+        const verificationRow = document.createElement("tr");
+        const verificationCell = document.createElement("td");
+        verificationCell.colSpan = codexAccountAuthKind(account) === "api" ? 3 : 4;
+        verificationCell.append(verification);
+        verificationRow.append(verificationCell);
+        body.append(verificationRow);
+      };
+
       const render = (): void => {
-        const restoreFocus = accountListFocusRestorer(list, search);
-        body.replaceChildren();
+        const restoreFocus = accountListFocusRestorer(groups, search);
+        apiGroup.body.replaceChildren();
+        chatGroup.body.replaceChildren();
         status.textContent = loginMessage ?? "";
         connectedCount.textContent = String(accounts.length + harnessAccounts.accounts.length);
-        updateDisplay(usageDisplay);
+        apiGroup.updateDisplay(usageDisplay);
+        chatGroup.updateDisplay(usageDisplay);
         search.disabled = login !== null || loginStartingAccountId !== null;
         for (const [display, button] of displayButtons) {
           button.setAttribute("aria-pressed", String(display === usageDisplay));
@@ -225,104 +307,44 @@ export function createAccountsSettingsPage(
             .toLocaleLowerCase()
             .includes(query),
         );
+        const visibleApi = visibleAccounts.filter(
+          (account) => codexAccountAuthKind(account) === "api",
+        );
+        const visibleChat = visibleAccounts.filter(
+          (account) => codexAccountAuthKind(account) !== "api",
+        );
         const visibleHarnessAccounts = harnessAccounts.accounts.filter((account) =>
           `${account.harnessName} ${account.email ?? ""} ${account.label ?? ""} ${account.plan ?? ""}`
             .toLocaleLowerCase()
             .includes(query),
         );
-        if (visibleAccounts.length + visibleHarnessAccounts.length === 0) {
-          const emptyRow = document.createElement("tr");
-          const emptyCell = document.createElement("td");
-          emptyCell.colSpan = 4;
-          emptyCell.className = "settings-account-empty";
-          emptyCell.textContent = query ? messages.accountNoMatches : messages.accountEmpty;
-          emptyRow.append(emptyCell);
-          body.append(emptyRow);
-        }
+        displayControls.hidden =
+          !accounts.some((account) => codexAccountAuthKind(account) !== "api") &&
+          harnessAccounts.accounts.length === 0;
         add.disabled = accountBusy();
-        for (const account of visibleAccounts) {
-          body.append(
-            ...renderAccountRows(document, account, messages, {
-              usage: usageByAccountId.get(account.accountId),
-              display: usageDisplay,
-              actionsDisabled: accountBusy(),
-              usingReset: usingResetAccountId === account.accountId,
-              resetDisabled: accountBusy(),
-              resetExpanded: expandedResetAccounts.has(account.accountId),
-              onActivate: () =>
-                mutate(() => client().activateCodexAccount({ accountId: account.accountId })),
-              onSignIn: () => startLogin(account.accountId),
-              onDelete: () => deleteAccount(account.accountId),
-              onRetry: () => {
-                usageByAccountId.delete(account.accountId);
-                loadUsage(accounts);
-              },
-              onResetExpanded: (open) => {
-                if (open) expandedResetAccounts.add(account.accountId);
-                else expandedResetAccounts.delete(account.accountId);
-              },
-              ...(getClient()?.consumeCodexAccountResetCredit
-                ? { onUseReset: () => useReset(account.accountId) }
-                : {}),
-            }),
-          );
-
-          if (login?.accountId === account.accountId) {
-            const verification = document.createElement("div");
-            verification.className = "settings-account-verification";
-            const prompt = document.createElement("span");
-            prompt.textContent = messages.accountVerificationDescription;
-            const link = document.createElement("a");
-            link.href = login.verificationUrl;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            link.textContent = login.verificationUrl;
-            link.addEventListener("click", (event) => {
-              const bridge = (document.defaultView as CodexDesktopLinkWindow | null)
-                ?.electronBridge;
-              if (typeof bridge?.sendMessageFromView !== "function") return;
-              event.preventDefault();
-              void Promise.resolve(
-                bridge.sendMessageFromView({
-                  type: "open-in-browser",
-                  url: login?.verificationUrl ?? link.href,
-                  initiator: "open_in_browser_bridge",
-                  openTarget: "external-browser",
-                  source: "manual",
-                }),
-              ).catch(() => undefined);
-            });
-            const code = document.createElement("code");
-            code.textContent = login.userCode;
-            const copyCode = document.createElement("button");
-            copyCode.type = "button";
-            copyCode.className = "settings-command-button settings-command-button--secondary";
-            copyCode.textContent = messages.accountCopyCode;
-            copyCode.addEventListener("click", () => {
-              void document.defaultView?.navigator.clipboard
-                ?.writeText(login?.userCode ?? "")
-                .then(() => {
-                  copyCode.textContent = messages.accountCopied;
-                });
-            });
-            const cancel = document.createElement("button");
-            cancel.type = "button";
-            cancel.className = "settings-command-button settings-command-button--secondary";
-            cancel.textContent = messages.accountLoginCancel;
-            cancel.addEventListener("click", () =>
-              cancelLogin(login?.accountId ?? "", login?.loginId ?? ""),
-            );
-            verification.append(prompt, link, code, copyCode, cancel);
-            const verificationRow = document.createElement("tr");
-            const verificationCell = document.createElement("td");
-            verificationCell.colSpan = 4;
-            verificationCell.append(verification);
-            verificationRow.append(verificationCell);
-            body.append(verificationRow);
+        groups.replaceChildren();
+        if (visibleApi.length + visibleChat.length + visibleHarnessAccounts.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "settings-account-list";
+          const emptyMessage = document.createElement("p");
+          emptyMessage.className = "settings-account-empty";
+          emptyMessage.textContent = query ? messages.accountNoMatches : messages.accountEmpty;
+          empty.append(emptyMessage);
+          groups.append(empty);
+        } else {
+          if (visibleApi.length) {
+            for (const account of visibleApi) appendCodexAccount(apiGroup.body, account);
+            groups.append(apiGroup.root);
           }
-        }
-        for (const account of visibleHarnessAccounts) {
-          body.append(renderHarnessAccountRow(document, account, messages, usageDisplay));
+          if (visibleChat.length + visibleHarnessAccounts.length) {
+            for (const account of visibleChat) appendCodexAccount(chatGroup.body, account);
+            for (const account of visibleHarnessAccounts) {
+              chatGroup.body.append(
+                renderHarnessAccountRow(document, account, messages, usageDisplay),
+              );
+            }
+            groups.append(chatGroup.root);
+          }
         }
         restoreFocus();
       };
