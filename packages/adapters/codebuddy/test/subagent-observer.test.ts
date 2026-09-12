@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { HostTurnInput } from "@codexhost/harness-adapter";
 import { nativeSessionRefSchema } from "@codexhost/shared-contracts";
 import { CodeBuddyChildObserver } from "../src/subagent-history.js";
 
@@ -11,6 +12,11 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 });
 
 const roots: string[] = [];
+
+function turnText(input: readonly HostTurnInput[] | undefined): string | undefined {
+  const part = input?.[0];
+  return part?.type === "text" ? part.text : undefined;
+}
 afterEach(async () => {
   vi.clearAllMocks();
   await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
@@ -132,14 +138,14 @@ describe("CodeBuddy child observer cache", () => {
       return result;
     });
     try {
-      expect((await observer.read("agent-child", "running")).turns[0]?.input[0]?.text).toBe(
+      expect(turnText((await observer.read("agent-child", "running")).turns[0]?.input)).toBe(
         "read files",
       );
       expect(mutated).toBe(true);
       expect(JSON.parse(String(await original(value.childFile, "utf8"))).content).toBe(
         "after data",
       );
-      expect((await observer.read("agent-child", "running")).turns[0]?.input[0]?.text).toBe(
+      expect(turnText((await observer.read("agent-child", "running")).turns[0]?.input)).toBe(
         "after data",
       );
     } finally {
