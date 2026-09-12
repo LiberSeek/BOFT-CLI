@@ -492,6 +492,8 @@ pub fn activate_stock_desktop(
 mod tests {
     use std::ffi::{OsStr, OsString};
     use std::process::Command;
+    use std::thread;
+    use std::time::{Duration, Instant};
 
     use super::{
         ActivatedProcessGuard, WindowsDesktopProcess, is_appx_debug_already_cleared,
