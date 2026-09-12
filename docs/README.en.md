@@ -97,7 +97,13 @@ Fully quit Codex Desktop, open a new terminal, and run `boft`.
 
 In `Settings → Appearance`, enable **Wrap thinking text** to wrap long lines in the persisted thinking transcript. It is off by default, saved locally, and takes effect immediately. Ordinary shell output is unchanged.
 
-### Interaction examples
+### Update checks and GitHub rate limits
+
+codexhost prefers an authenticated [GitHub CLI](https://cli.github.com/) (`gh auth login --hostname github.com`) for latest Release checks, using the account's API quota to reduce anonymous rate limits on shared proxy exits. Credentials remain managed by `gh`; codexhost does not read or store tokens.
+
+If `gh` is missing, unauthenticated, or fails, discovery falls back to the public API. Each CLI invocation is limited to 5 seconds. Discovery searches PATH, macOS Homebrew, and common Windows/Linux installation locations. Set `CODEXHOST_GH_COMMAND` in the Host environment to specify an executable path without arguments. Artifact downloads and verification are unchanged; authenticated requests remain subject to GitHub account and secondary rate limits.
+
+### Interaction Examples
 
 <table>
   <tr>
@@ -137,7 +143,7 @@ In `Settings → Appearance`, enable **Wrap thinking text** to wrap long lines i
 | Edit Diff | Native | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Partial² | ✅ |
 | Questions / cancellation | Native | ✅ | — / ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Model / Thinking selection | Native | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ / — |
-| Tool approvals | Native | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Tool approvals | Native | ✅ | — | ✅ | ✅ | ✅ | ✅ | —¹ | ✅ | ✅ |
 | Permission modes | Native | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Cross-Agent task collaboration | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
 | Usage | Native | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅⁴ | — |
@@ -146,7 +152,7 @@ In `Settings → Appearance`, enable **Wrap thinking text** to wrap long lines i
 | Slash commands | Native | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
 | Edit previous message | Native | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
 
-> **Antigravity current status:** Integration is still being completed. The working directory is currently fixed to `~/.gemini/antigravity-cli/scratch`.
+> **Antigravity:**¹ Only **Skip permissions (dangerous)** is offered, using native `--dangerously-skip-permissions`. BOFT CLI does not add tool approvals, permission rules, or workspace read/write restrictions; use it only in trusted environments. Configured permissions / Desktop approvals are no longer supported; Skip permissions must be selected explicitly. Questions still support single-choice and text, and subagents support native cards with read-only transcripts. See [permission notes](antigravity-tool-approval.md) and [subagent notes](antigravity-subagents.md).
 
 > **CodeBuddy:** Supports multiple Turns, writable resume, continuation after cancellation, and native subagent cards with read-only transcripts, including background child observation. Model, Thinking and Permission options come from the CLI's native catalog.
 >

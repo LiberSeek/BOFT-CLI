@@ -133,7 +133,7 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
 | Edit Diff | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 부분 지원² | ✅ |
 | 질문 / 취소 | 기본 제공 | ✅ | — / ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Model / Thinking 선택 | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ / — |
-| 도구 승인 | 기본 제공 | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 도구 승인 | 기본 제공 | ✅ | — | ✅ | ✅ | ✅ | ✅ | —¹ | ✅ | ✅ |
 | 권한 모드 | 기본 제공 | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Agent 간 작업 협업 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
 | Usage | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅⁴ | — |
@@ -142,7 +142,7 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
 | 슬래시 명령 | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
 | 이전 메시지 수정 | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — |
 
-> **Antigravity 현재 상태:** 연동은 아직 보완 중이며, 작업 디렉터리는 현재 `~/.gemini/antigravity-cli/scratch`로 고정되어 있습니다.
+> **Antigravity:**¹ **Skip permissions(위험)**만 제공하며 네이티브 `--dangerously-skip-permissions`를 사용합니다. BOFT CLI는 도구 승인, 권한 규칙, 작업 영역 읽기/쓰기 제한을 추가하지 않으므로 신뢰할 수 있는 환경에서만 사용하세요. 이전 Configured permissions / Desktop approvals는 더 이상 지원되지 않으며 Skip permissions를 명시적으로 선택해야 합니다. 질문은 단일 선택과 텍스트를 지원하고, 하위 Agent는 네이티브 카드와 읽기 전용 기록을 지원합니다. 자세한 내용은 [권한 설명](antigravity-tool-approval.md)과 [하위 Agent 설명](antigravity-subagents.md)을 참고하세요.
 
 > **CodeBuddy:** 여러 Turn, 쓰기 가능한 Session 복원, 취소 후 대화 계속하기, 네이티브 하위 Agent 카드와 읽기 전용 기록을 지원하며 백그라운드 하위 Agent 관찰도 포함됩니다. Model, Thinking 및 권한 옵션은 CLI의 네이티브 카탈로그를 따릅니다.
 >
