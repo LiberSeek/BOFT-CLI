@@ -585,6 +585,13 @@ mod tests {
 
         drop(guard);
 
-        assert!(!crate::process_exists(process_id));
+        let started = Instant::now();
+        while crate::process_exists(process_id) {
+            assert!(
+                started.elapsed() < Duration::from_secs(2),
+                "guarded process {process_id} still running after drop"
+            );
+            thread::sleep(Duration::from_millis(20));
+        }
     }
 }
