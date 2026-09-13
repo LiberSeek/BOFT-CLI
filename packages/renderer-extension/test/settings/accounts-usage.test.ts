@@ -99,6 +99,10 @@ describe("Account limit windows", () => {
     expect(text(result)).toContain("$12.5");
     expect(text(result)).toContain("剩余");
     expect(text(result).replace(/\s+/gu, " ")).toContain("$12.5 剩余");
+    expect(
+      elements(result).find((el) => el.className === "settings-account-usage__value-label")
+        ?.textContent,
+    ).toBe("剩余");
     expect(elements(result).filter((el) => el.attributes.get("role") === "meter")).toHaveLength(0);
   });
 

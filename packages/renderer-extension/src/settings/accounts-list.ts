@@ -91,7 +91,7 @@ export function createAccountsTable(
       kind === "api"
         ? [
             messages.accountColumnAccount,
-            messages.accountCreditsRemaining,
+            messages.accountColumnCredits,
             messages.accountColumnActions,
           ]
         : [

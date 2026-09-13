@@ -222,6 +222,10 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.settings-account-usage__value-label {
+  font-size: 14px;
+  font-weight: 600;
+}
 
 .settings-account-usage__title {
   display: none;

@@ -74,6 +74,7 @@ export interface RendererSettingsMessages {
   readonly accountConnected: string;
   readonly accountDefaultBadge: string;
   readonly accountColumnActions: string;
+  readonly accountColumnCredits: string;
   readonly accountSearch: string;
   readonly accountEmpty: string;
   readonly accountNoMatches: string;
@@ -300,6 +301,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountAdd: "Add Codex account",
   accountColumnAccount: "Account",
   accountColumnActions: "Manage",
+  accountColumnCredits: "Quota",
   accountSearch: "Search accounts or Agents…",
   accountEmpty: "No accounts yet. Add a Codex account or sign in to an Agent in its native client.",
   accountNoMatches: "No matching accounts.",
@@ -551,6 +553,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountAdd: "添加 Codex 账号",
   accountColumnAccount: "账号",
   accountColumnActions: "管理",
+  accountColumnCredits: "额度",
   accountSearch: "搜索账号或 Agent…",
   accountEmpty: "还没有账号，可添加 Codex 账号或在其他 Agent 的原生客户端登录。",
   accountNoMatches: "没有匹配的账号。",

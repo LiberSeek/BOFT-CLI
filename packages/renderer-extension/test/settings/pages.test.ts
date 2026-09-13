@@ -1189,7 +1189,7 @@ describe("Renderer Codex Accounts page", () => {
       descendants(apiGroup)
         .filter(({ tagName }) => tagName === "th")
         .map(({ textContent }) => textContent),
-    ).toEqual(["账号", "剩余", "管理"]);
+    ).toEqual(["账号", "额度", "管理"]);
     expect(
       descendants(chatGroup)
         .filter(({ tagName }) => tagName === "th")
