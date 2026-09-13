@@ -1,13 +1,8 @@
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { HarnessOutput } from "@codexhost/harness-adapter";
 import {
   harnessIdSchema,
-  harnessPermissionModeIdSchema,
   hostTurnIdSchema,
   nativeSessionRefSchema,
   nativeTurnRefSchema,
@@ -19,7 +14,6 @@ import type {
   HermesTransportEvent,
 } from "../src/acp-transport.js";
 import { HermesTransportError } from "../src/acp-transport.js";
-import { HermesAdapter } from "../src/hermes-adapter.js";
 import { encodeHermesModelRef } from "../src/hermes-models.js";
 import { HermesSession } from "../src/hermes-session.js";
 
@@ -41,31 +35,6 @@ class FakeTurnTransport {
   async cancel(): Promise<void> {}
   async setModel(): Promise<void> {}
   async setPermissionMode(): Promise<void> {}
-}
-
-const temporaryDirectories: string[] = [];
-
-afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
-});
-
-async function writeFakeHermes(directory: string, source: string): Promise<string> {
-  temporaryDirectories.push(directory);
-  const scriptPath = path.join(directory, "fake-hermes.mjs");
-  await writeFile(scriptPath, source);
-  if (process.platform === "win32") {
-    const command = path.join(directory, "fake-hermes.cmd");
-    await writeFile(command, `@echo off\r\n"${process.execPath}" "${scriptPath}" %*\r\n`);
-    return command;
-  }
-  const executable = path.join(directory, "fake-hermes");
-  await writeFile(executable, `#!/usr/bin/env node\n${source}`);
-  await chmod(executable, 0o755);
-  return executable;
 }
 
 function openResult(): HermesOpenResult {
@@ -93,228 +62,6 @@ async function collectUntilTurnCompleted(
     if (output.kind === "event" && output.event.type === "turn.completed") return collected;
   }
   throw new Error("Hermes output ended before turn.completed");
-}
-
-async function fakeHermesExecutable(): Promise<string> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-test-"));
-  return writeFakeHermes(
-    directory,
-    `
-import readline from "node:readline";
-const lines = readline.createInterface({ input: process.stdin });
-for await (const line of lines) {
-  const request = JSON.parse(line);
-  let result = {};
-  if (request.method === "initialize") {
-    result = {
-      protocolVersion: 1,
-      agentCapabilities: { loadSession: true },
-      agentInfo: { name: "fake-hermes", version: "1.0.0" },
-      authMethods: [],
-    };
-  } else if (request.method === "session/new") {
-    result = {
-      sessionId: "fake-session",
-      models: {
-        availableModels: [
-          { modelId: "zai:glm-5-turbo", name: "GLM 5 Turbo" },
-          { modelId: "minimax-oauth:MiniMax-M3", name: "MiniMax M3" },
-        ],
-        currentModelId: "zai:glm-5-turbo",
-      },
-    };
-  } else if (request.method === "session/set_model") {
-    result = {};
-  }
-  process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
-}
-`,
-  );
-}
-
-async function failingHermesExecutable(): Promise<string> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-error-test-"));
-  return writeFakeHermes(
-    directory,
-    `
-import readline from "node:readline";
-const lines = readline.createInterface({ input: process.stdin });
-for await (const line of lines) {
-  const request = JSON.parse(line);
-  if (request.method === "initialize") {
-    process.stdout.write(JSON.stringify({
-      jsonrpc: "2.0",
-      id: request.id,
-      result: {
-        protocolVersion: 1,
-        agentCapabilities: { loadSession: true },
-        agentInfo: { name: "fake-hermes", version: "1.0.0" },
-        authMethods: [],
-      },
-    }) + "\\n");
-  } else if (request.method === "session/new") {
-    process.stdout.write(JSON.stringify({
-      jsonrpc: "2.0",
-      id: request.id,
-      error: {
-        code: -32603,
-        message: "Internal error",
-        data: { details: "Hermes provider is not configured" },
-      },
-    }) + "\\n");
-  }
-}
-`,
-  );
-}
-
-async function modelSelectionHermesExecutable(): Promise<string> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-model-counter-"));
-  return writeFakeHermes(
-    directory,
-    `
-import { appendFileSync } from "node:fs";
-import readline from "node:readline";
-const lines = readline.createInterface({ input: process.stdin });
-for await (const line of lines) {
-  const request = JSON.parse(line);
-  let result = {};
-  if (request.method === "initialize") {
-    result = {
-      protocolVersion: 1,
-      agentCapabilities: { loadSession: true },
-      agentInfo: { name: "fake-hermes", version: "1.0.0" },
-      authMethods: [],
-    };
-  } else if (request.method === "session/new") {
-    result = {
-      sessionId: "fake-session",
-      models: {
-        availableModels: [{ modelId: "zai:glm-5-turbo", name: "GLM 5 Turbo" }],
-        currentModelId: "zai:glm-5-turbo",
-      },
-    };
-  } else if (request.method === "session/set_model") {
-    appendFileSync(process.env.FAKE_HERMES_MODEL_CALLS, request.params.modelId + "\\n");
-  }
-  process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
-}
-`,
-  );
-}
-
-async function permissionModeHermesExecutable(): Promise<string> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-mode-counter-"));
-  return writeFakeHermes(
-    directory,
-    `
-import { appendFileSync } from "node:fs";
-import readline from "node:readline";
-const lines = readline.createInterface({ input: process.stdin });
-for await (const line of lines) {
-  const request = JSON.parse(line);
-  let result = {};
-  if (request.method === "initialize") {
-    result = {
-      protocolVersion: 1,
-      agentCapabilities: { loadSession: true },
-      agentInfo: { name: "fake-hermes", version: "1.0.0" },
-      authMethods: [],
-    };
-  } else if (request.method === "session/new") {
-    result = {
-      sessionId: "fake-session",
-      modes: {
-        currentModeId: "default",
-        availableModes: [
-          { id: "default", name: "Default" },
-          { id: "accept_edits", name: "Accept edits" },
-        ],
-      },
-    };
-  } else if (request.method === "session/set_mode") {
-    appendFileSync(process.env.FAKE_HERMES_MODE_CALLS, request.params.modeId + "\\n");
-  }
-  process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
-}
-`,
-  );
-}
-
-async function failingModelSelectionHermesExecutable(): Promise<string> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-model-error-"));
-  return writeFakeHermes(
-    directory,
-    `
-import readline from "node:readline";
-const lines = readline.createInterface({ input: process.stdin });
-for await (const line of lines) {
-  const request = JSON.parse(line);
-  let result = {};
-  if (request.method === "initialize") {
-    result = {
-      protocolVersion: 1,
-      agentCapabilities: { loadSession: true },
-      agentInfo: { name: "fake-hermes", version: "1.0.0" },
-      authMethods: [],
-    };
-  } else if (request.method === "session/new") {
-    result = {
-      sessionId: "fake-session",
-      models: {
-        availableModels: [{ modelId: "zai:glm-5-turbo", name: "GLM 5 Turbo" }],
-        currentModelId: "zai:glm-5-turbo",
-      },
-    };
-  } else if (request.method === "session/set_model") {
-    process.stdout.write(JSON.stringify({
-      jsonrpc: "2.0",
-      id: request.id,
-      error: {
-        code: -32603,
-        message: "Internal error",
-        data: { details: "No LLM provider configured for provider=openrouter" },
-      },
-    }) + "\\n");
-    continue;
-  }
-  process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
-}
-`,
-  );
-}
-
-async function delayedHermesExecutable(): Promise<string> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-delayed-"));
-  return writeFakeHermes(
-    directory,
-    `
-import readline from "node:readline";
-const lines = readline.createInterface({ input: process.stdin });
-for await (const line of lines) {
-  const request = JSON.parse(line);
-  if (request.method === "initialize") {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    process.stdout.write(JSON.stringify({
-      jsonrpc: "2.0",
-      id: request.id,
-      result: {
-        protocolVersion: 1,
-        agentCapabilities: { loadSession: true },
-        agentInfo: { name: "fake-hermes", version: "1.0.0" },
-        authMethods: [],
-      },
-    }) + "\\n");
-  } else if (request.method === "session/new") {
-    process.stdout.write(JSON.stringify({
-      jsonrpc: "2.0",
-      id: request.id,
-      result: { sessionId: "late-session" },
-    }) + "\\n");
-  }
-}
-`,
-  );
 }
 
 describe("HermesSession text projection", () => {
@@ -358,124 +105,176 @@ describe("HermesSession text projection", () => {
 
     await session.close();
   });
-});
 
-describe("HermesAdapter model selection", () => {
-  it("applies the requested model while creating the native Session", async () => {
-    const command = await fakeHermesExecutable();
-    const adapter = new HermesAdapter({ command });
-    const requested = encodeHermesModelRef("minimax-oauth:MiniMax-M3");
-    expect(requested).not.toBeNull();
-    if (!requested) throw new Error("Expected a valid Hermes Model Ref");
-
-    const opened = await adapter.open({
-      kind: "create",
-      cwd: process.cwd(),
-      model: requested,
-    });
-
-    expect(opened.ok).toBe(true);
-    if (!opened.ok) return;
-    expect(opened.value.initialState.effectiveModel).toEqual(requested);
-    expect(opened.value.initialState.resolvedModelLabel).toBe("MiniMax M3");
-
-    await opened.value.close();
-    await adapter.close();
-  });
-
-  it("surfaces the actionable ACP error details when Session creation fails", async () => {
-    const command = await failingHermesExecutable();
-    const adapter = new HermesAdapter({ command });
-
-    const opened = await adapter.open({ kind: "create", cwd: process.cwd() });
-
-    expect(opened).toMatchObject({
-      ok: false,
-      error: {
-        code: "authenticationRequired",
-        message: "Hermes provider is not configured",
+  it("keeps streamed text items ordered around a tool call", async () => {
+    const transport = {
+      onFault: () => undefined,
+      runTurn: async (
+        _text: string,
+        onEvent: (event: HermesTransportEvent) => void,
+      ): Promise<{ stopReason: "end_turn" }> => {
+        onEvent({ type: "agent.text", text: "before" });
+        onEvent({
+          type: "tool.call",
+          toolCallId: "tool-between-text",
+          update: {
+            sessionUpdate: "tool_call",
+            toolCallId: "tool-between-text",
+            title: "Run command",
+            status: "completed",
+          },
+        } as HermesTransportEvent);
+        onEvent({ type: "agent.text", text: "after" });
+        return { stopReason: "end_turn" };
       },
-    });
-    await adapter.close();
-  });
-
-  it("surfaces actionable ACP details when create-time Model selection fails", async () => {
-    const command = await failingModelSelectionHermesExecutable();
-    const adapter = new HermesAdapter({ command });
-    const requested = encodeHermesModelRef("openrouter:test-model");
-    if (!requested) throw new Error("Expected a valid Hermes Model Ref");
-
-    const opened = await adapter.open({ kind: "create", cwd: process.cwd(), model: requested });
-
-    expect(opened).toMatchObject({
-      ok: false,
-      error: {
-        code: "authenticationRequired",
-        message: "No LLM provider configured for provider=openrouter",
-      },
-    });
-    await adapter.close();
-  });
-
-  it("applies the requested permission mode while creating the native Session", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-mode-calls-"));
-    temporaryDirectories.push(directory);
-    const counterPath = path.join(directory, "mode-calls.log");
-    const command = await permissionModeHermesExecutable();
-    const adapter = new HermesAdapter({
-      command,
-      environment: { ...process.env, FAKE_HERMES_MODE_CALLS: counterPath },
-    });
-    const requestedMode = harnessPermissionModeIdSchema.parse("accept_edits");
-
-    const opened = await adapter.open({
-      kind: "create",
-      cwd: process.cwd(),
-      permissionModeId: requestedMode,
+      close: async () => undefined,
+      cancel: async () => undefined,
+      setModel: async () => undefined,
+      setPermissionMode: async () => undefined,
+    } as unknown as HermesAcpTransport;
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport,
+      open: openResult(),
+      onSettle: () => undefined,
     });
 
-    expect(opened.ok).toBe(true);
-    expect(await readFile(counterPath, "utf8")).toBe("accept_edits\n");
-    if (opened.ok) {
-      expect(opened.value.initialState.effectivePermissionModeId).toBe(requestedMode);
-      await opened.value.close();
+    const outputsPromise = collectUntilTurnCompleted(session.outputs);
+    await session.execute({
+      type: "turn.start",
+      turnId: hostTurnIdSchema.parse("turn-text-tool-text"),
+      input: [{ type: "text", text: "go" }],
+    });
+    const outputs = await outputsPromise;
+    const completedTypes = outputs.flatMap((output) =>
+      output.kind === "event" && output.event.type === "item.completed"
+        ? [output.event.snapshot.item.type]
+        : [],
+    );
+    expect(completedTypes).toEqual(["agentMessage", "toolExecution", "agentMessage"]);
+
+    const snapshot = await session.readSnapshot();
+    expect(snapshot.ok).toBe(true);
+    if (snapshot.ok) {
+      expect(snapshot.value.turns[0]?.items.map(({ item }) => item.type)).toEqual([
+        "agentMessage",
+        "toolExecution",
+        "agentMessage",
+      ]);
+      expect(snapshot.value.turns[0]?.items[0]?.item).toMatchObject({ text: "before" });
+      expect(snapshot.value.turns[0]?.items[2]?.item).toMatchObject({ text: "after" });
     }
-    await adapter.close();
+    await session.close();
   });
 
-  it("does not rebuild the Hermes Agent when the requested model is already active", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-adapter-model-calls-"));
-    temporaryDirectories.push(directory);
-    const counterPath = path.join(directory, "model-calls.log");
-    const command = await modelSelectionHermesExecutable();
-    const adapter = new HermesAdapter({
-      command,
-      environment: { ...process.env, FAKE_HERMES_MODEL_CALLS: counterPath },
+  it("merges terminal token totals with the latest context usage", async () => {
+    const transport = {
+      onFault: () => undefined,
+      runTurn: async (_text: string, onEvent: (event: HermesTransportEvent) => void) => {
+        onEvent({ type: "usage", used: 120, size: 1_000 });
+        return {
+          stopReason: "end_turn" as const,
+          usage: { inputTokens: 80, outputTokens: 40, totalTokens: 120 },
+        };
+      },
+      close: async () => undefined,
+      cancel: async () => undefined,
+      setModel: async () => undefined,
+      setPermissionMode: async () => undefined,
+    } as unknown as HermesAcpTransport;
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport,
+      open: openResult(),
+      onSettle: () => undefined,
     });
-    const requested = encodeHermesModelRef("zai:glm-5-turbo");
-    if (!requested) throw new Error("Expected a valid Hermes Model Ref");
 
-    const opened = await adapter.open({ kind: "create", cwd: process.cwd(), model: requested });
-
-    expect(opened.ok).toBe(true);
-    expect(await readFile(counterPath, "utf8").catch(() => "")).toBe("");
-    if (opened.ok) await opened.value.close();
-    await adapter.close();
-  });
-
-  it("does not return a Session when the Adapter closes during open", async () => {
-    const command = await delayedHermesExecutable();
-    const adapter = new HermesAdapter({ command });
-
-    const opening = adapter.open({ kind: "create", cwd: process.cwd() });
-    await adapter.close();
-    const opened = await opening;
-
-    expect(opened).toMatchObject({ ok: false, error: { code: "invalidState" } });
+    const outputsPromise = collectUntilTurnCompleted(session.outputs);
+    await session.execute({
+      type: "turn.start",
+      turnId: hostTurnIdSchema.parse("turn-merged-usage"),
+      input: [{ type: "text", text: "go" }],
+    });
+    const outputs = await outputsPromise;
+    const usages = outputs.flatMap((output) =>
+      output.kind === "event" && output.event.type === "session.usage.changed"
+        ? [output.event.usage]
+        : [],
+    );
+    expect(usages.at(-1)).toEqual({
+      contextUsedTokens: 120,
+      contextWindowTokens: 1_000,
+      inputTokens: 80,
+      outputTokens: 40,
+      totalTokens: 120,
+    });
+    await session.close();
   });
 });
 
 describe("HermesSession recovery", () => {
+  it("accumulates replayed user chunks into one restored prompt", async () => {
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport: new FakeTurnTransport() as unknown as HermesAcpTransport,
+      open: {
+        ...openResult(),
+        replay: [
+          { type: "user.text", text: "first " },
+          { type: "user.text", text: "second" },
+          { type: "agent.text", text: "answer" },
+        ],
+      },
+      onSettle: () => undefined,
+    });
+
+    const snapshot = await session.readSnapshot();
+    expect(snapshot.ok).toBe(true);
+    if (snapshot.ok) {
+      expect(snapshot.value.turns).toHaveLength(1);
+      expect(snapshot.value.turns[0]?.input).toEqual([{ type: "text", text: "first second" }]);
+    }
+    await session.close();
+  });
+
+  it("restores replayed Turns with an unknown outcome", async () => {
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport: new FakeTurnTransport() as unknown as HermesAcpTransport,
+      open: {
+        ...openResult(),
+        replay: [
+          { type: "user.text", text: "hello" },
+          { type: "agent.text", text: "partial answer" },
+        ],
+      },
+      onSettle: () => undefined,
+    });
+
+    const snapshot = await session.readSnapshot();
+    expect(snapshot.ok).toBe(true);
+    if (snapshot.ok) {
+      expect(snapshot.value.turns[0]?.outcome).toMatchObject({ status: "unknown" });
+    }
+    await session.close();
+  });
+
   it("reuses known native Turn refs when replaying the same history", async () => {
     const knownTurnRef = nativeTurnRefSchema.parse({
       harnessId: "hermes",
@@ -505,6 +304,356 @@ describe("HermesSession recovery", () => {
     expect(snapshot.ok).toBe(true);
     if (snapshot.ok) expect(snapshot.value.turns[0]?.nativeTurnRef).toEqual(knownTurnRef);
     await session.close();
+  });
+
+  it("restores terminal tool output and failure from replay updates", async () => {
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport: new FakeTurnTransport() as unknown as HermesAcpTransport,
+      open: {
+        ...openResult(),
+        replay: [
+          { type: "user.text", text: "run it" },
+          {
+            type: "tool.call",
+            toolCallId: "tool-1",
+            update: {
+              sessionUpdate: "tool_call",
+              toolCallId: "tool-1",
+              title: "Run command",
+              status: "pending",
+              rawInput: { command: "false" },
+            },
+          },
+          {
+            type: "tool.update",
+            toolCallId: "tool-1",
+            update: {
+              sessionUpdate: "tool_call_update",
+              toolCallId: "tool-1",
+              status: "failed",
+              rawOutput: "exit code 1",
+            },
+          },
+        ] as HermesTransportEvent[],
+      },
+      onSettle: () => undefined,
+    });
+
+    const snapshot = await session.readSnapshot();
+
+    expect(snapshot.ok).toBe(true);
+    if (snapshot.ok) {
+      expect(snapshot.value.turns[0]?.items[0]).toMatchObject({
+        item: {
+          type: "toolExecution",
+          toolName: "Run command",
+          output: { content: [{ type: "text", text: "exit code 1" }] },
+        },
+        outcome: { status: "failed" },
+      });
+    }
+    await session.close();
+  });
+});
+
+describe("HermesSession terminal events", () => {
+  it("preserves partial tool output when the Turn ends without a terminal update", async () => {
+    const transport = {
+      onFault: () => undefined,
+      runTurn: async (_text: string, onEvent: (event: HermesTransportEvent) => void) => {
+        onEvent({
+          type: "tool.call",
+          toolCallId: "partial-tool-call",
+          update: {
+            sessionUpdate: "tool_call",
+            toolCallId: "partial-tool-call",
+            title: "Long command",
+            status: "in_progress",
+          },
+        } as HermesTransportEvent);
+        onEvent({
+          type: "tool.update",
+          toolCallId: "partial-tool-call",
+          update: {
+            sessionUpdate: "tool_call_update",
+            toolCallId: "partial-tool-call",
+            status: "in_progress",
+            rawOutput: "partial output",
+          },
+        } as HermesTransportEvent);
+        return { stopReason: "end_turn" as const };
+      },
+      cancel: async () => undefined,
+      close: async () => undefined,
+      setModel: async () => undefined,
+      setPermissionMode: async () => undefined,
+    } as unknown as HermesAcpTransport;
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport,
+      open: openResult(),
+      onSettle: () => undefined,
+    });
+
+    const outputsPromise = collectUntilTurnCompleted(session.outputs);
+    await session.execute({
+      type: "turn.start",
+      turnId: hostTurnIdSchema.parse("turn-partial-tool-output"),
+      input: [{ type: "text", text: "run" }],
+    });
+    const outputs = await outputsPromise;
+    const completed = outputs.find(
+      (output) => output.kind === "event" && output.event.type === "item.completed",
+    );
+
+    expect(completed).toMatchObject({
+      kind: "event",
+      event: {
+        type: "item.completed",
+        snapshot: {
+          item: { output: { content: [{ type: "text", text: "partial output" }] } },
+          outcome: { status: "cancelled" },
+        },
+      },
+    });
+    await session.close();
+  });
+
+  it("sends leading and trailing prompt whitespace to Hermes unchanged", async () => {
+    let receivedText = "";
+    const transport = {
+      onFault: () => undefined,
+      runTurn: async (text: string) => {
+        receivedText = text;
+        return { stopReason: "end_turn" as const };
+      },
+      cancel: async () => undefined,
+      close: async () => undefined,
+      setModel: async () => undefined,
+      setPermissionMode: async () => undefined,
+    } as unknown as HermesAcpTransport;
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport,
+      open: openResult(),
+      onSettle: () => undefined,
+    });
+    const input = "  indented prompt\n\n";
+
+    const outputsPromise = collectUntilTurnCompleted(session.outputs);
+    await session.execute({
+      type: "turn.start",
+      turnId: hostTurnIdSchema.parse("turn-preserve-whitespace"),
+      input: [{ type: "text", text: input }],
+    });
+    await outputsPromise;
+
+    expect(receivedText).toBe(input);
+    await session.close();
+  });
+
+  it("immediately terminalizes a failed tool_call carrying its initial output", async () => {
+    const transport = {
+      onFault: () => undefined,
+      runTurn: async (_text: string, onEvent: (event: HermesTransportEvent) => void) => {
+        onEvent({
+          type: "tool.call",
+          toolCallId: "terminal-tool-call",
+          update: {
+            sessionUpdate: "tool_call",
+            toolCallId: "terminal-tool-call",
+            title: "Run command",
+            status: "failed",
+            rawOutput: "exit code 1",
+          },
+        } as HermesTransportEvent);
+        return { stopReason: "end_turn" as const };
+      },
+      cancel: async () => undefined,
+      close: async () => undefined,
+      setModel: async () => undefined,
+      setPermissionMode: async () => undefined,
+    } as unknown as HermesAcpTransport;
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport,
+      open: openResult(),
+      onSettle: () => undefined,
+    });
+
+    const outputsPromise = collectUntilTurnCompleted(session.outputs);
+    await session.execute({
+      type: "turn.start",
+      turnId: hostTurnIdSchema.parse("turn-initial-terminal-tool"),
+      input: [{ type: "text", text: "run" }],
+    });
+    const outputs = await outputsPromise;
+    const completed = outputs.filter(
+      (output) => output.kind === "event" && output.event.type === "item.completed",
+    );
+
+    expect(completed).toHaveLength(1);
+    expect(completed[0]).toMatchObject({
+      kind: "event",
+      event: {
+        type: "item.completed",
+        snapshot: {
+          item: { output: { content: [{ type: "text", text: "exit code 1" }] } },
+          outcome: { status: "failed" },
+        },
+      },
+    });
+    await session.close();
+  });
+
+  it("emits a completed tool item only once", async () => {
+    const transport = {
+      onFault: () => undefined,
+      runTurn: async (_text: string, onEvent: (event: HermesTransportEvent) => void) => {
+        onEvent({
+          type: "tool.call",
+          toolCallId: "tool-1",
+          update: {
+            sessionUpdate: "tool_call",
+            toolCallId: "tool-1",
+            title: "Read file",
+            status: "pending",
+          },
+        } as HermesTransportEvent);
+        onEvent({
+          type: "tool.update",
+          toolCallId: "tool-1",
+          update: {
+            sessionUpdate: "tool_call_update",
+            toolCallId: "tool-1",
+            status: "completed",
+            rawOutput: "done",
+          },
+        } as HermesTransportEvent);
+        return { stopReason: "end_turn" as const };
+      },
+      cancel: async () => undefined,
+      close: async () => undefined,
+      setModel: async () => undefined,
+      setPermissionMode: async () => undefined,
+    } as unknown as HermesAcpTransport;
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport,
+      open: openResult(),
+      onSettle: () => undefined,
+    });
+
+    const outputsPromise = collectUntilTurnCompleted(session.outputs);
+    await session.execute({
+      type: "turn.start",
+      turnId: hostTurnIdSchema.parse("turn-tool-terminal"),
+      input: [{ type: "text", text: "read" }],
+    });
+    const outputs = await outputsPromise;
+
+    const completed = outputs.filter(
+      (output) => output.kind === "event" && output.event.type === "item.completed",
+    );
+    expect(completed).toHaveLength(1);
+    await session.close();
+  });
+
+  it("terminalizes the active Turn before a transport fault ends the Session", async () => {
+    let fault: ((error: HermesTransportError) => void) | undefined;
+    const transport = {
+      set onFault(handler: (error: HermesTransportError) => void) {
+        fault = handler;
+      },
+      runTurn: (_text: string, onEvent: (event: HermesTransportEvent) => void) => {
+        onEvent({
+          type: "tool.call",
+          toolCallId: "tool-during-fault",
+          update: {
+            sessionUpdate: "tool_call",
+            toolCallId: "tool-during-fault",
+            title: "Long-running command",
+            status: "in_progress",
+          },
+        } as HermesTransportEvent);
+        return new Promise<never>(() => undefined);
+      },
+      cancel: async () => undefined,
+      close: async () => undefined,
+      setModel: async () => undefined,
+      setPermissionMode: async () => undefined,
+    } as unknown as HermesAcpTransport;
+    const session = new HermesSession({
+      nativeRef: nativeSessionRefSchema.parse({
+        harnessId: "hermes",
+        nativeSessionId: "native-session-1",
+        formatVersion: 1,
+      }),
+      transport,
+      open: openResult(),
+      onSettle: () => undefined,
+    });
+
+    const outputsPromise = (async () => {
+      const outputs: HarnessOutput[] = [];
+      for await (const output of session.outputs) outputs.push(output);
+      return outputs;
+    })();
+    await session.execute({
+      type: "turn.start",
+      turnId: hostTurnIdSchema.parse("turn-fault"),
+      input: [{ type: "text", text: "go" }],
+    });
+    fault?.(new HermesTransportError("processExited", "Hermes exited"));
+    const outputs = await outputsPromise;
+    const eventTypes = outputs
+      .filter(
+        (output): output is Extract<HarnessOutput, { kind: "event" }> => output.kind === "event",
+      )
+      .map((output) => output.event.type);
+
+    expect(eventTypes).toEqual([
+      "turn.started",
+      "item.started",
+      "item.completed",
+      "turn.completed",
+      "session.faulted",
+    ]);
+    const itemCompleted = outputs.find(
+      (output) => output.kind === "event" && output.event.type === "item.completed",
+    );
+    expect(itemCompleted).toMatchObject({
+      kind: "event",
+      event: { type: "item.completed", snapshot: { outcome: { status: "cancelled" } } },
+    });
+    const turnCompleted = outputs.find(
+      (output) => output.kind === "event" && output.event.type === "turn.completed",
+    );
+    expect(turnCompleted).toMatchObject({
+      kind: "event",
+      event: { type: "turn.completed", outcome: { status: "failed" } },
+    });
   });
 });
 

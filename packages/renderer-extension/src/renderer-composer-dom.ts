@@ -663,7 +663,6 @@ export function mountComposerAgentControl(
   enabledAgents: readonly RendererAgent[],
   onSelect: (agent: RendererAgent) => void,
   onDownload: (agent: ExternalRendererAgent) => void,
-  onSelectCodexAccount: (accountId: string) => Promise<void> | void,
   onOpenProviderPicker: () => void,
   onSelectModel: (modelId: string) => void,
   onSelectThinking: (thinkingOptionId: string) => void,
@@ -685,7 +684,6 @@ export function mountComposerAgentControl(
     enabledAgents,
     onSelect,
     onDownload,
-    onSelectCodexAccount,
     onOpenProviderPicker,
   );
   const modelPicker = mountRendererModelPicker(composerId, onSelectModel, onSelectThinking);
@@ -745,7 +743,7 @@ export function renderComposerAgentControl(
   usage: ThreadUsageSnapshot | null = null,
   accountCredits: AccountCreditsSnapshot | null = null,
   locale: RendererSettingsLocale = "en",
-  codexAccounts: readonly CodexAccountSummary[] = [],
+  currentCodexAccount: CodexAccountSummary | null = null,
   ownershipError = false,
 ): void {
   if (control.usage === null) {
@@ -785,7 +783,7 @@ export function renderComposerAgentControl(
     adapterState,
     switching,
     availability,
-    codexAccounts,
+    currentCodexAccount,
     ownershipError,
   );
   reconcileComposerNativeControls(
@@ -807,9 +805,7 @@ export function renderComposerAgentControl(
     locale,
   );
   const selectedCodexAccount =
-    state.agent === "codex" && !ownershipError
-      ? codexAccounts.find((account) => account.active)
-      : undefined;
+    state.agent === "codex" && !ownershipError ? currentCodexAccount : undefined;
   if (control.usage) {
     renderRendererUsageControl(
       control.usage,

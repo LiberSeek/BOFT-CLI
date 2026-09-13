@@ -2,16 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { partitionAgentsByInstallStatus } from "../src/agent-group-preference.js";
 import { isNativeModelControlCandidate } from "../src/renderer-composer-dom.js";
-import {
-  DEFAULT_RENDERER_SETTINGS_MESSAGES,
-  rendererSettingsMessages,
-} from "../src/settings/localization.js";
-import {
-  codexAccountDisplayName,
-  codexAccountPresentationSignature,
-  formatCodexAccountAuthLabel,
-  shouldExpandCodexAccountOptions,
-} from "../src/renderer-codex-account-options.js";
+import { codexAccountDisplayName } from "../src/renderer-codex-account-options.js";
 import {
   rendererAgentMenuPlacement,
   rendererAgentPickerTooltip,
@@ -46,9 +37,6 @@ describe("Renderer Agent picker presentation", () => {
       accountId: "reviewer",
       label: "Reviewer",
       email: "reviewer@example.com",
-      codexHome: "/tmp/reviewer",
-      active: true,
-      isDefault: false,
     };
     expect(codexAccountDisplayName(account)).toEqual({
       local: "reviewer",
@@ -62,52 +50,6 @@ describe("Renderer Agent picker presentation", () => {
     });
   });
 
-  it("refreshes Account presentation when live email metadata arrives", () => {
-    const account = {
-      accountId: "reviewer",
-      label: "Reviewer",
-      codexHome: "/tmp/reviewer",
-      active: true,
-      isDefault: false,
-    };
-    expect(codexAccountPresentationSignature([account])).not.toBe(
-      codexAccountPresentationSignature([{ ...account, email: "reviewer@example.com" }]),
-    );
-  });
-
-  it("formats API and ChatGPT Codex Accounts with an auth-kind prefix", () => {
-    const english = DEFAULT_RENDERER_SETTINGS_MESSAGES;
-    const chinese = rendererSettingsMessages("zh-CN");
-    expect(
-      formatCodexAccountAuthLabel(
-        {
-          accountId: "api",
-          label: "API home",
-          codexHome: "/tmp/api",
-          active: true,
-          isDefault: true,
-          authKind: "api",
-        },
-        english,
-      ),
-    ).toBe("API - BANK OF TOKEN");
-    expect(
-      formatCodexAccountAuthLabel(
-        {
-          accountId: "reviewer",
-          label: "Reviewer",
-          email: "reviewer@example.com",
-          codexHome: "/tmp/reviewer",
-          active: false,
-          isDefault: false,
-          authKind: "chatgpt",
-        },
-        chinese,
-      ),
-    ).toBe("账号 - reviewer@example.com");
-    expect(shouldExpandCodexAccountOptions(1)).toBe(false);
-    expect(shouldExpandCodexAccountOptions(2)).toBe(true);
-  });
 
   it("includes the active Codex Account in the locked hover detail", () => {
     expect(
@@ -117,10 +59,6 @@ describe("Renderer Agent picker presentation", () => {
           accountId: "reviewer",
           label: "Reviewer",
           email: "reviewer@example.com",
-          codexHome: "/tmp/reviewer",
-          active: true,
-          isDefault: false,
-          authKind: "chatgpt",
         },
         2,
       ),
@@ -148,12 +86,12 @@ describe("Renderer Agent picker presentation", () => {
     });
   });
 
-  it("keeps the Provider picker enabled when Codex has multiple Accounts", () => {
+  it("does not turn multiple Codex Accounts into Harness picker entries", () => {
     expect(
-      rendererAgentPickerView({ agent: "codex", phase: "draft" }, "ready", false, ["codex"], {}, 2),
+      rendererAgentPickerView({ agent: "codex", phase: "draft" }, "ready", false, ["codex"]),
     ).toMatchObject({
       label: "Codex",
-      triggerDisabled: false,
+      triggerDisabled: true,
       optionDisabled: { codex: false },
     });
   });

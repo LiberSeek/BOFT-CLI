@@ -11,7 +11,8 @@
     "packages/adapters/muse",
     "packages/adapters/kiro-cli",
     "packages/adapters/codebuddy",
-    "packages/adapters/cursor-cli"
+    "packages/adapters/cursor-cli",
+    "packages/adapters/hermes"
   ],
   "runtimePackages": [
     "@agentclientprotocol/sdk",

@@ -1,25 +1,15 @@
-import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   catalogModelsFromInventory,
   inventoryPythonCandidates,
-  readHermesModelInventory,
+  venvPythonFromShim,
 } from "../src/hermes-inventory.js";
-import { projectHermesModelState } from "../src/hermes-models.js";
-
-const temporaryDirectories: string[] = [];
-
-afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { recursive: true, force: true })),
-  );
-});
+import { encodeHermesModelRef, projectHermesModelState } from "../src/hermes-models.js";
 
 describe("Hermes model catalog", () => {
   it("labels each model as Provider / model", () => {
@@ -79,33 +69,27 @@ describe("Hermes inventory process", () => {
     ).toBe("C:\\Users\\test\\.hermes\\hermes-agent\\venv\\Scripts\\python.exe");
   });
 
-  it.skipIf(process.platform === "win32")(
-    "passes the Adapter environment to the inventory subprocess",
-    async () => {
-      const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-inventory-env-"));
-      temporaryDirectories.push(directory);
-      const binDirectory = path.join(directory, "venv", "bin");
-      await mkdir(binDirectory, { recursive: true });
-      const launcher = path.join(binDirectory, "hermes");
-      const python = path.join(binDirectory, "python");
-      await writeFile(launcher, "#!/bin/sh\nexit 0\n");
-      await writeFile(
-        python,
-        `#!/usr/bin/env node
-if (process.env.HERMES_TEST_INVENTORY !== "visible") process.exit(4);
-console.log(JSON.stringify({ models: [], currentModelId: null }));
-`,
-      );
-      await chmod(launcher, 0o755);
-      await chmod(python, 0o755);
+  it("resolves the standalone Windows installation layout", () => {
+    expect(inventoryPythonCandidates("C:\\hermes\\bin\\hermes.exe", "win32")).toContain(
+      "C:\\hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+    );
+  });
 
-      await expect(
-        readHermesModelInventory(launcher, 10_000, {
-          environment: { ...process.env, HERMES_TEST_INVENTORY: "visible" },
-        }),
-      ).resolves.toEqual({ models: [], currentModelId: null });
-    },
-  );
+  it("follows the bound virtualenv from a Windows command shim", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "hermes-windows-shim-"));
+    const shim = path.join(directory, "hermes.cmd");
+    try {
+      await writeFile(
+        shim,
+        '@echo off\r\n"D:\\Apps\\Hermes\\hermes-agent\\venv\\Scripts\\hermes.exe" %*\r\n',
+      );
+      await expect(venvPythonFromShim(shim, "win32")).resolves.toBe(
+        "D:\\Apps\\Hermes\\hermes-agent\\venv\\Scripts\\python.exe",
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("Hermes Session Model projection", () => {
@@ -120,4 +104,16 @@ describe("Hermes Session Model projection", () => {
       ).toEqual({ effectiveModel: null, resolvedModelLabel: null });
     },
   );
+
+  it("aligns the native provider separator with the inventory catalog label", () => {
+    expect(
+      projectHermesModelState({
+        availableModels: [{ modelId: "zai:glm-5.3", name: "Z.AI · GLM · glm-5.3" }],
+        currentModelId: "zai:glm-5.3",
+      }),
+    ).toEqual({
+      effectiveModel: encodeHermesModelRef("zai:glm-5.3"),
+      resolvedModelLabel: "Z.AI / GLM / glm-5.3",
+    });
+  });
 });

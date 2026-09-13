@@ -1,6 +1,5 @@
 import {
   getSharedAgentGroupPreferenceStore,
-  partitionAgentsByInstallStatus,
   type AgentGroupPreferenceStore,
 } from "./agent-group-preference.js";
 import type {
@@ -10,23 +9,8 @@ import type {
   RendererAgentAvailability,
 } from "./agent-selection-state.js";
 import type { CodexAccountSummary } from "@codexhost/shared-contracts";
-import {
-  createRendererCodexAccountGroup,
-  formatCodexAccountAuthLabel,
-  shouldExpandCodexAccountOptions,
-  type RendererCodexAccountGroupControl,
-  type RendererCodexAccountOptionControl,
-} from "./renderer-codex-account-options.js";
 import { createRendererAgentIcon, RENDERER_AGENT_LABELS } from "./renderer-agent-icon.js";
-import { applyRendererPickerPopoverSurface } from "./renderer-picker-popover-style.js";
 import { requestConnectionsPageFocus } from "./settings/connections-page.js";
-import {
-  PICKER_TRAILING_SLOT_PX,
-  PICKER_ROW_PADDING,
-  applyPickerChromeIconHost,
-  applyPickerTrailingSlot,
-  createPickerChromeIcon,
-} from "./renderer-picker-trailing-slot.js";
 import {
   rendererSettingsMessages,
   resolveRendererSettingsLocale,
@@ -37,18 +21,16 @@ import type { RendererAdapterStatus } from "./versioned-renderer-adapter.js";
 // English by longstanding convention in this file — only the newer
 // Main/More grouping copy below is localized, since it mirrors text the
 // user already sees (translated) on the Connections settings page.
-function pickerGroupMessages(): ReturnType<typeof rendererSettingsMessages> & {
-  readonly codexAccountsLabel: string;
-  readonly manageCodexAccountsLabel: string;
+function pickerGroupMessages(): Pick<
+  ReturnType<typeof rendererSettingsMessages>,
+  "pickerMoreAgentsLabel" | "pickerManageLink" | "pickerHideUnusedAgentsCta"
+> & {
   readonly ownershipErrorLabel: string;
 } {
   const languages = typeof navigator !== "undefined" ? navigator.languages : [];
   const messages = rendererSettingsMessages(resolveRendererSettingsLocale(languages));
   return {
     ...messages,
-    codexAccountsLabel: "Codex",
-    manageCodexAccountsLabel:
-      messages.locale === "zh-CN" ? "管理 Codex 账号" : "Manage Codex Accounts",
     ownershipErrorLabel:
       messages.locale === "zh-CN"
         ? "无法确认会话的 Agent；重新聚焦窗口以重试"
@@ -66,7 +48,7 @@ interface MinimalSettingsShellHandle {
   openSettings(opener?: HTMLElement, pageId?: string): boolean;
 }
 
-function openSettingsPage(pageId: "accounts" | "connections", opener?: HTMLElement): void {
+function openSettingsPage(pageId: "connections", opener?: HTMLElement): void {
   const shell = (window as unknown as { __codexhostSettingsShellV1?: MinimalSettingsShellHandle })
     .__codexhostSettingsShellV1;
   shell?.openSettings(opener, pageId);
@@ -84,11 +66,11 @@ export const RENDERER_AGENT_INSTALL_URLS: Readonly<Record<ExternalRendererAgent,
   grok: "https://grok.com/",
   omp: "https://github.com/can1357/oh-my-pi",
   antigravity: "https://antigravity.google/product/antigravity-cli",
-  hermes: "https://hermes-agent.nousresearch.com/docs",
-  muse: "https://www.meta.ai/",
   "kiro-cli": "https://kiro.dev/docs/cli/",
   codebuddy: "https://www.codebuddy.ai/docs/zh/cli/overview",
   "cursor-cli": "https://cursor.com/docs/cli/installation",
+  hermes: "https://hermes-agent.nousresearch.com/docs",
+  muse: "https://www.meta.ai/",
 };
 
 type AgentAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
@@ -98,16 +80,17 @@ const AGENT_MENU_WIDTH = 224;
 // Below this many enabled Agents, the picker stays a flat list — grouping
 // only earns its keep once there are enough Harnesses to make scanning slow.
 const AGENT_GROUP_CTA_THRESHOLD = 5;
+
 interface AgentOptionControl {
   row: HTMLElement;
   button: HTMLButtonElement;
-  /** Trailing ✓ in the shared 24×24 slot (same column as install / Settings). */
   check: HTMLElement;
-  // Overlays the trailing check slot as Install ("+") when not installed, or
-  // a red error ("!") once it has failed — mutually exclusive with a selected
-  // ✓ since `RendererAgentAvailability` is a single enum value. Error mode
-  // has no inline details (picker only gets the coarse enum), so it links
-  // out to Settings → Connections instead.
+  // Shared 24x24 slot: renders as an Install ("+") action when the Agent is
+  // not installed, or a red error ("!") action once it has failed — the two
+  // are mutually exclusive since `RendererAgentAvailability` is a single
+  // enum value. The error mode has no error *details* to show inline (the
+  // picker only ever receives the coarse availability enum, not the full
+  // `CodexhostError`), so it links out to Settings → Connections instead.
   action: HTMLButtonElement | null;
 }
 
@@ -120,13 +103,6 @@ export interface RendererAgentPickerControl {
   menu: HTMLElement;
   agents: readonly RendererAgent[];
   options: Partial<Record<RendererAgent, AgentOptionControl>>;
-  /** Re-apply Main/More order using the latest install availability. */
-  syncAvailability(availability: AgentAvailability): void;
-  codexAccounts: readonly CodexAccountSummary[];
-  codexAccountOptions: Map<string, RendererCodexAccountOptionControl>;
-  codexAccountContainer: HTMLElement;
-  codexAccountGroup: RendererCodexAccountGroupControl;
-  selectCodexAccount(accountId: string): void;
   close(): void;
   dispose(): void;
 }
@@ -159,31 +135,13 @@ export function rendererAgentMenuPlacement(
   };
 }
 
-/**
- * Trailing status slot is shared: selected ✓ vs install/error action.
- * Action wins when both would apply (common during startup while a selected
- * external Agent is still `error` / `notInstalled`).
- */
-export function rendererAgentTrailingSlot(input: {
-  selected: boolean;
-  showInstall: boolean;
-  showError: boolean;
-}): { checkVisible: boolean; actionVisible: boolean } {
-  const actionVisible = input.showInstall || input.showError;
-  return {
-    actionVisible,
-    checkVisible: input.selected && !actionVisible,
-  };
-}
-
 export function rendererAgentPickerTooltip(
   state: { agent: RendererAgent; phase: ComposerAgentPhase },
   activeAccount: CodexAccountSummary | undefined,
-  accountCount = 0,
 ): string {
   const account =
-    state.agent === "codex" && activeAccount && shouldExpandCodexAccountOptions(accountCount)
-      ? ` · ${formatCodexAccountAuthLabel(activeAccount, rendererSettingsMessages(resolveRendererSettingsLocale(typeof navigator !== "undefined" ? navigator.languages : [])))}`
+    state.agent === "codex" && activeAccount
+      ? ` · ${activeAccount.email ?? activeAccount.label}`
       : "";
   return `Agent: ${RENDERER_AGENT_LABELS[state.agent]}${account}${state.phase === "locked" ? " (locked)" : ""}`;
 }
@@ -194,7 +152,6 @@ export function rendererAgentPickerView(
   switching: boolean,
   agents: readonly RendererAgent[],
   availability: AgentAvailability = {},
-  codexAccountCount = 0,
 ): RendererAgentPickerView {
   const optionDisabled = Object.fromEntries(
     agents.map((agent) => [
@@ -216,8 +173,7 @@ export function rendererAgentPickerView(
   ) as Partial<Record<ExternalRendererAgent, boolean>>;
   return {
     label: RENDERER_AGENT_LABELS[state.agent],
-    triggerDisabled:
-      switching || state.phase === "locked" || (agents.length < 2 && codexAccountCount < 2),
+    triggerDisabled: switching || state.phase === "locked" || agents.length < 2,
     nativeModelHidden: switching || state.agent !== "codex",
     optionDisabled,
     downloadVisible,
@@ -252,7 +208,6 @@ export function mountRendererAgentPicker(
   enabledAgents: readonly RendererAgent[],
   onSelect: (agent: RendererAgent) => void,
   onDownload: (agent: ExternalRendererAgent) => void,
-  onSelectCodexAccount: (accountId: string) => void,
   onOpen?: () => void,
   groupPreference: AgentGroupPreferenceStore = getSharedAgentGroupPreferenceStore(),
 ): RendererAgentPickerControl {
@@ -264,9 +219,7 @@ export function mountRendererAgentPicker(
   root.style.verticalAlign = "middle";
   root.style.width = "30px";
   root.style.height = "28px";
-  // Trailing-cluster spacing (Model / Agent / Send) is owned by
-  // `refreshTrailingClusterPlacement` so left/right gaps stay equal.
-  root.style.margin = "0";
+  root.style.marginInline = "4px";
   root.style.color = "inherit";
 
   const trigger = document.createElement("button");
@@ -282,14 +235,14 @@ export function mountRendererAgentPicker(
   trigger.style.padding = "0";
   trigger.style.border = "0";
   trigger.style.borderRadius = "6px";
-  trigger.style.background = "transparent";
+  trigger.style.background = "rgba(127, 127, 127, 0.08)";
   trigger.style.color = "inherit";
   trigger.style.cursor = "pointer";
   trigger.addEventListener("pointerenter", () => {
     if (!trigger.disabled) trigger.style.background = "rgba(127, 127, 127, 0.16)";
   });
   trigger.addEventListener("pointerleave", () => {
-    trigger.style.background = "transparent";
+    trigger.style.background = "rgba(127, 127, 127, 0.08)";
   });
 
   const iconSlot = document.createElement("span");
@@ -328,12 +281,16 @@ export function mountRendererAgentPicker(
   menu.style.inset = "auto";
   menu.style.width = `${AGENT_MENU_WIDTH}px`;
   menu.style.padding = "4px";
+  menu.style.border = "0";
+  menu.style.borderRadius = "6px";
+  menu.style.background = "Canvas";
+  menu.style.color = "CanvasText";
+  menu.style.boxShadow = "0 8px 24px rgba(0, 0, 0, 0.28)";
   menu.style.boxSizing = "border-box";
   menu.style.maxHeight = "min(420px, calc(100vh - 16px))";
   menu.style.overflowX = "hidden";
   menu.style.overflowY = "auto";
   menu.style.zIndex = "2147483647";
-  applyRendererPickerPopoverSurface(menu);
   trigger.setAttribute("aria-controls", menu.id);
 
   const options: Partial<Record<RendererAgent, AgentOptionControl>> = {};
@@ -346,25 +303,6 @@ export function mountRendererAgentPicker(
     else menu.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
   };
-  const codexAccountGroup = createRendererCodexAccountGroup({
-    ownerDocument: document,
-    accountsLabel: groupMessages.codexAccountsLabel,
-    manageAccountsLabel: groupMessages.manageCodexAccountsLabel,
-    messages: groupMessages,
-    onSelect(accountId) {
-      close();
-      trigger.focus();
-      onSelectCodexAccount(accountId);
-    },
-    onManage() {
-      close();
-      openSettingsPage("accounts", trigger);
-    },
-  });
-  const codexAccountOptions = codexAccountGroup.options;
-  const codexAccountContainer = codexAccountGroup.root;
-  trigger.append(codexAccountGroup.badge);
-
   const focusOption = (position: "first" | "last" | "selected"): void => {
     const available = [
       ...menu.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"], [role="menuitem"]'),
@@ -396,7 +334,7 @@ export function mountRendererAgentPicker(
     button.style.width = "100%";
     button.style.flex = "1 1 auto";
     button.style.height = "36px";
-    button.style.padding = PICKER_ROW_PADDING;
+    button.style.padding = "0 34px 0 8px";
     button.style.border = "0";
     button.style.borderRadius = "4px";
     button.style.background = "transparent";
@@ -418,12 +356,12 @@ export function mountRendererAgentPicker(
     button.addEventListener("blur", () => updateHighlight(false));
 
     const check = document.createElement("span");
-    check.dataset.codexhostAgentTrailing = "check";
+    check.textContent = "\u2713";
     check.setAttribute("aria-hidden", "true");
-    applyPickerTrailingSlot(check);
+    check.style.width = "24px";
+    check.style.flex = "none";
+    check.style.textAlign = "center";
     check.style.visibility = "hidden";
-    check.style.pointerEvents = "none";
-    check.append(createPickerChromeIcon("tick"));
 
     const label = document.createElement("span");
     label.textContent = RENDERER_AGENT_LABELS[agent];
@@ -432,11 +370,7 @@ export function mountRendererAgentPicker(
     label.style.overflow = "hidden";
     label.style.textOverflow = "ellipsis";
     label.style.whiteSpace = "nowrap";
-    const leadingIcon = document.createElement("span");
-    leadingIcon.setAttribute("aria-hidden", "true");
-    applyPickerChromeIconHost(leadingIcon);
-    leadingIcon.append(createRendererAgentIcon(agent));
-    button.append(leadingIcon, label);
+    button.append(createRendererAgentIcon(agent), label);
     button.addEventListener("click", () => {
       const selected = button.getAttribute("aria-pressed") === "true";
       close();
@@ -450,21 +384,19 @@ export function mountRendererAgentPicker(
         : (() => {
             const control = document.createElement("button");
             control.type = "button";
-            // Overlay the trailing check slot — install/error never share a
-            // selected row with ✓, and nesting a button inside the option
-            // button is invalid HTML.
-            applyPickerTrailingSlot(control);
-            control.dataset.codexhostAgentTrailing = "action";
+            control.style.position = "absolute";
+            control.style.inset = "0";
+            control.style.display = "inline-flex";
+            control.style.alignItems = "center";
+            control.style.justifyContent = "center";
+            control.style.width = "24px";
+            control.style.height = "24px";
+            control.style.flex = "none";
+            control.style.padding = "0";
             control.style.border = "0";
             control.style.borderRadius = "4px";
             control.style.background = "transparent";
             control.style.cursor = "pointer";
-            // Hidden until the first render pass decides install/error — otherwise
-            // an empty absolute button sits on top of the ✓ during mount.
-            control.style.visibility = "hidden";
-            control.style.pointerEvents = "none";
-            control.disabled = true;
-            control.setAttribute("aria-hidden", "true");
             control.addEventListener("pointerenter", () => {
               if (!control.disabled) control.style.background = "rgba(127, 127, 127, 0.16)";
             });
@@ -489,9 +421,20 @@ export function mountRendererAgentPicker(
           })();
     const row = document.createElement("div");
     row.style.position = "relative";
-    row.style.display = "block";
-    row.append(button, check);
-    if (action) row.append(action);
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    const actionSlot = document.createElement("span");
+    actionSlot.style.position = "absolute";
+    actionSlot.style.top = "6px";
+    actionSlot.style.right = "4px";
+    actionSlot.style.zIndex = "1";
+    actionSlot.style.display = "inline-block";
+    actionSlot.style.width = "24px";
+    actionSlot.style.height = "24px";
+    actionSlot.style.pointerEvents = "none";
+    actionSlot.append(check);
+    if (action) actionSlot.append(action);
+    row.append(button, actionSlot);
     options[agent] = { row, button, check, action };
     rowsByAgent.set(agent, row);
   }
@@ -506,151 +449,90 @@ export function mountRendererAgentPicker(
   mainGroup.style.gap = "2px";
 
   let moreOpen = false;
-  const applyMutedChromeHover = (button: HTMLButtonElement): void => {
-    button.addEventListener("pointerenter", () => {
-      button.style.background = "rgba(127, 127, 127, 0.1)";
-    });
-    button.addEventListener("pointerleave", () => {
-      button.style.background = "transparent";
-    });
-  };
-  const moreRow = document.createElement("div");
-  moreRow.dataset.codexhostAgentMore = "row";
-  moreRow.style.position = "relative";
-  moreRow.style.display = "none";
-  moreRow.style.width = "100%";
-  moreRow.style.marginTop = "2px";
-  moreRow.style.minWidth = "0";
   const moreToggle = document.createElement("button");
   moreToggle.type = "button";
-  moreToggle.dataset.codexhostAgentMore = "toggle";
-  moreToggle.setAttribute("aria-expanded", "false");
-  moreToggle.style.display = "flex";
+  moreToggle.style.display = "none";
   moreToggle.style.alignItems = "center";
-  moreToggle.style.gap = "8px";
+  moreToggle.style.gap = "6px";
   moreToggle.style.width = "100%";
-  moreToggle.style.height = "36px";
-  moreToggle.style.padding = PICKER_ROW_PADDING;
+  moreToggle.style.height = "32px";
+  moreToggle.style.marginTop = "2px";
+  moreToggle.style.padding = "0 8px";
   moreToggle.style.border = "0";
   moreToggle.style.borderRadius = "4px";
   moreToggle.style.background = "transparent";
   moreToggle.style.color = "inherit";
-  moreToggle.style.font = "500 13px/1 system-ui, sans-serif";
+  moreToggle.style.font = "500 12px/1 system-ui, sans-serif";
   moreToggle.style.opacity = "0.72";
   moreToggle.style.cursor = "pointer";
-  applyMutedChromeHover(moreToggle);
-  const moreArrow = document.createElement("span");
-  moreArrow.dataset.codexhostAgentMore = "arrow";
-  moreArrow.setAttribute("aria-hidden", "true");
-  applyPickerChromeIconHost(moreArrow);
-  moreArrow.style.color = "currentColor";
-  const setMoreArrow = (open: boolean): void => {
-    moreArrow.replaceChildren(createPickerChromeIcon(open ? "chevron-up" : "chevron-right"));
-  };
-  setMoreArrow(false);
-  const moreLabel = document.createElement("span");
-  moreLabel.style.display = "inline-flex";
-  moreLabel.style.alignItems = "center";
-  moreLabel.style.minWidth = "0";
-  moreLabel.style.flex = "1 1 auto";
-  moreLabel.style.overflow = "hidden";
-  moreLabel.style.textOverflow = "ellipsis";
-  moreLabel.style.whiteSpace = "nowrap";
-  moreLabel.style.lineHeight = `${PICKER_TRAILING_SLOT_PX}px`;
-  moreToggle.append(moreArrow, moreLabel);
-  const moreSettings = document.createElement("button");
-  moreSettings.type = "button";
-  moreSettings.dataset.codexhostAgentMore = "settings";
-  moreSettings.setAttribute("aria-label", groupMessages.pickerManageLink);
-  moreSettings.title = groupMessages.pickerManageLink;
-  applyPickerTrailingSlot(moreSettings);
-  moreSettings.style.border = "0";
-  moreSettings.style.borderRadius = "4px";
-  moreSettings.style.background = "transparent";
-  moreSettings.style.color = "inherit";
-  moreSettings.style.opacity = "0.72";
-  moreSettings.style.cursor = "pointer";
-  moreSettings.append(createPickerChromeIcon("settings"));
-  applyMutedChromeHover(moreSettings);
-  moreSettings.addEventListener("click", (event) => {
-    event.stopPropagation();
-    openConnectionsSettings(trigger);
+  moreToggle.addEventListener("pointerenter", () => {
+    moreToggle.style.background = "rgba(127, 127, 127, 0.1)";
   });
-  moreRow.append(moreToggle, moreSettings);
+  moreToggle.addEventListener("pointerleave", () => {
+    moreToggle.style.background = "transparent";
+  });
+  const moreArrow = document.createElement("span");
+  moreArrow.setAttribute("aria-hidden", "true");
+  moreArrow.style.width = "12px";
+  moreArrow.style.flex = "none";
+  moreArrow.textContent = "▸";
+  const moreLabel = document.createElement("span");
+  moreToggle.append(moreArrow, moreLabel);
 
   const morePanel = document.createElement("div");
-  morePanel.id = `${composerId}-agent-more`;
-  morePanel.dataset.codexhostAgentMore = "panel";
-  moreToggle.setAttribute("aria-controls", morePanel.id);
   morePanel.style.display = "none";
   morePanel.style.flexDirection = "column";
   morePanel.style.gap = "2px";
-  // Keep More rows flush with Main — no nested indent once expanded.
+  morePanel.style.paddingLeft = "8px";
   const moreRows = document.createElement("div");
   moreRows.style.display = "flex";
   moreRows.style.flexDirection = "column";
   moreRows.style.gap = "2px";
-  morePanel.append(moreRows);
-  const createSettingsAction = (
-    labelText: string,
-    options: { initiallyHidden?: boolean; bordered?: boolean } = {},
-  ): HTMLButtonElement => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.style.display = options.initiallyHidden ? "none" : "flex";
-    button.style.alignItems = "center";
-    button.style.gap = "8px";
-    button.style.width = "100%";
-    button.style.height = "36px";
-    button.style.marginTop = "2px";
-    button.style.padding = "0 8px";
-    button.style.border = "0";
-    if (options.bordered) {
-      button.style.borderWidth = "1px 0 0 0";
-      button.style.borderStyle = "solid";
-      button.style.borderColor = "rgba(127, 127, 127, 0.16)";
-      button.style.borderRadius = "0";
-    } else {
-      button.style.borderRadius = "4px";
-    }
-    button.style.background = "transparent";
-    button.style.color = "inherit";
-    button.style.font = "500 13px/1 system-ui, sans-serif";
-    button.style.opacity = "0.72";
-    button.style.cursor = "pointer";
-    const icon = document.createElement("span");
-    icon.setAttribute("aria-hidden", "true");
-    applyPickerChromeIconHost(icon);
-    icon.style.color = "currentColor";
-    icon.append(createPickerChromeIcon("settings"));
-    const label = document.createElement("span");
-    label.textContent = labelText;
-    label.style.display = "inline-flex";
-    label.style.alignItems = "center";
-    label.style.lineHeight = `${PICKER_TRAILING_SLOT_PX}px`;
-    button.append(icon, label);
-    applyMutedChromeHover(button);
-    button.addEventListener("click", () => openConnectionsSettings(trigger));
-    return button;
-  };
+  const manageLink = document.createElement("button");
+  manageLink.type = "button";
+  manageLink.textContent = `${groupMessages.pickerManageLink} →`;
+  manageLink.style.display = "flex";
+  manageLink.style.width = "100%";
+  manageLink.style.height = "28px";
+  manageLink.style.marginTop = "2px";
+  manageLink.style.padding = "0 12px";
+  manageLink.style.border = "0";
+  manageLink.style.borderRadius = "4px";
+  manageLink.style.background = "transparent";
+  manageLink.style.color = "#6d9fff";
+  manageLink.style.font = "500 11px/1 system-ui, sans-serif";
+  manageLink.style.cursor = "pointer";
+  manageLink.addEventListener("click", () => openConnectionsSettings(trigger));
+  morePanel.append(moreRows, manageLink);
 
-  const cta = createSettingsAction(groupMessages.pickerHideUnusedAgentsCta, {
-    initiallyHidden: true,
-    bordered: true,
+  const cta = document.createElement("button");
+  cta.type = "button";
+  cta.style.display = "none";
+  cta.style.alignItems = "center";
+  cta.style.gap = "6px";
+  cta.style.width = "100%";
+  cta.style.height = "32px";
+  cta.style.marginTop = "2px";
+  cta.style.padding = "0 8px";
+  cta.style.borderWidth = "1px 0 0 0";
+  cta.style.borderStyle = "solid";
+  cta.style.borderColor = "rgba(127, 127, 127, 0.16)";
+  cta.style.background = "transparent";
+  cta.style.color = "inherit";
+  cta.style.font = "500 12px/1 system-ui, sans-serif";
+  cta.style.opacity = "0.72";
+  cta.style.cursor = "pointer";
+  cta.textContent = `⚙ ${groupMessages.pickerHideUnusedAgentsCta} →`;
+  cta.addEventListener("pointerenter", () => {
+    cta.style.background = "rgba(127, 127, 127, 0.1)";
   });
+  cta.addEventListener("pointerleave", () => {
+    cta.style.background = "transparent";
+  });
+  cta.addEventListener("click", () => openConnectionsSettings(trigger));
 
-  let latestAvailability: AgentAvailability = {};
   let mainAgents: RendererAgent[] = [...enabledAgents];
   let moreAgents: RendererAgent[] = [];
-  const isInstalled = (agent: ExternalRendererAgent): boolean =>
-    latestAvailability[agent] !== "notInstalled";
-  const partitionExternal = (agents: readonly RendererAgent[]): RendererAgent[] =>
-    partitionAgentsByInstallStatus(
-      agents
-        .filter((agent): agent is ExternalRendererAgent => agent !== "codex")
-        .map((agent) => ({ agent })),
-      isInstalled,
-    ).map((entry) => entry.agent);
   const regroup = (): void => {
     const enabledSet = new Set(enabledAgents);
     const seen = new Set<RendererAgent>();
@@ -683,17 +565,12 @@ export function mountRendererAgentPicker(
       nextMain.push(agent);
     }
 
-    // Within each section, installed Agents stay ahead of uninstalled ones.
-    // Codex remains pinned at the front of Main.
-    const mainExternal = partitionExternal(nextMain);
-    const moreExternal = partitionExternal(nextMore);
-    mainAgents = enabledSet.has("codex") ? ["codex", ...mainExternal] : mainExternal;
-    moreAgents = moreExternal;
+    mainAgents = nextMain;
+    moreAgents = nextMore;
     const mainChildren: HTMLElement[] = [];
     for (const agent of mainAgents) {
       const row = rowsByAgent.get(agent);
       if (row) mainChildren.push(row);
-      if (agent === "codex") mainChildren.push(codexAccountContainer);
     }
     mainGroup.replaceChildren(...mainChildren);
     moreRows.replaceChildren(
@@ -703,12 +580,11 @@ export function mountRendererAgentPicker(
     );
     const showMoreGroup = moreAgents.length > 0;
     const showCta = !showMoreGroup && enabledAgents.length > AGENT_GROUP_CTA_THRESHOLD;
-    moreRow.style.display = showMoreGroup ? "block" : "none";
+    moreToggle.style.display = showMoreGroup ? "flex" : "none";
     morePanel.style.display = showMoreGroup && moreOpen ? "flex" : "none";
-    moreToggle.setAttribute("aria-expanded", String(showMoreGroup && moreOpen));
     cta.style.display = showCta ? "flex" : "none";
     moreLabel.textContent = `${groupMessages.pickerMoreAgentsLabel} (${moreAgents.length})`;
-    setMoreArrow(moreOpen);
+    moreArrow.textContent = moreOpen ? "▾" : "▸";
   };
   moreToggle.addEventListener("click", () => {
     moreOpen = !moreOpen;
@@ -717,9 +593,7 @@ export function mountRendererAgentPicker(
   regroup();
   const unsubscribeGroup = groupPreference.subscribe(regroup);
 
-  // More Agents sit above the toggle so the extra list expands upward.
-  // Settings lives on the toggle row, not as a trailing item after expand.
-  menu.append(mainGroup, morePanel, moreRow, cta);
+  menu.append(mainGroup, moreToggle, morePanel, cta);
   root.append(trigger, menu);
 
   const onTriggerClick = (): void => {
@@ -780,15 +654,6 @@ export function mountRendererAgentPicker(
     menu,
     agents: [...enabledAgents],
     options,
-    syncAvailability(availability) {
-      latestAvailability = availability;
-      regroup();
-    },
-    codexAccounts: [],
-    codexAccountOptions,
-    codexAccountContainer,
-    codexAccountGroup,
-    selectCodexAccount: onSelectCodexAccount,
     close,
     dispose() {
       close();
@@ -811,20 +676,15 @@ export function renderRendererAgentPicker(
   adapterState: RendererAdapterStatus["state"],
   switching: boolean,
   availability: AgentAvailability = {},
-  codexAccounts: readonly CodexAccountSummary[] = [],
+  currentCodexAccount: CodexAccountSummary | null = null,
   ownershipError = false,
 ): RendererAgentPickerView {
-  control.syncAvailability(availability);
-  control.codexAccounts = [...codexAccounts];
-  const codexOption = control.options.codex;
-  if (codexOption) codexOption.row.hidden = shouldExpandCodexAccountOptions(codexAccounts.length);
   const view = rendererAgentPickerView(
     state,
     adapterState,
     switching,
     control.agents,
     availability,
-    shouldExpandCodexAccountOptions(codexAccounts.length) ? codexAccounts.length : 0,
   );
   if (control.iconSlot.dataset.agent !== state.agent) {
     control.iconSlot.replaceChildren(createRendererAgentIcon(state.agent));
@@ -840,16 +700,9 @@ export function renderRendererAgentPicker(
         ? `Agent: ${view.label}`
         : `Select Agent, current ${view.label}`,
   );
-  const activeAccount = codexAccounts.find(({ active }) => active);
-  control.codexAccountGroup.render({
-    accounts: shouldExpandCodexAccountOptions(codexAccounts.length) ? codexAccounts : [],
-    selectedAccountId: state.agent === "codex" ? (activeAccount?.accountId ?? null) : null,
-    disabled: switching || state.phase === "locked",
-    showBadge: state.agent === "codex" && shouldExpandCodexAccountOptions(codexAccounts.length),
-  });
   control.trigger.title = ownershipError
     ? pickerGroupMessages().ownershipErrorLabel
-    : rendererAgentPickerTooltip(state, activeAccount, codexAccounts.length);
+    : rendererAgentPickerTooltip(state, currentCodexAccount ?? undefined);
   control.trigger.style.cursor = control.trigger.disabled ? "not-allowed" : "pointer";
   control.trigger.style.opacity = control.trigger.disabled && !switching ? "0.72" : "1";
   control.iconSlot.style.display = switching || ownershipError ? "none" : "inline-flex";
@@ -867,45 +720,37 @@ export function renderRendererAgentPicker(
     option.button.style.background = selected ? "rgba(127, 127, 127, 0.16)" : "transparent";
     option.button.style.cursor = option.button.disabled ? "not-allowed" : "pointer";
     option.button.style.opacity = option.button.disabled && !selected ? "0.5" : "1";
+    option.check.style.visibility = selected ? "visible" : "hidden";
     if (option.action) {
       const externalAgent = agent as ExternalRendererAgent;
       const showInstall = view.downloadVisible[externalAgent] === true;
       const showError = view.errorVisible[externalAgent] === true;
-      const { checkVisible, actionVisible } = rendererAgentTrailingSlot({
-        selected,
-        showInstall,
-        showError,
-      });
-      option.check.style.visibility = checkVisible ? "visible" : "hidden";
+      const visible = showInstall || showError;
       option.action.hidden = false;
-      option.action.disabled = !actionVisible;
+      option.action.disabled = !visible;
       option.action.style.display = "inline-flex";
-      option.action.style.visibility = actionVisible ? "visible" : "hidden";
-      option.action.style.pointerEvents = actionVisible ? "auto" : "none";
+      option.action.style.visibility = visible ? "visible" : "hidden";
+      option.action.style.pointerEvents = visible ? "auto" : "none";
       if (showError) {
         option.action.dataset.mode = "error";
         option.action.textContent = "!";
         option.action.style.color = "#f87171";
         option.action.style.font = "800 13px/1 system-ui, sans-serif";
-        option.action.style.lineHeight = "1";
         option.action.style.opacity = "1";
         const label = `${RENDERER_AGENT_LABELS[agent]} connection error — open Settings for details`;
         option.action.setAttribute("aria-label", label);
         option.action.title = label;
       } else {
         option.action.dataset.mode = "install";
-        option.action.replaceChildren(createPickerChromeIcon("add"));
+        option.action.textContent = "+";
         option.action.style.color = "inherit";
-        option.action.style.font = "";
-        option.action.style.lineHeight = "0";
+        option.action.style.font = "600 18px/1 system-ui, sans-serif";
         option.action.style.opacity = "0.72";
         const label = `Install ${RENDERER_AGENT_LABELS[agent]}`;
         option.action.setAttribute("aria-label", label);
         option.action.title = label;
       }
-      option.action.setAttribute("aria-hidden", String(!actionVisible));
-    } else {
-      option.check.style.visibility = selected ? "visible" : "hidden";
+      option.action.setAttribute("aria-hidden", String(!visible));
     }
   }
   return view;

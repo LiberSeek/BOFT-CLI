@@ -37,7 +37,6 @@ import {
   type TurnCancelAccepted,
   type TurnCancelCommand,
   type TurnOutcome,
-  type HostTextInput,
   type TurnStartAccepted,
   type TurnStartCommand,
 } from "@codexhost/harness-adapter";
@@ -61,6 +60,7 @@ import {
   type HermesTransportEvent,
 } from "./acp-transport.js";
 import {
+  catalogAlignedModelLabel,
   decodeHermesModelRefId,
   isHermesModeId,
   projectHermesModelState,
@@ -176,6 +176,7 @@ class ActiveTurn {
     { item: HostToolExecutionItem; startedAt: number; output?: HostToolOutput }
   >();
   #finishedItems: HostItemSnapshot[] = [];
+  #emittedTerminalItemIds = new Set<string>();
 
   constructor(turnId: string, turnKey: string, input: TurnStartCommand["input"]) {
     this.turnId = hostTurnIdSchema.parse(turnId);
@@ -212,12 +213,29 @@ class ActiveTurn {
     return { startedItem: item, item: appended };
   }
 
+  completeCurrentText(): HostItemSnapshot | null {
+    if (!this.#currentText) return null;
+    const snapshot: HostItemSnapshot = {
+      item: this.#currentText.item,
+      outcome: { status: "succeeded" },
+    };
+    this.#currentText = null;
+    this.#finishedItems.push(snapshot);
+    this.#emittedTerminalItemIds.add(snapshot.item.itemId);
+    return snapshot;
+  }
+
   addToolItem(toolCallId: string, entry: { item: HostToolExecutionItem; startedAt: number }): void {
     this.#toolItems.set(toolCallId, entry);
   }
 
   getToolItem(toolCallId: string): { item: HostToolExecutionItem; startedAt: number } | undefined {
     return this.#toolItems.get(toolCallId);
+  }
+
+  updateToolOutput(toolCallId: string, output: HostToolOutput): void {
+    const entry = this.#toolItems.get(toolCallId);
+    if (entry) entry.output = output;
   }
 
   completeToolItem(
@@ -231,11 +249,13 @@ class ActiveTurn {
     const outcome: HostItemOutcome = failed
       ? { status: "failed", error: harnessError("nativeFailure", "Tool execution failed") }
       : { status: "succeeded" };
+    const finalOutput = output ?? entry.output;
     const snapshot: HostItemSnapshot = {
-      item: { ...entry.item, ...(output ? { output } : {}) },
+      item: { ...entry.item, ...(finalOutput ? { output: finalOutput } : {}) },
       outcome,
     };
     this.#finishedItems.push(snapshot);
+    this.#emittedTerminalItemIds.add(snapshot.item.itemId);
     return snapshot;
   }
 
@@ -249,7 +269,7 @@ class ActiveTurn {
     }
     for (const [, entry] of this.#toolItems) {
       this.#finishedItems.push({
-        item: entry.item,
+        item: { ...entry.item, ...(entry.output ? { output: entry.output } : {}) },
         outcome: { status: "cancelled", reason: "Turn ended" },
       });
     }
@@ -257,7 +277,12 @@ class ActiveTurn {
   }
 
   drainPendingItems(): HostItemSnapshot[] {
-    return this.#finishedItems.splice(0);
+    const pending = this.#finishedItems.filter(
+      (snapshot) => !this.#emittedTerminalItemIds.has(snapshot.item.itemId),
+    );
+    this.#finishedItems = [];
+    this.#emittedTerminalItemIds.clear();
+    return pending;
   }
 
   toSnapshot(
@@ -309,6 +334,7 @@ function historyTurnsFromReplay(
     items: HostItemSnapshot[];
     turnKey: string;
   } | null = null;
+  let toolItemIndexes = new Map<string, number>();
 
   const closeTurn = () => {
     if (!current || current.items.length === 0) {
@@ -330,9 +356,13 @@ function historyTurnsFromReplay(
       nativeTurnRef,
       input: [{ type: "text", text: current.inputText }],
       items: current.items,
-      outcome: { status: "succeeded" },
+      outcome: {
+        status: "unknown",
+        reason: "Hermes replay does not include terminal Turn outcome metadata",
+      },
     });
     current = null;
+    toolItemIndexes = new Map();
   };
 
   const pushText = (kind: "reasoning" | "agentMessage", text: string) => {
@@ -359,8 +389,12 @@ function historyTurnsFromReplay(
   for (const event of replay) {
     switch (event.type) {
       case "user.text": {
-        closeTurn();
-        current = { inputText: event.text, items: [], turnKey: `history-${turns.length + 1}` };
+        if (current && current.items.length === 0) {
+          current.inputText += event.text;
+        } else {
+          closeTurn();
+          current = { inputText: event.text, items: [], turnKey: `history-${turns.length + 1}` };
+        }
         break;
       }
       case "agent.thought":
@@ -373,6 +407,7 @@ function historyTurnsFromReplay(
         if (!current)
           current = { inputText: "(resumed)", items: [], turnKey: `history-${turns.length + 1}` };
         const update = event.update as ToolCallUpdate;
+        const output = toolOutputFromUpdate(update);
         const toolName =
           (typeof update.title === "string" && update.title.trim()) ||
           (typeof update.name === "string" && update.name.trim()) ||
@@ -385,9 +420,41 @@ function historyTurnsFromReplay(
             arguments: isPlainObjectOrArray(update.rawInput)
               ? (update.rawInput as HostToolExecutionItem["arguments"])
               : null,
+            ...(output ? { output } : {}),
           },
-          outcome: { status: "succeeded" },
+          outcome:
+            update.status === "completed"
+              ? { status: "succeeded" }
+              : update.status === "failed"
+                ? {
+                    status: "failed",
+                    error: harnessError("nativeFailure", "Tool execution failed"),
+                  }
+                : { status: "cancelled", reason: "Turn ended before terminal tool update" },
         });
+        toolItemIndexes.set(event.toolCallId, current.items.length - 1);
+        break;
+      }
+      case "tool.update": {
+        if (!current) break;
+        const itemIndex = toolItemIndexes.get(event.toolCallId);
+        if (itemIndex === undefined) break;
+        const prior = current.items[itemIndex];
+        if (!prior || prior.item.type !== "toolExecution") break;
+        const update = event.update as ToolCallUpdate;
+        const output = toolOutputFromUpdate(update);
+        current.items[itemIndex] = {
+          item: { ...prior.item, ...(output ? { output } : {}) },
+          outcome:
+            update.status === "completed"
+              ? { status: "succeeded" }
+              : update.status === "failed"
+                ? {
+                    status: "failed",
+                    error: harnessError("nativeFailure", "Tool execution failed"),
+                  }
+                : prior.outcome,
+        };
         break;
       }
       default:
@@ -447,11 +514,13 @@ export class HermesSession implements HarnessSession {
   #state: HarnessSessionState;
   #faulted: HarnessError | null = null;
   #closed = false;
+  #availableModels: { modelId: string; name: string }[] = [];
 
   #activeTurn: ActiveTurn | null = null;
   #activeTurnId: ReturnType<typeof hostTurnIdSchema.parse> | null = null;
   #completedTurns: HostTurnSnapshot[] = [];
   #historyTurns: HostTurnSnapshot[];
+  #latestUsage: HostUsage | null;
   #approvalWaiters = new Map<ReturnType<typeof hostInteractionIdSchema.parse>, ApprovalWaiter>();
 
   constructor(options: HermesSessionOptions) {
@@ -460,6 +529,10 @@ export class HermesSession implements HarnessSession {
     this.#onSettle = options.onSettle;
     const projected = projectHermesModelState(options.open.session.models);
     const modes = options.open.session.modes;
+    // Kept for set_model: ACP returns no state after a switch, so the label is
+    // re-projected from the same SessionState inventory that seeded this
+    // session.
+    this.#availableModels = options.open.session.models?.availableModels ?? [];
     this.#state = {
       nativeRef: this.#nativeRef,
       ...(projected.effectiveModel ? { effectiveModel: projected.effectiveModel } : {}),
@@ -475,6 +548,7 @@ export class HermesSession implements HarnessSession {
       options.knownTurnRefs,
     );
     this.initialUsage = lastUsageFromReplay(options.open.replay);
+    this.#latestUsage = this.initialUsage;
     this.outputs = this.#channel.outputs;
     this.#transport.onFault = (error) => this.#fault(transportErrorToHarness(error));
   }
@@ -545,8 +619,14 @@ export class HermesSession implements HarnessSession {
   }
 
   #cancelApprovalWaiters(): void {
-    for (const waiter of this.#approvalWaiters.values()) {
+    for (const [interactionId, waiter] of this.#approvalWaiters) {
       waiter.resolve({ outcome: { outcome: "cancelled" } });
+      this.#emit({
+        type: "interaction.closed",
+        interactionId,
+        turnId: waiter.turnId,
+        reason: "cancelled",
+      });
     }
     this.#approvalWaiters.clear();
   }
@@ -555,8 +635,9 @@ export class HermesSession implements HarnessSession {
     if (this.#closed || this.#faulted) return;
     this.#faulted = error;
     this.#cancelApprovalWaiters();
-    this.#activeTurn = null;
-    this.#activeTurnId = null;
+    if (this.#activeTurn) {
+      this.#completeActiveTurn(this.#activeTurn, { status: "failed", error });
+    }
     this.#emit({ type: "session.faulted", error });
     this.#channel.end();
     this.#onSettle(this);
@@ -574,12 +655,8 @@ export class HermesSession implements HarnessSession {
     if (this.#activeTurn) {
       return err("sessionBusy", "Hermes Session already has an active Turn", true);
     }
-    const text = command.input
-      .filter((chunk): chunk is HostTextInput => chunk.type === "text")
-      .map((chunk) => chunk.text)
-      .join("\n")
-      .trim();
-    if (text.length === 0) {
+    const text = command.input.map((chunk) => chunk.text).join("\n");
+    if (text.trim().length === 0) {
       return err("invalidRequest", "turn.start requires non-empty text input");
     }
     const turnKey = randomUUID();
@@ -610,10 +687,6 @@ export class HermesSession implements HarnessSession {
       // Session closed or faulted mid-turn; events were already finalized.
       return;
     }
-    this.#activeTurn = null;
-    this.#activeTurnId = null;
-    active.finish();
-
     let outcome: TurnOutcome;
     if (failure) {
       outcome = { status: "failed", error: failure };
@@ -631,8 +704,20 @@ export class HermesSession implements HarnessSession {
       outcome = { status: "succeeded" };
     }
 
-    // Snapshot copies the consolidated items before draining them for
-    // item.completed emission; drain empties the buffer.
+    const terminalUsage = promptResponse ? usageFromPromptResponse(promptResponse.usage) : null;
+    const usage = terminalUsage ? this.#mergeUsage(terminalUsage) : null;
+    this.#completeActiveTurn(active, outcome, usage);
+  }
+
+  #completeActiveTurn(
+    active: ActiveTurn,
+    outcome: TurnOutcome,
+    usage: HostUsage | null = null,
+  ): void {
+    if (this.#activeTurn !== active) return;
+    this.#activeTurn = null;
+    this.#activeTurnId = null;
+    active.finish();
     const nativeTurnRef = nativeTurnRefSchema.parse({
       harnessId: this.#nativeRef.harnessId,
       nativeSessionId: this.#nativeRef.nativeSessionId,
@@ -643,7 +728,6 @@ export class HermesSession implements HarnessSession {
     for (const pending of active.drainPendingItems()) {
       this.#emit({ type: "item.completed", turnId: active.turnId, snapshot: pending });
     }
-    const usage = promptResponse ? usageFromPromptResponse(promptResponse.usage) : null;
     if (usage) {
       this.#emit({ type: "session.usage.changed", usage, observedForTurnId: active.turnId });
     }
@@ -656,9 +740,10 @@ export class HermesSession implements HarnessSession {
       case "usage": {
         const usage = usageFromContext(event.used, event.size);
         if (!usage) return;
+        const mergedUsage = this.#mergeUsage(usage);
         this.#emit({
           type: "session.usage.changed",
-          usage,
+          usage: mergedUsage,
           observedForTurnId: active.turnId,
         });
         return;
@@ -678,6 +763,7 @@ export class HermesSession implements HarnessSession {
           typeof update.name === "string" ? update.name : null,
           update.rawInput,
         );
+        this.#updateToolItem(active, update);
         return;
       }
       case "tool.update":
@@ -709,6 +795,10 @@ export class HermesSession implements HarnessSession {
     name: string | null,
     rawInput: unknown,
   ): void {
+    const completedText = active.completeCurrentText();
+    if (completedText) {
+      this.#emit({ type: "item.completed", turnId: active.turnId, snapshot: completedText });
+    }
     const item: HostToolExecutionItem = {
       type: "toolExecution",
       itemId: hostItemIdSchema.parse(randomUUID()),
@@ -721,11 +811,18 @@ export class HermesSession implements HarnessSession {
     this.#emit({ type: "item.started", turnId: active.turnId, item });
   }
 
+  #mergeUsage(usage: HostUsage): HostUsage {
+    const merged = { ...(this.#latestUsage ?? {}), ...usage };
+    this.#latestUsage = merged;
+    return merged;
+  }
+
   #updateToolItem(active: ActiveTurn, update: ToolCallUpdate): void {
     const entry = active.getToolItem(update.toolCallId);
     if (!entry) return;
     const output = toolOutputFromUpdate(update);
     if (output && output.content.length > 0) {
+      active.updateToolOutput(update.toolCallId, output);
       this.#emit({
         type: "item.updated",
         turnId: active.turnId,
@@ -855,10 +952,18 @@ export class HermesSession implements HarnessSession {
         error instanceof Error ? error.message : "Hermes rejected Model selection",
       );
     }
+    // The ACP set_model call returns no state, so resolve the label from the
+    // same SessionState the initial projection used. Falling back to the
+    // native id would surface a bogus "resolved route" chip in the picker.
+    const projectedAfterSelect = projectHermesModelState({
+      availableModels: this.#availableModels,
+      currentModelId: native,
+    });
     this.#state = {
       ...this.#state,
       effectiveModel: command.model,
-      resolvedModelLabel: native,
+      resolvedModelLabel:
+        projectedAfterSelect.resolvedModelLabel ?? catalogAlignedModelLabel(native),
     };
     this.#emit({ type: "session.state.changed", state: { ...this.#state } });
     return ok({ completed: true });
