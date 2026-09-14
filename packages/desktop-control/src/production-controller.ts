@@ -256,7 +256,6 @@ export async function runDesktopController(
           "kiro-cli",
           "codebuddy",
           "cursor-cli",
-          "hermes",
         ],
         timeoutMs: PRODUCTION_INSTALL_TIMEOUT_MS,
       },
