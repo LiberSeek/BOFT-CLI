@@ -1069,9 +1069,9 @@ describe("Renderer Codex Accounts page", () => {
     expect(visibleText(content)).toContain("API - BANK OF TOKEN");
     expect(visibleText(content)).toContain("$42.125");
     expect(visibleText(content)).not.toContain("登录");
-    expect(descendants(content).filter((element) => element.getAttribute("role") === "meter")).toHaveLength(
-      0,
-    );
+    expect(
+      descendants(content).filter((element) => element.getAttribute("role") === "meter"),
+    ).toHaveLength(0);
     scope.dispose();
   });
 });

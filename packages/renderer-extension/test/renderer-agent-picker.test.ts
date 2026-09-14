@@ -50,7 +50,6 @@ describe("Renderer Agent picker presentation", () => {
     });
   });
 
-
   it("includes the active Codex Account in the locked hover detail", () => {
     expect(
       rendererAgentPickerTooltip(

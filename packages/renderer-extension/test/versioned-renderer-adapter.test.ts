@@ -826,7 +826,6 @@ describe("current Codex Renderer Agent adapter", () => {
     },
   );
 
-
   it("encodes Hermes Model and Permission Mode through the shared plugin route", () => {
     const model = harnessModelRefSchema.parse({ id: "hermes-model-v1.emFpOmdsbS01LXR1cmJv" });
     const permissionModeId = harnessPermissionModeIdSchema.parse("accept_edits");

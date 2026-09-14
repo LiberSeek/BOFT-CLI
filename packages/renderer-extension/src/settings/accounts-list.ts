@@ -226,17 +226,10 @@ export function renderAccountRows(
   );
   // Codex Pro 20x exposes extra model-scoped limits; this page intentionally shows only its
   // generic weekly allowance so the Account row has one comparable quota.
-  const usage = renderAccountUsage(
-    document,
-    input.usage,
-    messages,
-    input.display,
-    input.onRetry,
-    {
-      usageColumns: authKind === "api" ? 1 : 2,
-      filter: account.planType === "pro" ? "weekly-only" : "all",
-    },
-  );
+  const usage = renderAccountUsage(document, input.usage, messages, input.display, input.onRetry, {
+    usageColumns: authKind === "api" ? 1 : 2,
+    filter: account.planType === "pro" ? "weekly-only" : "all",
+  });
   if (usage.additional) personCell.append(usage.additional);
   const actionsCell = document.createElement("td");
   actionsCell.className = "settings-account-management-cell";
