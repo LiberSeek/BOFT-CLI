@@ -11,27 +11,10 @@ import {
   type HarnessAccountListResult,
   codexAccountUsageParamsSchema,
   codexAccountUsageResultSchema,
-  codexAccountResetCreditConsumeParamsSchema,
-  codexAccountResetCreditConsumeResultSchema,
   type CodexAccountUsageParams,
   type CodexAccountUsageResult,
-  type CodexAccountResetCreditConsumeParams,
-  type CodexAccountResetCreditConsumeResult,
-  codexAccountSwitchParamsSchema,
-  codexAccountSwitchResultSchema,
   codexAccountChangedSchema,
-  codexAccountDeleteParamsSchema,
-  codexAccountDeleteResultSchema,
   codexAccountListResultSchema,
-  codexAccountLoginCancelParamsSchema,
-  codexAccountLoginCancelResultSchema,
-  codexAccountLoginCompletedSchema,
-  codexAccountLoginStartParamsSchema,
-  codexAccountLoginStartResultSchema,
-  codexAccountLogoutParamsSchema,
-  codexAccountLogoutResultSchema,
-  codexAccountRecoverParamsSchema,
-  codexAccountRecoverResultSchema,
   externalThreadForkParamsSchema,
   externalThreadForkResultSchema,
   harnessCommandCatalogSchema,
@@ -63,21 +46,8 @@ import {
   updateStatusResultSchema,
   type ExternalThreadForkParams,
   type ExternalThreadForkResult,
-  type CodexAccountSwitchParams,
-  type CodexAccountSwitchResult,
   type CodexAccountChanged,
-  type CodexAccountDeleteParams,
-  type CodexAccountDeleteResult,
   type CodexAccountListResult,
-  type CodexAccountLoginCancelParams,
-  type CodexAccountLoginCancelResult,
-  type CodexAccountLoginCompleted,
-  type CodexAccountLoginStartParams,
-  type CodexAccountLoginStartResult,
-  type CodexAccountLogoutParams,
-  type CodexAccountLogoutResult,
-  type CodexAccountRecoverParams,
-  type CodexAccountRecoverResult,
   type HarnessCommandCatalog,
   type HarnessCommandsInspectParams,
   type HarnessConfigurationState,
@@ -129,21 +99,24 @@ export const THREAD_METADATA_UPDATE_METHOD = "thread/metadata/update";
 export const THREAD_USAGE_INSPECT_METHOD = "codexhost/thread/usage/inspect";
 export const THREAD_USAGE_UPDATED_METHOD = "codexhost/thread/usage/updated";
 export const THREAD_TOKEN_USAGE_UPDATED_METHOD = "thread/tokenUsage/updated";
+/**
+ * Codex Desktop does not dispatch the custom `codexhost/thread/usage/updated`
+ * notification to renderer callbacks, and the native token-usage carrier is
+ * only projected once Context usage is known. Turn completion is dispatched,
+ * so it is the guaranteed point to re-read account quota after a reply.
+ */
+export const TURN_COMPLETED_METHOD = "turn/completed";
+const THREAD_USAGE_REFRESH_METHODS = [
+  THREAD_TOKEN_USAGE_UPDATED_METHOD,
+  THREAD_USAGE_UPDATED_METHOD,
+  TURN_COMPLETED_METHOD,
+] as const;
 export const UPDATE_CHECK_METHOD = "codexhost/update/check";
 export const UPDATE_START_METHOD = "codexhost/update/start";
 export const UPDATE_STATUS_METHOD = "codexhost/update/status";
 export const CODEX_ACCOUNT_LIST_METHOD = "codexhost/account/list";
 export const CODEX_ACCOUNT_REFRESH_METHOD = "codexhost/account/refresh";
-export const CODEX_ACCOUNT_DELETE_METHOD = "codexhost/account/delete";
-export const CODEX_ACCOUNT_SWITCH_METHOD = "codexhost/account/switch";
 export const CODEX_ACCOUNT_CHANGED_METHOD = "codexhost/account/changed";
-export const CODEX_ACCOUNT_LOGIN_START_METHOD = "codexhost/account/login/start";
-export const CODEX_ACCOUNT_LOGIN_CANCEL_METHOD = "codexhost/account/login/cancel";
-export const CODEX_ACCOUNT_LOGIN_COMPLETED_METHOD = "codexhost/account/login/completed";
-export const CODEX_ACCOUNT_LOGOUT_METHOD = "codexhost/account/logout";
-export const CODEX_ACCOUNT_RECOVER_METHOD = "codexhost/account/recover";
-export const CODEX_ACCOUNT_RESET_CREDIT_CONSUME_METHOD =
-  "codexhost/account/rate-limit-reset/consume";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -152,8 +125,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function notifiedThreadId(notification: unknown): ThreadUsageInspectionParams["threadId"] | null {
   if (
     !isRecord(notification) ||
-    (notification.method !== THREAD_TOKEN_USAGE_UPDATED_METHOD &&
-      notification.method !== THREAD_USAGE_UPDATED_METHOD)
+    !(THREAD_USAGE_REFRESH_METHODS as readonly unknown[]).includes(notification.method)
   ) {
     return null;
   }
@@ -206,45 +178,44 @@ export interface RendererModelClient extends Partial<RendererSessionImportClient
   startUpdate(): Promise<UpdateStartResult>;
   readUpdateStatus(): Promise<UpdateStatusResult>;
   inspectCodexAccountUsage?(input: CodexAccountUsageParams): Promise<CodexAccountUsageResult>;
-  consumeCodexAccountResetCredit?(
-    input: CodexAccountResetCreditConsumeParams,
-  ): Promise<CodexAccountResetCreditConsumeResult>;
   listHarnessAccountSources?(): Promise<HarnessAccountSourceListResult>;
   inspectHarnessAccount?(input: HarnessAccountInspectParams): Promise<HarnessAccountInspectResult>;
   listHarnessAccounts?(input?: HarnessAccountListParams): Promise<HarnessAccountListResult>;
   listCodexAccounts(): Promise<CodexAccountListResult>;
   refreshCodexAccounts(): Promise<CodexAccountListResult>;
-  deleteCodexAccount(input: CodexAccountDeleteParams): Promise<CodexAccountDeleteResult>;
-  switchCodexAccount(input: CodexAccountSwitchParams): Promise<CodexAccountSwitchResult>;
-  logoutCodexAccount(input?: CodexAccountLogoutParams): Promise<CodexAccountLogoutResult>;
-  recoverCodexAccounts(input?: CodexAccountRecoverParams): Promise<CodexAccountRecoverResult>;
   subscribeCodexAccounts?(listener: (state: CodexAccountChanged) => void): () => void;
-  startCodexAccountLogin(
-    input: CodexAccountLoginStartParams,
-  ): Promise<CodexAccountLoginStartResult>;
-  cancelCodexAccountLogin(
-    input: CodexAccountLoginCancelParams,
-  ): Promise<CodexAccountLoginCancelResult>;
-  subscribeCodexAccountLogin(listener: (result: CodexAccountLoginCompleted) => void): () => void;
 }
 
 export function createThreadUsageSubscriptionRelay(): {
-  connect(client: Pick<RendererModelClient, "subscribeThreadUsage">): void;
+  connect(client: Pick<RendererModelClient, "subscribeThreadUsage"> | null): void;
   subscribe(listener: (update: ThreadUsageInspection) => void): () => void;
   dispose(): void;
 } {
   const listeners = new Set<(update: ThreadUsageInspection) => void>();
   let removeNotificationCallback: (() => void) | null = null;
+  let connectedClient: Pick<RendererModelClient, "subscribeThreadUsage"> | null = null;
+  let generation = 0;
+  const disconnect = (): void => {
+    generation += 1;
+    removeNotificationCallback?.();
+    removeNotificationCallback = null;
+    connectedClient = null;
+  };
   return {
     connect(client) {
-      if (removeNotificationCallback || listeners.size === 0) return;
+      if (client === connectedClient && removeNotificationCallback) return;
+      disconnect();
+      if (!client || listeners.size === 0) return;
+      connectedClient = client;
+      const subscriptionGeneration = generation;
       try {
         removeNotificationCallback =
           client.subscribeThreadUsage?.((update) => {
+            if (subscriptionGeneration !== generation) return;
             for (const listener of listeners) listener(update);
           }) ?? null;
       } catch {
-        removeNotificationCallback = null;
+        disconnect();
       }
     },
     subscribe(listener) {
@@ -252,13 +223,11 @@ export function createThreadUsageSubscriptionRelay(): {
       return () => {
         listeners.delete(listener);
         if (listeners.size > 0) return;
-        removeNotificationCallback?.();
-        removeNotificationCallback = null;
+        disconnect();
       };
     },
     dispose() {
-      removeNotificationCallback?.();
-      removeNotificationCallback = null;
+      disconnect();
       listeners.clear();
     },
   };
@@ -425,7 +394,7 @@ export function createRendererModelClient(
       let disposed = false;
       const generations = new Map<ThreadUsageInspectionParams["threadId"], number>();
       const removeNotificationCallback = notifications.addNotificationCallback(
-        [THREAD_TOKEN_USAGE_UPDATED_METHOD, THREAD_USAGE_UPDATED_METHOD],
+        THREAD_USAGE_REFRESH_METHODS,
         (notification) => {
           const threadId = notifiedThreadId(notification);
           if (!threadId) return;
@@ -478,15 +447,6 @@ export function createRendererModelClient(
       );
       return codexAccountUsageResultSchema.parse(result);
     },
-    async consumeCodexAccountResetCredit(
-      input: CodexAccountResetCreditConsumeParams,
-    ): Promise<CodexAccountResetCreditConsumeResult> {
-      const result = await manager.sendRequest(
-        CODEX_ACCOUNT_RESET_CREDIT_CONSUME_METHOD,
-        codexAccountResetCreditConsumeParamsSchema.parse(input),
-      );
-      return codexAccountResetCreditConsumeResultSchema.parse(result);
-    },
     async listHarnessAccountSources(): Promise<HarnessAccountSourceListResult> {
       return harnessAccountSourceListResultSchema.parse(
         await manager.sendRequest(HARNESS_ACCOUNT_SOURCES_METHOD, {}),
@@ -520,38 +480,6 @@ export function createRendererModelClient(
       const result = await manager.sendRequest(CODEX_ACCOUNT_REFRESH_METHOD, {});
       return codexAccountListResultSchema.parse(result);
     },
-    async deleteCodexAccount(input: CodexAccountDeleteParams): Promise<CodexAccountDeleteResult> {
-      const result = await manager.sendRequest(
-        CODEX_ACCOUNT_DELETE_METHOD,
-        codexAccountDeleteParamsSchema.parse(input),
-      );
-      return codexAccountDeleteResultSchema.parse(result);
-    },
-    async switchCodexAccount(input: CodexAccountSwitchParams): Promise<CodexAccountSwitchResult> {
-      const result = await manager.sendRequest(
-        CODEX_ACCOUNT_SWITCH_METHOD,
-        codexAccountSwitchParamsSchema.parse(input),
-      );
-      return codexAccountSwitchResultSchema.parse(result);
-    },
-    async logoutCodexAccount(
-      input: CodexAccountLogoutParams = {},
-    ): Promise<CodexAccountLogoutResult> {
-      const result = await manager.sendRequest(
-        CODEX_ACCOUNT_LOGOUT_METHOD,
-        codexAccountLogoutParamsSchema.parse(input),
-      );
-      return codexAccountLogoutResultSchema.parse(result);
-    },
-    async recoverCodexAccounts(
-      input: CodexAccountRecoverParams = {},
-    ): Promise<CodexAccountRecoverResult> {
-      const result = await manager.sendRequest(
-        CODEX_ACCOUNT_RECOVER_METHOD,
-        codexAccountRecoverParamsSchema.parse(input),
-      );
-      return codexAccountRecoverResultSchema.parse(result);
-    },
     subscribeCodexAccounts(listener: (state: CodexAccountChanged) => void): () => void {
       const notifications = notificationTarget(source);
       if (!notifications?.addNotificationCallback) {
@@ -562,43 +490,6 @@ export function createRendererModelClient(
         const state = codexAccountChangedSchema.safeParse(notification.params);
         if (state.success) listener(state.data);
       });
-    },
-    async startCodexAccountLogin(
-      input: CodexAccountLoginStartParams,
-    ): Promise<CodexAccountLoginStartResult> {
-      const result = await manager.sendRequest(
-        CODEX_ACCOUNT_LOGIN_START_METHOD,
-        codexAccountLoginStartParamsSchema.parse(input),
-      );
-      return codexAccountLoginStartResultSchema.parse(result);
-    },
-    async cancelCodexAccountLogin(
-      input: CodexAccountLoginCancelParams,
-    ): Promise<CodexAccountLoginCancelResult> {
-      const result = await manager.sendRequest(
-        CODEX_ACCOUNT_LOGIN_CANCEL_METHOD,
-        codexAccountLoginCancelParamsSchema.parse(input),
-      );
-      return codexAccountLoginCancelResultSchema.parse(result);
-    },
-    subscribeCodexAccountLogin(listener: (result: CodexAccountLoginCompleted) => void): () => void {
-      const notifications = notificationTarget(source);
-      if (!notifications?.addNotificationCallback) {
-        throw new Error("Renderer Account login notification callback is unavailable");
-      }
-      return notifications.addNotificationCallback(
-        CODEX_ACCOUNT_LOGIN_COMPLETED_METHOD,
-        (notification) => {
-          if (
-            !isRecord(notification) ||
-            notification.method !== CODEX_ACCOUNT_LOGIN_COMPLETED_METHOD
-          ) {
-            return;
-          }
-          const result = codexAccountLoginCompletedSchema.safeParse(notification.params);
-          if (result.success) listener(result.data);
-        },
-      );
     },
   });
 }

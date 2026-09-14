@@ -16,7 +16,6 @@ const snapshot = (currentAccountId: string | null, revision: number, instanceId 
   phase: "ready" as const,
   revision,
   instanceId,
-  capabilities: { manage: true, switch: true, login: true, delete: true },
   accounts: currentAccountId ? [account(currentAccountId)] : [],
 });
 
@@ -46,11 +45,9 @@ describe("Host-scoped Codex Account state", () => {
       throw new Error("Method not found");
     });
     await local.refresh();
-    local.switching = true;
     await remote.refresh();
     expect(remote.accounts).toEqual([]);
     expect(remote.readyAccountId).toBeNull();
-    expect(remote.switching).toBe(false);
     expect(local.readyAccountId).toBe("default");
   });
 

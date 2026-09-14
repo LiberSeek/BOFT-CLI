@@ -11,15 +11,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   CODEX_ACCOUNT_CHANGED_METHOD,
-  CODEX_ACCOUNT_DELETE_METHOD,
   CODEX_ACCOUNT_LIST_METHOD,
   CODEX_ACCOUNT_REFRESH_METHOD,
-  CODEX_ACCOUNT_LOGIN_CANCEL_METHOD,
-  CODEX_ACCOUNT_LOGIN_COMPLETED_METHOD,
-  CODEX_ACCOUNT_LOGIN_START_METHOD,
-  CODEX_ACCOUNT_LOGOUT_METHOD,
-  CODEX_ACCOUNT_RECOVER_METHOD,
-  CODEX_ACCOUNT_SWITCH_METHOD,
   HARNESS_ACCOUNT_INSPECT_METHOD,
   HARNESS_ACCOUNT_SOURCES_METHOD,
   HARNESS_INSPECT_METHOD,
@@ -27,7 +20,6 @@ import {
   HARNESS_WEB_UI_OPEN_METHOD,
   THREAD_FORK_METHOD,
   THREAD_INSPECT_METHOD,
-  THREAD_METADATA_UPDATE_METHOD,
   THREAD_MODEL_SELECT_METHOD,
   THREAD_PERMISSION_MODE_SELECT_METHOD,
   THREAD_THINKING_SELECT_METHOD,
@@ -35,6 +27,7 @@ import {
   THREAD_TOKEN_USAGE_UPDATED_METHOD,
   THREAD_USAGE_INSPECT_METHOD,
   THREAD_USAGE_UPDATED_METHOD,
+  TURN_COMPLETED_METHOD,
   UPDATE_CHECK_METHOD,
   UPDATE_START_METHOD,
   UPDATE_STATUS_METHOD,
@@ -115,78 +108,34 @@ describe("Renderer fixed Model request client", () => {
       phase: "ready" as const,
       revision: 4,
       instanceId: "host-a",
-      capabilities: {
-        manage: true,
-        switch: true,
-        login: true,
-        delete: true,
-        logout: true,
-        recover: true,
-      },
       accounts: [account],
     };
     const sendRequest = vi
       .fn<(method: string, params: unknown) => Promise<unknown>>()
       .mockResolvedValueOnce(snapshot)
-      .mockResolvedValueOnce(snapshot)
-      .mockResolvedValueOnce({ deletedAccountId: "work" })
-      .mockResolvedValueOnce({ currentAccountId: "work", phase: "ready", revision: 5 })
-      .mockResolvedValueOnce({ currentAccountId: null, phase: "ready", revision: 6 })
-      .mockResolvedValueOnce({ ...snapshot, revision: 7 })
-      .mockResolvedValueOnce({
-        accountId: "work",
-        loginId: "login-1",
-        verificationUrl: "https://example.com/device",
-        userCode: "ABCD-EFGH",
-      })
-      .mockResolvedValueOnce({ cancelled: true });
+      .mockResolvedValueOnce(snapshot);
     const client = createRendererModelClient([{ addNotificationCallback, sendRequest }]);
     if (!client) throw new Error("Synthetic Account client was not created");
 
     await expect(client.listCodexAccounts()).resolves.toEqual(snapshot);
     await expect(client.refreshCodexAccounts?.()).resolves.toEqual(snapshot);
-    await expect(client.deleteCodexAccount({ accountId: "work" })).resolves.toEqual({
-      deletedAccountId: "work",
-    });
-    await expect(client.switchCodexAccount({ accountId: "work" })).resolves.toMatchObject({
-      currentAccountId: "work",
-    });
-    await expect(client.logoutCodexAccount()).resolves.toMatchObject({ currentAccountId: null });
-    await expect(client.recoverCodexAccounts()).resolves.toMatchObject({ revision: 7 });
-    await expect(client.startCodexAccountLogin({ accountId: "work" })).resolves.toMatchObject({
-      loginId: "login-1",
-      userCode: "ABCD-EFGH",
-    });
-    await expect(client.cancelCodexAccountLogin({ loginId: "login-1" })).resolves.toEqual({
-      cancelled: true,
-    });
     expect(sendRequest.mock.calls).toEqual([
       [CODEX_ACCOUNT_LIST_METHOD, {}],
       [CODEX_ACCOUNT_REFRESH_METHOD, {}],
-      [CODEX_ACCOUNT_DELETE_METHOD, { accountId: "work" }],
-      [CODEX_ACCOUNT_SWITCH_METHOD, { accountId: "work" }],
-      [CODEX_ACCOUNT_LOGOUT_METHOD, {}],
-      [CODEX_ACCOUNT_RECOVER_METHOD, {}],
-      [CODEX_ACCOUNT_LOGIN_START_METHOD, { accountId: "work" }],
-      [CODEX_ACCOUNT_LOGIN_CANCEL_METHOD, { loginId: "login-1" }],
     ]);
 
     const listener = vi.fn();
-    const unsubscribe = client.subscribeCodexAccountLogin(listener);
+    if (!client.subscribeCodexAccounts) throw new Error("Missing Account subscription");
+    const unsubscribe = client.subscribeCodexAccounts(listener);
     expect(addNotificationCallback).toHaveBeenCalledWith(
-      CODEX_ACCOUNT_LOGIN_COMPLETED_METHOD,
+      CODEX_ACCOUNT_CHANGED_METHOD,
       expect.any(Function),
     );
-    notifications.get(CODEX_ACCOUNT_LOGIN_COMPLETED_METHOD)?.({
-      method: CODEX_ACCOUNT_LOGIN_COMPLETED_METHOD,
-      params: { accountId: "work", loginId: "login-1", success: true, error: null },
+    notifications.get(CODEX_ACCOUNT_CHANGED_METHOD)?.({
+      method: CODEX_ACCOUNT_CHANGED_METHOD,
+      params: snapshot,
     });
-    expect(listener).toHaveBeenCalledWith({
-      accountId: "work",
-      loginId: "login-1",
-      success: true,
-      error: null,
-    });
+    expect(listener).toHaveBeenCalledWith(snapshot);
     const stateListener = vi.fn();
     const unsubscribeState = client.subscribeCodexAccounts?.(stateListener);
     notifications.get(CODEX_ACCOUNT_CHANGED_METHOD)?.({
@@ -348,10 +297,7 @@ describe("Renderer fixed Model request client", () => {
     const client = createRendererModelClient([{ addNotificationCallback, sendRequest }]);
     if (!client) throw new Error("Synthetic Model client was not created");
     expect(Object.keys(client).sort()).toEqual([
-      "cancelCodexAccountLogin",
       "checkUpdate",
-      "consumeCodexAccountResetCredit",
-      "deleteCodexAccount",
       "executeThreadCommand",
       "forkThread",
       "importHarnessSession",
@@ -369,20 +315,15 @@ describe("Renderer fixed Model request client", () => {
       "listHarnessSessions",
       "listSessionImportSources",
       "listThreadOwnership",
-      "logoutCodexAccount",
       "openHarnessWebUi",
       "readUpdateStatus",
-      "recoverCodexAccounts",
       "refreshCodexAccounts",
       "selectThreadModel",
       "selectThreadPermissionMode",
       "selectThreadThinking",
-      "startCodexAccountLogin",
       "startUpdate",
-      "subscribeCodexAccountLogin",
       "subscribeCodexAccounts",
       "subscribeThreadUsage",
-      "switchCodexAccount",
       "updateThreadPinned",
     ]);
 
@@ -476,7 +417,7 @@ describe("Renderer fixed Model request client", () => {
     const onUsage = vi.fn();
     const unsubscribe = client.subscribeThreadUsage?.(onUsage);
     expect(addNotificationCallback).toHaveBeenCalledWith(
-      [THREAD_TOKEN_USAGE_UPDATED_METHOD, THREAD_USAGE_UPDATED_METHOD],
+      [THREAD_TOKEN_USAGE_UPDATED_METHOD, THREAD_USAGE_UPDATED_METHOD, TURN_COMPLETED_METHOD],
       expect.any(Function),
     );
     usageNotification?.({
@@ -503,23 +444,6 @@ describe("Renderer fixed Model request client", () => {
     expect(sendRequest).toHaveBeenNthCalledWith(10, UPDATE_CHECK_METHOD, {});
     expect(sendRequest).toHaveBeenNthCalledWith(11, UPDATE_START_METHOD, {});
     expect(sendRequest).toHaveBeenNthCalledWith(12, UPDATE_STATUS_METHOD, {});
-  });
-
-  it("sends External Thread pin state through the standard metadata method", async () => {
-    const sendRequest = vi.fn(async () => ({ thread: { id: "thread-1" } }));
-    const client = createRendererModelClient([{ sendRequest }]);
-    if (!client?.updateThreadPinned) throw new Error("Synthetic pin client was not created");
-
-    await expect(
-      client.updateThreadPinned({
-        threadId: hostThreadIdSchema.parse("thread-1"),
-        isPinned: true,
-      }),
-    ).resolves.toBeUndefined();
-    expect(sendRequest).toHaveBeenCalledWith(THREAD_METADATA_UPDATE_METHOD, {
-      threadId: "thread-1",
-      isPinned: true,
-    });
   });
 
   it("uses fixed generic Session import methods and never accepts a browser-supplied locator", async () => {
@@ -662,6 +586,40 @@ describe("Renderer fixed Model request client", () => {
     expect(sendRequest).toHaveBeenCalledOnce();
   });
 
+  it("re-reads account quota when a Turn completes without a dispatched Usage notification", async () => {
+    // Codex Desktop drops `codexhost/thread/usage/updated` before renderer
+    // callbacks, and `thread/tokenUsage/updated` needs Context usage, so a
+    // completed reply must still refresh the quota pill on its own.
+    let notify: ((notification: unknown) => void) | undefined;
+    const addNotificationCallback = vi.fn(
+      (_method: string | readonly string[], callback: (notification: unknown) => void) => {
+        notify = callback;
+        return () => undefined;
+      },
+    );
+    const accountCredits = { usedPercent: 81, periodType: "five_hour" as const };
+    const sendRequest = vi.fn().mockResolvedValue({
+      threadId: "thread-1",
+      usage: null,
+      accountCredits,
+    });
+    const client = createRendererModelClient([{ addNotificationCallback, sendRequest }]);
+    const onUsage = vi.fn();
+    const unsubscribe = client?.subscribeThreadUsage?.(onUsage);
+
+    notify?.({ method: TURN_COMPLETED_METHOD, params: { threadId: "", turn: {} } });
+    notify?.({
+      method: TURN_COMPLETED_METHOD,
+      params: { threadId: "thread-1", turn: { id: "turn-1" } },
+    });
+
+    await vi.waitFor(() => expect(onUsage).toHaveBeenCalledOnce());
+    expect(sendRequest).toHaveBeenCalledOnce();
+    expect(sendRequest).toHaveBeenCalledWith(THREAD_USAGE_INSPECT_METHOD, { threadId: "thread-1" });
+    expect(onUsage).toHaveBeenCalledWith({ threadId: "thread-1", usage: null, accountCredits });
+    unsubscribe?.();
+  });
+
   it("defers Usage notification registration until a request manager is available", () => {
     const relay = createThreadUsageSubscriptionRelay();
     const listener = vi.fn();
@@ -687,6 +645,60 @@ describe("Renderer fixed Model request client", () => {
     unsubscribe();
     expect(removeNotification).toHaveBeenCalledOnce();
     relay.dispose();
+  });
+
+  it("rebinds Usage to the current connection and ignores retired callbacks", () => {
+    const relay = createThreadUsageSubscriptionRelay();
+    const listener = vi.fn();
+    const unsubscribe = relay.subscribe(listener);
+    const connection = () => {
+      let notify: ((update: ThreadUsageInspection) => void) | undefined;
+      const remove = vi.fn();
+      return {
+        remove,
+        subscribeThreadUsage: vi.fn((callback: (update: ThreadUsageInspection) => void) => {
+          notify = callback;
+          return remove;
+        }),
+        push(usedPercent: number) {
+          notify?.({
+            threadId: hostThreadIdSchema.parse("thread-1"),
+            usage: null,
+            accountCredits: { usedPercent, periodType: "five_hour" },
+          });
+        },
+      };
+    };
+    const previous = connection();
+    const current = connection();
+    relay.connect(previous);
+    previous.push(16);
+    relay.connect(current);
+    relay.connect(current);
+    current.push(20);
+    expect(listener).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        accountCredits: { usedPercent: 20, periodType: "five_hour" },
+      }),
+    );
+    expect(previous.remove).toHaveBeenCalledOnce();
+    expect(current.subscribeThreadUsage).toHaveBeenCalledOnce();
+    previous.push(17);
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    relay.connect(null);
+    current.push(21);
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(current.remove).toHaveBeenCalledOnce();
+    relay.connect(current);
+    current.push(22);
+    expect(listener).toHaveBeenCalledTimes(3);
+    expect(current.subscribeThreadUsage).toHaveBeenCalledTimes(2);
+    unsubscribe();
+    current.push(23);
+    expect(listener).toHaveBeenCalledTimes(3);
+    relay.dispose();
+    expect(current.remove).toHaveBeenCalledTimes(2);
   });
 
   it("fails closed when request manager ownership is absent or ambiguous", () => {

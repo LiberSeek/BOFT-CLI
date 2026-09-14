@@ -1,22 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  codexAccountListResultSchema,
-  codexAccountLoginCompletedSchema,
-  codexAccountUsageResultSchema,
-} from "../src/index.js";
+import { codexAccountListResultSchema, codexAccountUsageResultSchema } from "../src/index.js";
 
 const baseSnapshot = {
   version: 2 as const,
   currentAccountId: "account-a",
   phase: "ready" as const,
   revision: 7,
-  capabilities: { manage: true, switch: true, login: true, delete: true },
   accounts: [{ accountId: "account-a", label: "Account A", email: "a@example.com" }],
 };
 
 describe("Codex Account browser contracts", () => {
-  it("keeps the PR252 v2 snapshot compatible and excludes credential locations", () => {
+  it("keeps a current-only snapshot and excludes credential locations", () => {
     expect(codexAccountListResultSchema.parse(baseSnapshot)).toEqual(baseSnapshot);
     expect(() =>
       codexAccountListResultSchema.parse({
@@ -26,61 +21,37 @@ describe("Codex Account browser contracts", () => {
     ).toThrow();
   });
 
-  it("accepts Host epoch, cleanup, recovery operation, and added capability reasons", () => {
-    const snapshot = {
-      ...baseSnapshot,
-      phase: "unavailable" as const,
-      instanceId: "host-epoch-2",
-      cleanupRequired: true,
-      pendingOperation: { operationId: "recover-1", kind: "recovery" as const },
-      capabilities: {
-        ...baseSnapshot.capabilities,
-        recover: true,
-        logout: false,
-        reason: "keyring-unavailable" as const,
-      },
-    };
-    expect(codexAccountListResultSchema.parse(snapshot)).toEqual(snapshot);
+  it("rejects retired multi-account fields", () => {
     expect(
-      codexAccountListResultSchema.parse({
-        ...snapshot,
-        capabilities: { ...snapshot.capabilities, reason: "migration-required" },
-      }).capabilities.reason,
-    ).toBe("migration-required");
-  });
-
-  it("separates a saved login from cleanup completion", () => {
+      codexAccountListResultSchema.safeParse({ ...baseSnapshot, phase: "changing" }).success,
+    ).toBe(false);
     expect(
-      codexAccountLoginCompletedSchema.parse({
-        accountId: "account-b",
-        loginId: "login-1",
-        success: false,
-        error: "cleanup pending",
-        saved: true,
-        cleanupRequired: true,
-      }),
-    ).toMatchObject({ saved: true, cleanupRequired: true });
-  });
-
-  it("accepts optional API auth presentation without credential locations", () => {
-    const snapshot = {
-      ...baseSnapshot,
-      accounts: [
-        {
-          accountId: "account-api",
-          label: "BANK OF TOKEN",
-          authKind: "api" as const,
-          authIdentity: "BANK OF TOKEN",
-        },
-      ],
-    };
-    expect(codexAccountListResultSchema.parse(snapshot)).toEqual(snapshot);
-    expect(() =>
-      codexAccountListResultSchema.parse({
-        ...snapshot,
-        accounts: [{ ...snapshot.accounts[0], codexHome: "/private/home" }],
-      }),
-    ).toThrow();
+      codexAccountListResultSchema.safeParse({
+        ...baseSnapshot,
+        capabilities: { manage: true, switch: true, login: true, delete: true },
+      }).success,
+    ).toBe(false);
+    expect(
+      codexAccountListResultSchema.safeParse({
+        ...baseSnapshot,
+        pendingOperation: { operationId: "login-1", kind: "login" },
+      }).success,
+    ).toBe(false);
+    expect(
+      codexAccountListResultSchema.safeParse({
+        ...baseSnapshot,
+        accounts: [{ ...baseSnapshot.accounts[0], requiresLogin: true }],
+      }).success,
+    ).toBe(false);
+    expect(
+      codexAccountListResultSchema.safeParse({
+        ...baseSnapshot,
+        accounts: [
+          baseSnapshot.accounts[0],
+          { accountId: "account-b", label: "Account B", email: "b@example.com" },
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it("requires quota freshness and observation time", () => {

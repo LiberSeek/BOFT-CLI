@@ -112,13 +112,6 @@ function clientWith(
     readUpdateStatus: vi.fn(),
     listCodexAccounts: vi.fn(),
     refreshCodexAccounts: vi.fn(),
-    deleteCodexAccount: vi.fn(),
-    switchCodexAccount: vi.fn(),
-    logoutCodexAccount: vi.fn(),
-    recoverCodexAccounts: vi.fn(),
-    startCodexAccountLogin: vi.fn(),
-    cancelCodexAccountLogin: vi.fn(),
-    subscribeCodexAccountLogin: vi.fn(),
   };
 }
 

@@ -1,5 +1,6 @@
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 
@@ -34,15 +35,29 @@ function validMetafile(extraInputs = {}) {
 }
 
 async function runPackagedHost(host, directory, requests) {
-  const official = path.join(directory, "official.mjs");
+  const official = path.join(directory, ".codex", "app-server");
+  await mkdir(path.dirname(official), { recursive: true });
+  const require = createRequire(import.meta.url);
   await writeFile(
     official,
     `
-    import readline from "node:readline";
-    for await (const line of readline.createInterface({ input: process.stdin })) {
-      const request = JSON.parse(line);
-      process.stdout.write(JSON.stringify({ id: request.id, result: { official: true } }) + "\\n");
-    }
+    const { WebSocketServer } = require(${JSON.stringify(require.resolve("ws"))});
+
+    const server = new WebSocketServer({ host: "127.0.0.1", port: 0, perMessageDeflate: false });
+    server.on("connection", (socket) => {
+      socket.on("message", (frame) => {
+        const request = JSON.parse(frame.toString());
+        if (request.id === undefined) return;
+        const result = request.method === "account/read"
+          ? { account: null, requiresOpenaiAuth: true }
+          : { official: true };
+        socket.send(JSON.stringify({ id: request.id, result }));
+      });
+    });
+    server.on("listening", () => {
+      const address = server.address();
+      process.stderr.write("  listening on: ws://127.0.0.1:" + address.port + "\\n");
+    });
   `,
   );
   const environment = { ...process.env };
@@ -59,7 +74,7 @@ async function runPackagedHost(host, directory, requests) {
     CODEXHOST_ANTIGRAVITY_COMMAND: path.join(directory, "missing-antigravity"),
     CODEXHOST_HERMES_COMMAND: path.join(directory, "missing-hermes"),
   });
-  const child = spawn(process.execPath, [host, official], {
+  const child = spawn(process.execPath, [host, "app-server"], {
     cwd: directory,
     env: environment,
     stdio: ["pipe", "pipe", "pipe"],

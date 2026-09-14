@@ -9,6 +9,7 @@ const read = (file) => readFile(path.join(root, file), "utf8");
 
 describe("workflow and form contracts", () => {
   it.each([
+    ".github/workflows/ci.yml",
     ".github/workflows/repository-maintenance.yml",
     ".github/workflows/release-packages.yml",
     ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -34,6 +35,14 @@ describe("workflow and form contracts", () => {
       expect(workflow).toContain(`- ${name.slice("Check ".length)}\n`);
     }
     expect(workflow).toContain("name: Check Linux ARM64");
+  });
+
+  it("cancels superseded PR runs without cancelling main release evidence", async () => {
+    const workflow = await read(".github/workflows/ci.yml");
+    expect(workflow).toContain(
+      "group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}",
+    );
+    expect(workflow).toContain("cancel-in-progress: ${{ github.event_name == 'pull_request' }}");
   });
 
   it("runs write-capable maintenance only with trusted code and no dependency installation", async () => {

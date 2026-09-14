@@ -60,16 +60,16 @@
 
 ## 빠른 시작
 
-**npm 사용**
+**설치 프로그램 다운로드** (macOS, Windows)
 
-> macOS, Windows 및 [x64/ARM64 Linux](linux.md)를 지원합니다.
+[최신 릴리스](https://github.com/LiberSeek/BOFT-CLI/releases/latest)에서 운영체제와 CPU 아키텍처에 맞는 설치 프로그램을 다운로드하세요. macOS는 DMG, Windows는 EXE를 선택합니다. [x64/ARM64 Linux](linux.md)도 지원합니다.
+
+또는 npm으로 설치하세요:
 
 ```bash
 npm install -g @liberseek/boft-cli
 boft
 ```
-
-**또는** [설치 프로그램](https://github.com/LiberSeek/BOFT-CLI/releases) 다운로드 (macOS, Windows)
 
 macOS DMG의 앱 이름은 **BOFT**입니다. Applications로 드래그한 뒤 확인되지 않는다는 메시지가 나타나면 다음을 실행하세요:
 

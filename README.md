@@ -60,16 +60,16 @@
 
 ## 快速使用
 
-**使用 npm**
+**下载安装包**（macOS、Windows）
 
-> 支持 macOS、Windows 和 [x64/ARM64 Linux](docs/linux.zh-CN.md)。
+前往 [最新版本](https://github.com/LiberSeek/BOFT-CLI/releases/latest) 下载与系统和 CPU 架构匹配的安装包：macOS 选择 DMG，Windows 选择 EXE。也支持 [x64/ARM64 Linux](docs/linux.zh-CN.md)。
+
+或使用 npm：
 
 ```bash
 npm install -g @liberseek/boft-cli
 boft
 ```
-
-**或下载** [安装包](https://github.com/LiberSeek/BOFT-CLI/releases)（macOS、Windows）
 
 macOS 安装包里的应用名称是 **BOFT**。把它拖到「应用程序」后，如果系统提示无法验证，先在终端执行：
 

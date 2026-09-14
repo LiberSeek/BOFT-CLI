@@ -60,16 +60,16 @@ No app switching required: **Pi, Claude Code, OpenCode, OMP, Grok Build, and Dee
 
 ## Quick Start
 
-**Use npm**
+**Download the installer** (macOS, Windows)
 
-> Supports macOS, Windows, and [x64/ARM64 Linux](linux.md).
+Go to the [latest release](https://github.com/LiberSeek/BOFT-CLI/releases/latest) and download the installer matching your OS and CPU architecture: DMG for macOS, EXE for Windows. [x64/ARM64 Linux](linux.md) is also supported.
+
+Or install with npm:
 
 ```bash
 npm install -g @liberseek/boft-cli
 boft
 ```
-
-**Or download** [installers](https://github.com/LiberSeek/BOFT-CLI/releases) (macOS, Windows)
 
 The macOS DMG contains **BOFT**. After dragging it to Applications, if macOS says the app cannot be verified, run:
 

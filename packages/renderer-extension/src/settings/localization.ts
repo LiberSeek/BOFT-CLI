@@ -69,7 +69,6 @@ export interface RendererSettingsMessages {
   readonly pluginsDescription: string;
   readonly pluginsRefresh: string;
   readonly pluginsRefreshing: string;
-  readonly accountAdd: string;
   readonly accountColumnAccount: string;
   readonly accountConnected: string;
   readonly accountDefaultBadge: string;
@@ -80,7 +79,6 @@ export interface RendererSettingsMessages {
   readonly accountNoMatches: string;
   readonly accountNativeManaged: string;
   readonly accountNativeManagementHint: string;
-  readonly accountMore: string;
   readonly accountDetailsClose: string;
   readonly accountDefaultHint: string;
   readonly accountCreditsRemaining: string;
@@ -89,34 +87,6 @@ export interface RendererSettingsMessages {
   readonly accountCreditsFailed: string;
   readonly accountCreditsRetry: string;
   readonly accountCreditsRefresh: string;
-  readonly accountDelete: string;
-  readonly accountDeleteConfirm: string;
-  readonly accountDeleting: string;
-  readonly accountDeleteFailed: string;
-  readonly accountUse: string;
-  readonly accountLogout: string;
-  readonly accountLogoutConfirm: string;
-  readonly accountLoggingOut: string;
-  readonly accountLoggedOut: string;
-  readonly accountLogoutFailed: string;
-  readonly accountRecover: string;
-  readonly accountRecovering: string;
-  readonly accountRecoveryRequired: string;
-  readonly accountCleanupRequired: string;
-  readonly accountSavedUnavailable: string;
-  readonly accountRetryCleanup: string;
-  readonly accountCleaningUp: string;
-  readonly accountLegacyCompatibility: string;
-  readonly accountMigrationRequired: string;
-  readonly accountSignIn: string;
-  readonly accountSigningIn: string;
-  readonly accountVerificationDescription: string;
-  readonly accountCopyCode: string;
-  readonly accountCopied: string;
-  readonly accountLoginCancel: string;
-  readonly accountLoginSucceeded: string;
-  readonly accountLoginResultUnconfirmed: string;
-  readonly accountLoginFailed: string;
   readonly accountLoadFailed: string;
   readonly accountAuthApiPrefix: string;
   readonly accountAuthChatPrefix: string;
@@ -135,14 +105,6 @@ export interface RendererSettingsMessages {
   readonly accountCreditsPeriodUnknown: string;
   readonly accountCreditsBuild: string;
   readonly accountResetCredits: string;
-  readonly accountResetCreditsUse: string;
-  readonly accountResetCreditsConfirm: string;
-  readonly accountResetCreditsUsing: string;
-  readonly accountResetCreditsFailed: string;
-  readonly accountResetCreditsNothingToReset: string;
-  readonly accountResetCreditsNoCredit: string;
-  readonly accountResetCreditsAlreadyRedeemed: string;
-  readonly accountResetCreditsSucceeded: string;
   readonly accountResetCreditsDetails: string;
   readonly accountResetCreditsCardExpiry: string;
   readonly connectionAdapter: string;
@@ -307,20 +269,19 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   pluginsRefreshing: "Scanning...",
   connectionsDescription:
     "View runtime status by Host. Select an item to inspect details or complete its setup.",
-  accountsDescription: "View Agent accounts and quotas, and manage the default Codex account.",
+  accountsDescription: "View the current Codex identity and quotas, plus other Agent accounts.",
   accountConnected: "Accounts",
   accountDefaultBadge: "Current",
-  accountAdd: "Add Codex account",
   accountColumnAccount: "Account",
   accountColumnActions: "Manage",
   accountColumnCredits: "Quota",
   accountSearch: "Search accounts or Agents…",
-  accountEmpty: "No accounts yet. Add a Codex account or sign in to an Agent in its native client.",
+  accountEmpty:
+    "No current identities found. Sign in through Codex Desktop or your Harness's native client.",
   accountNoMatches: "No matching accounts.",
   accountNativeManaged: "Native management",
   accountNativeManagementHint:
     "This account comes from {harness}'s native authentication. This page only displays identity and limits; manage sign-in, sign-out and switching in the native client.",
-  accountMore: "Codex account actions",
   accountDetailsClose: "Close account details",
   accountDefaultHint: "This is the current identity for all Codex Threads.",
   accountCreditsRemaining: "Remaining",
@@ -329,37 +290,6 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountCreditsFailed: "Could not load limits",
   accountCreditsRetry: "Retry",
   accountCreditsRefresh: "Refresh limits",
-  accountDelete: "Delete",
-  accountDeleteConfirm: "Delete this Account and its local data? This cannot be undone.",
-  accountDeleting: "Deleting Account...",
-  accountDeleteFailed: "Could not delete the Account.",
-  accountUse: "Switch",
-  accountLogout: "Sign out",
-  accountLogoutConfirm: "Sign out the current Codex identity? Saved Accounts are retained.",
-  accountLoggingOut: "Signing out...",
-  accountLoggedOut: "Signed out. Saved Accounts are retained.",
-  accountLogoutFailed: "Could not sign out the current Codex identity.",
-  accountRecover: "Recover",
-  accountRecovering: "Recovering Codex...",
-  accountRecoveryRequired: "Codex Account recovery is required before work can continue.",
-  accountLegacyCompatibility:
-    "Native compatibility mode: Codex uses the existing official home. Account management is disabled. Other account homes and their history have not been merged; use the previous version to access them. No source data was migrated or deleted.",
-  accountMigrationRequired:
-    "Legacy Codex data requires migration before this layout can be used. Your data is preserved; use the previous version to access it. This is not a sign-in request.",
-  accountCleanupRequired: "Account saved. Temporary file cleanup is incomplete.",
-  accountSavedUnavailable: "Account saved. Codex is not ready yet.",
-  accountRetryCleanup: "Retry cleanup",
-  accountCleaningUp: "Retrying cleanup...",
-  accountSignIn: "Sign in",
-  accountSigningIn: "Starting device sign-in...",
-  accountVerificationDescription: "Open the verification page and enter this one-time code:",
-  accountCopyCode: "Copy code",
-  accountCopied: "Copied",
-  accountLoginCancel: "Cancel sign-in",
-  accountLoginSucceeded: "Sign-in completed.",
-  accountLoginResultUnconfirmed:
-    "Sign-in finished, but its result was not received. Inspect the saved Account state.",
-  accountLoginFailed: "Sign-in failed.",
   accountLoadFailed: "Could not load Codex Accounts.",
   accountAuthApiPrefix: "API",
   accountAuthChatPrefix: "Account",
@@ -378,15 +308,6 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountCreditsPeriodUnknown: "Limit",
   accountCreditsBuild: "Build",
   accountResetCredits: "Reset cards",
-  accountResetCreditsUse: "Use reset",
-  accountResetCreditsConfirm:
-    "This uses 1 reset card and resets both the 5-hour and 7-day limits. This cannot be undone.",
-  accountResetCreditsUsing: "Using reset card...",
-  accountResetCreditsFailed: "Could not use the reset card.",
-  accountResetCreditsNothingToReset: "Usage does not need a reset right now.",
-  accountResetCreditsNoCredit: "No reset cards are available.",
-  accountResetCreditsAlreadyRedeemed: "That reset card was already used.",
-  accountResetCreditsSucceeded: "Limits were reset.",
   accountResetCreditsDetails: "Reset card details",
   accountResetCreditsCardExpiry: "Card {index} · expires {time}",
   connectionAdapter: "Renderer adapter",
@@ -575,20 +496,18 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   pluginsRefresh: "扫描环境",
   pluginsRefreshing: "正在扫描...",
   connectionsDescription: "按 Host 查看运行时状态。选择一项，在右侧检查详情或完成配置。",
-  accountsDescription: "查看各 Agent 的账号与额度，管理 Codex 默认账号。",
+  accountsDescription: "查看当前 Codex 身份与额度，以及其他 Agent 账号。",
   accountConnected: "账号",
   accountDefaultBadge: "当前",
-  accountAdd: "添加 Codex 账号",
   accountColumnAccount: "账号",
   accountColumnActions: "管理",
   accountColumnCredits: "额度",
   accountSearch: "搜索账号或 Agent…",
-  accountEmpty: "还没有账号，可添加 Codex 账号或在其他 Agent 的原生客户端登录。",
+  accountEmpty: "尚未识别到当前身份，请在 Codex Desktop 或对应 Harness 的原生客户端登录。",
   accountNoMatches: "没有匹配的账号。",
   accountNativeManaged: "原生管理",
   accountNativeManagementHint:
     "此账号来自 {harness} 的原生登录。这里只读展示身份与额度；登录、退出和切换请在其原生客户端中完成。",
-  accountMore: "Codex 账号操作",
   accountDetailsClose: "关闭账号详情",
   accountDefaultHint: "所有 Codex 会话当前使用此身份。",
   accountCreditsRemaining: "剩余",
@@ -597,36 +516,6 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountCreditsFailed: "额度读取失败",
   accountCreditsRetry: "重试",
   accountCreditsRefresh: "刷新额度",
-  accountDelete: "删除",
-  accountDeleteConfirm: "删除此账号及其本地数据？此操作无法撤销。",
-  accountDeleting: "正在删除账号...",
-  accountDeleteFailed: "删除账号失败。",
-  accountUse: "切换",
-  accountLogout: "退出登录",
-  accountLogoutConfirm: "退出当前 Codex 身份？已保存的账号会保留。",
-  accountLoggingOut: "正在退出登录...",
-  accountLoggedOut: "已退出登录，保存的账号仍会保留。",
-  accountLogoutFailed: "无法退出当前 Codex 身份。",
-  accountRecover: "恢复",
-  accountRecovering: "正在恢复 Codex...",
-  accountRecoveryRequired: "继续工作前需要恢复 Codex 账号状态。",
-  accountLegacyCompatibility:
-    "原生兼容模式：继续使用原有官方目录，账号管理暂不可用。其他账号目录及其历史尚未合并，请使用旧版访问；没有迁移或删除原数据。",
-  accountMigrationRequired:
-    "旧 Codex 数据布局需要迁移后才能使用。原数据已保留，请使用旧版访问；这不是要求重新登录。",
-  accountCleanupRequired: "账号已保存，临时文件清理未完成。",
-  accountSavedUnavailable: "账号已保存，Codex 尚未就绪。",
-  accountRetryCleanup: "重试清理",
-  accountCleaningUp: "正在重试清理...",
-  accountSignIn: "登录",
-  accountSigningIn: "正在启动设备登录...",
-  accountVerificationDescription: "打开验证页面并输入以下一次性代码：",
-  accountCopyCode: "复制代码",
-  accountCopied: "已复制",
-  accountLoginCancel: "取消登录",
-  accountLoginSucceeded: "登录成功。",
-  accountLoginResultUnconfirmed: "登录已结束，但未收到结果。请检查已保存的账号状态。",
-  accountLoginFailed: "登录失败。",
   accountLoadFailed: "无法加载 Codex 账号。",
   accountAuthApiPrefix: "API",
   accountAuthChatPrefix: "账号",
@@ -645,14 +534,6 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountCreditsPeriodUnknown: "额度",
   accountCreditsBuild: "Build",
   accountResetCredits: "重置卡",
-  accountResetCreditsUse: "使用重置",
-  accountResetCreditsConfirm: "将消耗 1 张重置卡，同时重置 5 小时和 7 天额度。此操作无法撤销。",
-  accountResetCreditsUsing: "正在使用重置卡...",
-  accountResetCreditsFailed: "使用重置卡失败。",
-  accountResetCreditsNothingToReset: "当前额度不需要重置。",
-  accountResetCreditsNoCredit: "没有可用的重置卡。",
-  accountResetCreditsAlreadyRedeemed: "这张重置卡已经使用过。",
-  accountResetCreditsSucceeded: "额度已重置。",
   accountResetCreditsDetails: "重置卡详情",
   accountResetCreditsCardExpiry: "第 {index} 张 · {time}到期",
   connectionAdapter: "Renderer 适配器",

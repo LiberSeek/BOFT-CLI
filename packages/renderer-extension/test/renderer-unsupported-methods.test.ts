@@ -26,14 +26,6 @@ const accounts: CodexAccountListResult = {
   currentAccountId: null,
   phase: "ready",
   revision: 1,
-  capabilities: {
-    manage: true,
-    switch: true,
-    login: true,
-    delete: true,
-    logout: true,
-    recover: true,
-  },
   accounts: [],
 };
 const readyHarness: HarnessInspection = {

@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Superseded PR runs are disposable; main runs provide per-commit release evidence.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     name: Check ${{ matrix.os }}
@@ -41,8 +46,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check
-        run: npm run check
+      - name: Check formatting
+        if: runner.os == 'Linux'
+        run: npm run format:check
+
+      - name: Lint
+        if: runner.os == 'Linux'
+        run: npm run lint
+
+      - name: Typecheck
+        if: runner.os == 'Linux'
+        run: npm run typecheck
+
+      - name: Test TypeScript (full suite)
+        if: runner.os == 'Linux'
+        run: npm run test:typescript
+
+      # Repository governance runs on Linux in production, not on Desktop platforms.
+      - name: Test TypeScript (cross-platform)
+        if: runner.os != 'Linux'
+        run: npm run test:typescript -- --exclude 'packages/repository-automation/test/**'
+
+      - name: Check Rust
+        run: npm run check:rust
 
       - name: Smoke-test Linux npm package
         if: runner.os == 'Linux'
@@ -75,8 +101,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check
-        run: npm run check
+      - name: Test TypeScript (cross-platform)
+        run: npm run test:typescript -- --exclude 'packages/repository-automation/test/**'
+
+      - name: Check Rust
+        run: npm run check:rust
 
       - name: Smoke-test Linux ARM64 npm package
         run: >

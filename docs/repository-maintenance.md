@@ -54,9 +54,32 @@ PR 维护只做两件事：**明确标题自动标签、CI 结束后更新一条
 - 评论和标签历史读取失败时不写入；写入前重新核对 PR 和 CI run/attempt，过期快照放弃。GitHub API 无跨接口事务，这不是分支保护或合并锁。
 - 在 GitHub 中手动暂停的工作流，不会因本地代码修改自动恢复。重新启用和批量实际写入应由维护者明确决定。
 
-## 原有 CI 和发布校验
+## CI 执行范围和发布校验
 
-现有 `ci.yml` 仍负责测试、类型检查和 Lint；这次收缩不改动它，也不配置分支保护。
+`ci.yml` 保留四项基线 job，不配置分支保护。为减少重复工作，执行范围如下：
+
+| 检查 | Linux x64 | macOS / Windows / Linux ARM64 |
+| --- | --- | --- |
+| 格式、ESLint、包边界、完整 TypeScript 类型检查（含测试） | 执行 | 不重复执行 |
+| TypeScript 构建、预装插件构建 | 执行 | 执行 |
+| TypeScript 测试 | 全量 | 除 repository-automation 外全部执行 |
+| Rust Clippy、编译和测试 | 执行 | 执行 |
+| Linux npm 安装包 smoke | 执行 | ARM64 执行；macOS / Windows 不适用 |
+
+repository-automation 是运行在 Linux GitHub Actions 中的仓库治理逻辑，其测试不再跨 Desktop 平台和 CPU 架构重复执行。其余测试暂不按包裁剪，以保留文件系统、进程、插件加载及发行产物的跨平台回归覆盖。各平台的 TypeScript 构建仍会检查生产代码类型；Rust 格式校验也随 `check:rust` 保留。
+
+同一 PR 有新提交时取消旧 CI；每个 `main push` 使用独立并发组，不因后续提交取消，保留确切发布 SHA 的成功证据。不启用测试重试，也不全局放宽超时。
+
+本地 `npm run check` 仍执行完整检查，不受 CI 裁剪影响。复现 CI 的 TypeScript 范围：
+
+```bash
+# Linux x64：构建并运行完整测试
+npm run test:typescript
+# 其他平台：构建并排除仅需在 Linux x64 验证的仓库治理测试
+npm run test:typescript -- --exclude 'packages/repository-automation/test/**'
+```
+
+工作流将格式、Lint、类型检查、TypeScript 和 Rust 分为独立 step，便于观察瓶颈。修改执行范围后的实际耗时以 Actions 运行结果为准。
 
 `release-packages.yml` 的发布校验继续保留，不属于 PR 评论功能：
 

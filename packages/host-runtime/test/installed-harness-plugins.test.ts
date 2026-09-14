@@ -23,7 +23,6 @@ const classes = {
   "kiro-cli": "KiroAdapter",
   codebuddy: "CodeBuddyAdapter",
   "cursor-cli": "CursorAdapter",
-  hermes: "HermesAdapter",
 };
 
 const unavailable: HarnessInspection = {
@@ -121,7 +120,6 @@ describe("installed Harness composition", () => {
         "/kiro-spec",
         "/kiro-vibe",
       ],
-      hermes: [],
     };
     const registry = await load();
     try {
@@ -151,7 +149,6 @@ describe("installed Harness composition", () => {
     ["kiro-cli", "CODEXHOST_KIRO_COMMAND"],
     ["codebuddy", "CODEXHOST_CODEBUDDY_COMMAND"],
     ["cursor-cli", "CODEXHOST_CURSOR_COMMAND"],
-    ["hermes", "CODEXHOST_HERMES_COMMAND"],
   ])(
     "preserves the explicit %s command rather than finding another local installation",
     async (id, commandVariable) => {

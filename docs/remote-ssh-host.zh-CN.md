@@ -81,7 +81,7 @@ JavaScript；正在执行的 Claude Harness 请求会在重启期间失败关闭
 
 在客户端通过 codexhost 启动 Codex Desktop，打开 SSH 工作区，然后在该远程输入框的 Agent/Model 选择器中选择目标 Harness。模型发现、Thread、Turn、工具、审批和历史都会由 SSH 开发机上的 codexhost 处理。本地 Harness 可用性会始终独立初始化和缓存，因此 SSH 连接不可用时，切回本地输入框不会被远程检查阻塞。
 
-输入框中的 Codex 账号列表、临时账号选择和额度按 Host 隔离；本地账号不会出现在远程输入框中。切换 Host 或更换连接客户端后，旧请求的结果不能覆盖当前输入框。远程没有提供账号管理接口时，保留普通 Codex 入口，不把本地默认账号绑定到远程 Thread；已有会话保持原来的账号归属。
+当前 Codex 身份和额度按 Host 隔离；本地账号不会出现在远程输入框中。切换 Host 或更换连接客户端后，旧请求的结果不能覆盖当前输入框。SSH 使用远端原生单账号认证，不转发本地凭据。Composer 只有一个 Codex 入口，没有 per-draft 账号选择。
 
 设置 → 会话导入也按同一个当前 Host 隔离。选中远程输入框时，页面只列出和登记 SSH 开发机上保存的 Session，并通过该远程 Host 打开导入后的 Thread。Linux SSH Host 直接执行 Claude 会话发现；受管 macOS Host 通过 Aqua broker 执行，broker 只传递有界会话元数据和经验证的原生身份，不传输 Transcript 正文或凭据。运行状态显示未知时，应先在 Claude 原生客户端中关闭该会话再导入。两台机器需要安装相同 codexhost 版本；升级后重新连接远程工作区，确保远程 runtime 与 broker 提供匹配的导入方法。
 

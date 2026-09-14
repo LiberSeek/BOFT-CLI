@@ -90,7 +90,9 @@ describe("Renderer settings foundation", () => {
       "connectionRefresh",
     );
     expect(pages.find(({ id }) => id === "plugins")?.mount.toString()).toContain("pluginsRefresh");
-    expect(pages.find(({ id }) => id === "accounts")?.mount.toString()).toContain("accountAdd");
+    expect(pages.find(({ id }) => id === "accounts")?.mount.toString()).toContain(
+      "accountsDescription",
+    );
     expect(pages.find(({ id }) => id === "session-import")?.mount.toString()).toContain(
       "sessionImportRefresh",
     );

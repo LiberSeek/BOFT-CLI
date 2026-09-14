@@ -16,23 +16,20 @@ export class OfficialRuntimeScope {
   readonly gate: OfficialWorkGate;
   readonly permanentHome: string;
   readonly #failure = Promise.withResolvers<Error>();
-  readonly #managedAccounts: boolean;
   #starting: Promise<void> | undefined;
   #started = false;
   #closed = false;
 
-  constructor(input: Omit<OfficialRuntimeOwnerOptions, "gate"> & { managedAccounts?: boolean }) {
+  constructor(input: Omit<OfficialRuntimeOwnerOptions, "gate"> & { permanentHome: string }) {
     this.permanentHome = input.permanentHome;
     this.gate = new OfficialWorkGate();
-    this.#managedAccounts = input.managedAccounts ?? false;
     this.owner = new OfficialRuntimeOwner({
-      createBackend: (role) => {
+      createBackend: () => {
         if (this.#closed) throw new OfficialAdmissionError("unavailable");
-        return input.createBackend(role);
+        return input.createBackend();
       },
       diagnosticOutput: input.diagnosticOutput,
       gate: this.gate,
-      permanentHome: input.permanentHome,
     });
     this.gate.subscribe(() => {
       if (this.#started && this.gate.phase === "unavailable")
@@ -46,19 +43,13 @@ export class OfficialRuntimeScope {
 
   start(): Promise<void> {
     if (this.#closed) return Promise.reject(new Error("Official Codex is unavailable"));
-    if (this.#managedAccounts) {
-      if (!this.owner.running || this.gate.phase !== "ready")
-        return Promise.reject(new OfficialAdmissionError("unavailable"));
-      this.#started = true;
-      return Promise.resolve();
-    }
     if (this.#started) return Promise.resolve();
     if (this.owner.running) {
       this.#started = true;
       return Promise.resolve();
     }
     if (this.#starting) return this.#starting;
-    const starting = this.owner.start({ mode: "task" }).then(() => {
+    const starting = this.owner.start().then(() => {
       if (this.#closed) throw new OfficialAdmissionError("unavailable");
       this.#started = true;
       this.gate.initialized();
@@ -84,8 +75,7 @@ export class OfficialRuntimeScope {
 
   async close(): Promise<void> {
     this.#closed = true;
-    // A failed close still owns a possibly live backend. Every retry must prove
-    // its exit before the composition can release the private-file lease.
+    // A failed close still owns a possibly live backend; allow stop retries.
     await this.owner.stop();
   }
 }
@@ -113,8 +103,8 @@ export class OfficialRuntimeClient {
   }
   async initializeProtocol(params: JsonObject): Promise<JsonObject> {
     if (this.#closed || this.#scope.closed) throw new OfficialAdmissionError("unavailable");
-    // Desktop initializes the Host transport, not Account readiness. Retain its
-    // native negotiation for recovery, but never attach it to a staging backend.
+    // Desktop initializes the Host transport, not backend readiness. Retain its
+    // native negotiation while backend admission is unavailable.
     this.#session.configure(params);
     if (this.#scope.gate.phase === "ready") {
       try {

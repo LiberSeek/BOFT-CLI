@@ -60,26 +60,6 @@ describe("Desktop initialization without native admission", () => {
       await f.scope.close();
     }
   });
-
-  it("does not attach a new Desktop client to the authentication-only staging backend", async () => {
-    const f = fixture();
-    f.scope.gate.initialized();
-    const change = f.scope.gate.beginChange();
-    const client = new OfficialRuntimeClient({ scope: f.scope, output: async () => {} });
-    const connect = vi.spyOn(f.backend, "connect");
-    try {
-      await f.scope.owner.start({ mode: "management-only", homeOverride: "/synthetic/staging" });
-      await expect(client.initializeProtocol(params)).resolves.toMatchObject({
-        result: { userAgent: "codexhost", codexHome: "/synthetic/home" },
-      });
-      expect(connect).not.toHaveBeenCalled();
-      expect(f.scope.gate.phase).toBe("changing");
-    } finally {
-      await client.close();
-      await f.scope.close();
-      change.finish("unavailable");
-    }
-  });
 });
 
 describe("official Runtime Scope terminal shutdown", () => {
@@ -94,7 +74,7 @@ describe("official Runtime Scope terminal shutdown", () => {
     }
   });
 
-  it("retries failed close rather than letting the caller release its file lease", async () => {
+  it("retries failed close while retaining backend ownership", async () => {
     const f = fixture();
     const stop = vi.spyOn(f.backend, "stop");
     stop

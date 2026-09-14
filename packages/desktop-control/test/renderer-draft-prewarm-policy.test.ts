@@ -547,25 +547,6 @@ describe("Renderer draft prewarm policy", () => {
     });
   });
 
-  it("does not expose or route a per-draft Codex Account", async () => {
-    const sendRequest = vi.fn(async () => undefined);
-    const manager = requestManagerFixture();
-    const bridge = requestBridgeFixture({ sendRequest });
-    const target: DraftPrewarmPolicyTarget = {};
-    installDraftPrewarmPolicyBridge(manager, bridge, "local", target, {
-      discardAllPrewarmedThreads: vi.fn(),
-    });
-    const policy = target.__codexhostDraftPrewarmPolicyV1 as Record<string, unknown>;
-
-    expect(policy).not.toHaveProperty("selectAccount");
-    await bridge.sendRequest("thread/start", { cwd: "/tmp/project", model: "gpt-5" });
-
-    expect(sendRequest).toHaveBeenCalledExactlyOnceWith("thread/start", {
-      cwd: "/tmp/project",
-      model: "gpt-5",
-    });
-  });
-
   it("tunnels private Host requests through the stock Remote Control app-server", async () => {
     const manager = requestManagerFixture();
     const originalNotification = manager.onNotification as ReturnType<typeof vi.fn>;

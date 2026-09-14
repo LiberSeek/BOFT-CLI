@@ -15,7 +15,7 @@ import {
   hostThreadIdSchema,
 } from "@codexhost/shared-contracts";
 
-import { AccountRepository, AppServerHost, ThreadAccountStore } from "../src/index.js";
+import { AppServerHost } from "../src/index.js";
 
 // Run after build:typescript with Node 24 and a normally authenticated Muse CLI:
 // CODEXHOST_MUSE_LIVE=1 npx vitest run --config tests/vitest.config.js packages/host-runtime/test/muse-live.test.ts
@@ -149,7 +149,6 @@ function createHost(directory: string, pluginRoot: string) {
   const output = new HostOutput(desktopOutput);
   const official = new FakeOfficialProcess();
   const mappingStore = new MappingStore({ directory: path.join(directory, "mapping") });
-  const accountDirectory = path.join(directory, "accounts");
   const host = new AppServerHost({
     stockCodexPath: "/synthetic/codex",
     arguments: ["app-server"],
@@ -163,14 +162,6 @@ function createHost(directory: string, pluginRoot: string) {
     externalAdapters: new Map(),
     spawnOfficial: (() =>
       official as unknown as ChildProcessWithoutNullStreams) as unknown as typeof spawn,
-    accountRepository: new AccountRepository({
-      directory: accountDirectory,
-      defaultAccount: {
-        accountId: "default",
-        codexHome: path.join(directory, "codex-home"),
-      },
-    }),
-    threadAccountStore: new ThreadAccountStore({ directory: accountDirectory }),
   });
   const running = host.run();
   // Attach a handler immediately; close() still observes the original rejection.

@@ -1,26 +1,35 @@
 ## Context
 
-完整设计见 [Codex 原生账号管理](../../../docs/codex-native-account-switching-design.md)。账号表示认证身份，正式 home 和官方 Thread 存储固定，其他 Harness 使用各自原生接口。
+See [Codex native Account design](../../../docs/codex-native-account-switching-design.md). An Account is an authentication identity, not a Harness, Model, Provider or Billing Source. Permanent home and native Thread storage remain fixed. This design supersedes the previous Journal/recovery design.
 
 ## Decisions
 
-1. **单个受管后台**：`OfficialRuntimeOwner` 统一拥有管理和 Desktop 连接、工作准入、generation 与订阅；任务和认证 staging 不并行。
-2. **统一事务**：`NativeCodexAccounts` 负责操作归属，`NativeProfileTransaction` 执行切换、激活、重登、退出和恢复。Vault 的 revision、lastOperationId 与 Journal 共同表达持久事实；集合保存全部凭据副本，当前身份由原生文件推导，只有未决事务持久记录 source/target 选择。
-3. **中断切换**：进入 changing，停止受管及当次检测到的其他 Codex 后端，安装凭据并重启验证。登录、退出也在 changing 下直接停止受管后端，但不主动停止外部后端。新请求立即拒绝，旧 RPC 明确失败，不排队或重放；不扫描或追踪会话是否空闲。busy 仅表示在途请求租约；删除非当前账号不停止后台，恢复先确认受管后台退出。额度请求本地超时或客户端分离不单独关闭全局准入，真实连接故障仍使 Codex unavailable。
-4. **有限外部终止**：跨 CODEX_HOME 匹配 Codex 可执行文件名，核对 PID／启动身份后有界终止；不关闭编辑器、不递归停止外部工具子进程、不追杀自动重启实例。启动、普通关闭、回滚和恢复不执行此批次。
-5. **私有明文存储**：完整凭据字节保存在 Vault、Journal 和 staging 中，受权限、租约、容量及 CAS 保护。旧密文使用已有密钥原地转换，失败保留原数据，部分转换可恢复。
-6. **事实验证**：确认旧后台退出后才写凭据；新后台通过原生身份和认证接口验证后才提交。独立 Host 凭据刷新租约不得强制清空，文件或身份冲突不覆盖。
-7. **认证职责分离**：Desktop 原生登录／取消／退出直接转发，Host 不改写参数、loginId、结果和通知；通知后异步收集凭据，备份失败不影响原生结果。只观察原生认证写入以阻止冲突切换。设置页添加 B 保持 A，仍使用隔离 staging；旧原生 staging 激活意图仅用于兼容恢复。
-8. **能力与健康分离**：启动允许外部客户端共存，所有权和布局事实决定恢复。Host transport initialize 独立于 Codex readiness，不将客户端连接到 staging，不因 Codex 故障关闭其他 Harness。
-9. **Thread 连续性**：使用原生初始化和订阅参数按原 ID 懒恢复；账号操作不采集设置快照，临时内容及完整运行时设置无损恢复不作保证。
-10. **响应和导航**：在途 Host 应答属于原 Request Client，不重新发起账号操作。切换成功后，发起窗口通过原生入口打开先前选中的同一 Thread；超时、卸载或用户导航结束恢复。
-11. **额度**：当前走官方协议，非当前走 WHAM。OAuth 刷新使用 single-flight、修改租约、身份校验和最新 Vault CAS，失败保留 last-good。
-12. **凭据接入**：有效旧登记当前账号使用正式 home 时，只读导入缺失凭据和来源摘要；源文件与历史保留，其他 home 不合并。
+1. **Native startup first**: Canonicalize `CODEX_HOME`, start one Host-owned capability-token-protected loopback app-server shared by Desktop and one management connection, then asynchronously initialize Account management. Management failure does not disable native use. No exact-version allowlist, process exit records, supervisor receipts, Rust private-file IPC or OS keyring access. SSH retains remote native single-account authentication.
+2. **Plaintext collection**: Node fs owns `.codexhost-native-accounts/vault.json`, with directory mode 0700, file mode 0600 and atomic temp-file rename. v3 preserves metadata and exact `auth.json` text for every saved Account, including current. Current is derived only from permanent file issuer/subject/workspace identity. Startup, list refresh and native notifications collect credentials. OS permissions are the only protection; deletion is not secure erasure.
+3. **Narrow legacy salvage**: Rewrite v1/v2 Vaults as v3. Entries without usable copies require login. Scan leftover `transaction.json`, `login.json`, `login/`, `.codexhost-process*.json` and `.codexhost-writer.lock` once for missing copies or unknown identities, then delete them. Do not replay old operation intent or import other homes. Corrupt Vaults are not overwritten; only management becomes unavailable.
+4. **Direct switching**: Enter changing and reject new native work; pending native authentication returns busy before stopping. Save A, check file-based storage and no API-key environment override, stop the owned backend and wait for exit, stop the detected external batch, save A again to capture rotation, atomically write B, restart and verify using `account/read` and file identity. No idle scans, Model Turns or quota checks. Retired RPCs fail; no queued work or replay.
+5. **External stop remains necessary**: A live external backend retains old tokens and can write them back to shared auth. Match `codex`, `codex.exe` and the official binary basename, check PID/start identity and use bounded escalation. The current batch is neither same-home nor app-server-only and can interrupt terminal CLI sessions. Do not close editors, recursively kill external tools or hunt automatic restarts. Startup, shutdown, logout, rollback and recover do not run this batch.
+6. **Failure without a Journal**: After a stopped-backend failure, restore saved A, restart and verify. If rollback fails, Codex is unavailable. Never write or start a competing backend when stop cannot be confirmed. Recover stops, restarts and verifies current `auth.json`, and retries management initialization. Atomic replacement leaves complete A or B after interruption; subsequent collection reconciles without durable operation intent or receipts.
+7. **Separate Settings login**: Use native device-code login in a short-lived `codex app-server`, a private home under the Account directory and a minimal environment. Main backend continues running. Save successful credentials; use switching only when current is absent or the result re-authenticates current, installing new bytes even for the same identity. Cancel or ten-minute timeout stops the login process; always remove its directory. No public cleanup state or durable login recovery stage.
+8. **Native authentication unchanged**: Forward Desktop `account/login/*` and `account/logout` unchanged. Only observe pending authentication to reject conflicting switches and collect credentials after native notifications; backup failure does not alter native results. Settings logout uses replacement with no target and no external stop, preserving saved copies. Delete only non-current saved Accounts without stopping a backend.
+9. **Thread and response continuity**: Generations isolate retired frames. Owner lazily calls native `thread/resume` with original Thread IDs and subscription parameters; Renderer reopens the selected local Thread after successful switching. Temporary content and full runtime settings are not guaranteed. In-flight Account responses belong to the original Request Client, never a repeated operation.
+10. **Public state**: v2 exposes phase ready/changing/unavailable, instanceId/revision, native-derived current, Accounts with requiresLogin, pendingOperation and manage/switch/login/delete/logout/recover capabilities. Reasons are unsupported-storage, recovery-required, ssh-single-account and unsupported-version (missing protocol capability, not a version allowlist). Remove cleanupRequired, legacyHistoryPreserved, keyring-unavailable and migration-required. Only Settings offers global switching.
+11. **Quotas unchanged**: Current uses official `account/rateLimits/read`; inactive uses WHAM with single-flight OAuth refresh of saved credentials, existing identity/concurrent-write protection and last-good caching. Never install inactive credentials or start an extra backend. Only current consumes reset credits, without automatic retry.
+
+## Verification readiness and diagnostics
+
+Run the owned backend with cwd equal to canonical CODEX_HOME, preserving the previous configuration context. Management initialization and generation checks remain mandatory, but protocol initialization is not authentication verification. Switch/logout/rollback/recover poll `account/read {refreshToken:false}` approximately every 200 ms for at most 10 seconds, including stalled reads. Wait for a ChatGPT account (null for a null target), then confirm permanent file identity. Retry transient errors and nonmatching observations; retain the last failure category at timeout. Do not force token rotation; native Codex refreshes on demand. Credential-storage checks are unchanged.
+
+Record each failed step once to Host diagnostic output and `.codexhost-native-accounts/diagnostics.log` under CODEX_HOME (0600, last 200 lines). Only operation, fixed step, optional numeric RPC error code and elapsed milliseconds are permitted. Verification retries produce one final failure line; rollback failures have a rollback-prefixed step. Diagnostic failures must not change rollback behavior. No tokens, email, Account IDs, paths or raw messages.
+
+## Deferred decisions
+
+Consolidating OfficialWorkGate lease kinds; choosing between Owner lazy resume and Renderer navigation restoration; narrowing external termination to the same CODEX_HOME or app-server only; re-evaluating inactive-account OAuth refresh. None is claimed complete by this change.
 
 ## Source and licenses
 
-参考 opencodex `2d4d7a22381a2e497c2442902104619e25f937c7` 的原生凭据事务、恢复和隔离登录。复用代码保留 `third-party/opencodex.LICENSE`，installer/npm notice 包含 MIT 文本和来源。
+The native credential envelope and inactive quota reading reference opencodex `2d4d7a22381a2e497c2442902104619e25f937c7`. Reused code retains `third-party/opencodex.LICENSE`; installer/npm notices include the MIT text and source. Release scripts and license files are unchanged.
 
 ## Risks and validation
 
-Host 租约不能阻止任意同用户程序写共享凭据。目标认证和文件验证不等于全部客户端同步身份。真实账号、OS 密钥、各平台文件与进程语义、Desktop 联合运行不能由内存 fixture 证明；当前状态见 `evidence.md`。
+Same-user programs can still read plaintext credentials or rewrite shared auth after switching. File/backend identity verification is not a multi-client atomic switch guarantee. External termination is deliberately documented at its current broad scope. Prior validation applies to removed implementation, not this simplification; code, platform, real Account and Desktop validation remain pending in `evidence.md`.

@@ -33,6 +33,22 @@ fn production_launcher_rejects_the_gate_probe_command() {
 }
 
 #[test]
+fn production_launcher_rejects_the_removed_process_stop_command() {
+    let output = Command::new(launcher_path())
+        .args([
+            "process-stop",
+            "--name",
+            "codexhost-nonexistent-test-process",
+        ])
+        .output()
+        .expect("run launcher");
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("codexhost inspect"));
+    assert!(!stderr.contains("native process stop"));
+}
+
+#[test]
 fn production_launcher_resolves_resources_beside_its_installed_location() {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)

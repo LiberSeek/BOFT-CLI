@@ -1,40 +1,35 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  currentCodexAccountFromOfficialRead,
   SingleNativeCodexAccount,
-  UnavailableCodexAccounts,
 } from "../src/account/codex-account-control.js";
 
 describe("Codex Account control fallbacks", () => {
-  it("distinguishes unavailable security and migration reasons", () => {
-    expect(new UnavailableCodexAccounts("keyring-unavailable").snapshot()).toMatchObject({
-      phase: "unavailable",
-      capabilities: { manage: false, reason: "keyring-unavailable" },
-    });
-    expect(new UnavailableCodexAccounts("migration-required").snapshot()).toMatchObject({
-      capabilities: { manage: false, reason: "migration-required" },
-    });
-  });
-
-  it("projects native state without implementing a second managed login path", async () => {
+  it("projects native state without implementing a managed login path", () => {
     const summary = vi.fn(() => ({
       version: 2 as const,
       currentAccountId: null,
       phase: "ready" as const,
       revision: 1,
-      capabilities: {
-        manage: false,
-        switch: false,
-        login: false,
-        delete: false,
-        reason: "ssh-single-account" as const,
-      },
       accounts: [],
     }));
     const control = new SingleNativeCodexAccount(summary);
     expect(control.snapshot()).toEqual(summary());
-    await expect(control.startLogin()).rejects.toMatchObject({ code: "unavailable" });
-    await expect(control.logout()).rejects.toMatchObject({ code: "unavailable" });
-    await expect(control.recover()).rejects.toMatchObject({ code: "unavailable" });
+    expect(control.refresh).toBeUndefined();
+  });
+
+  it("maps official account/read to a current-only display identity", () => {
+    expect(currentCodexAccountFromOfficialRead({ account: null })).toBeNull();
+    expect(
+      currentCodexAccountFromOfficialRead({
+        account: { type: "chatgpt", email: "a@example.com", planType: "pro" },
+      }),
+    ).toEqual({
+      accountId: "current",
+      label: "a@example.com",
+      email: "a@example.com",
+      planType: "pro",
+    });
   });
 });

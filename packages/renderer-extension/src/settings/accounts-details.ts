@@ -1,7 +1,7 @@
 import { createRendererSettingsIcon } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
 
-/** Compact account actions and native-management help use the same native modal behavior. */
+/** Read-only native-management help. */
 export function createAccountDetails(
   document: Document,
   messages: RendererSettingsMessages,
@@ -10,9 +10,7 @@ export function createAccountDetails(
     triggerLabel?: string;
     description: string;
     focusKey: string;
-    icon: "ellipsis" | "info";
-    disabled?: boolean;
-    actions: readonly HTMLButtonElement[];
+    icon: "info";
   },
 ): HTMLElement {
   const root = document.createElement("div");
@@ -21,7 +19,6 @@ export function createAccountDetails(
   trigger.type = "button";
   trigger.className = "settings-icon-button";
   trigger.title = input.triggerLabel ?? input.label;
-  trigger.disabled = input.disabled ?? false;
   trigger.dataset.accountFocus = input.focusKey;
   trigger.setAttribute("aria-label", trigger.title);
   trigger.setAttribute("aria-haspopup", "dialog");
@@ -47,21 +44,7 @@ export function createAccountDetails(
   dialog.addEventListener("close", () => {
     if (trigger.isConnected && !trigger.disabled) trigger.focus({ preventScroll: true });
   });
-  // Close before invoking a mutation, so its async table updates preserve focus on the row.
-  dialog.addEventListener(
-    "click",
-    (event) => {
-      if (input.actions.some((action) => action.contains(event.target as Node))) {
-        trigger.focus({ preventScroll: true });
-        dialog.close();
-      }
-    },
-    { capture: true },
-  );
-  const actions = document.createElement("div");
-  actions.className = "settings-account-dialog__actions";
-  actions.append(...input.actions);
-  dialog.append(close, heading, description, actions);
+  dialog.append(close, heading, description);
   trigger.addEventListener("click", () => dialog.showModal());
   root.append(trigger, dialog);
   return root;

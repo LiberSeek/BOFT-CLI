@@ -10,8 +10,8 @@ type AccountScope = Pick<OfficialRuntimeScope, "gate" | "closed"> & {
 const object = (value: unknown): value is JsonObject =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** Collect native auth changes and refresh Desktop after Host backend replacement.
- * No authentication requests, login IDs, credential transactions or native event rewriting.
+/** Refresh displayed current identity after native auth or backend replacement.
+ * No credential collection, login IDs or native event rewriting.
  */
 export class NativeAccountObserver {
   readonly #unsubscribe: () => void;
@@ -38,9 +38,10 @@ export class NativeAccountObserver {
     this.#initialized = true;
     this.#lastGeneration = nativeGeneration ?? -1;
     this.#scheduleAccountUpdate();
+    if (nativeGeneration !== undefined) this.observe({ method: "account/updated" });
   }
 
-  /** Called after forwarding the native frame. Backup failure cannot alter its outcome. */
+  /** Called after forwarding the native frame. Identity read failure cannot alter its outcome. */
   observe(value: JsonValue): void {
     if (
       !object(value) ||
@@ -97,8 +98,7 @@ export class NativeAccountObserver {
     const { scope, notify } = this.input;
     const generation = scope.owner.generation;
     this.#lastGeneration = generation;
-    // Only a ready permanent generation is announced, never Settings staging.
-    // This observation must not hold a credential-change lease or retry forever.
+    // Announce only a ready backend generation, without blocking work or retrying forever.
     const response = await scope.owner.controlRequest("account/read", { refreshToken: false });
     if (response.error || !object(response.result))
       throw new Error("Invalid native Account response");

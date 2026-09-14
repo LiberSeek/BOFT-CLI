@@ -1052,6 +1052,7 @@ export function installCurrentRendererAdapter(): {
   const syncActiveRoute = (route: RendererRequestRoute | null): RendererModelClient | null => {
     const policy = route?.policy ?? null;
     const client = route ? modelClientForTargets(route.targets, route.policy) : null;
+    usageSubscription.connect(client);
     if (activeRoutePolicy === policy && activeRouteClient === client) return client;
     activeRoutePolicy = policy;
     activeRouteClient = client;
@@ -1065,7 +1066,6 @@ export function installCurrentRendererAdapter(): {
   const currentModelClient = (): RendererModelClient => {
     const client = currentRequestRoute() ? activeRouteClient : null;
     if (!client) throw new Error("Renderer Model request manager is unavailable");
-    usageSubscription.connect(client);
     return client;
   };
   const modelControl: RendererModelClient = Object.freeze({
@@ -1115,15 +1115,6 @@ export function installCurrentRendererAdapter(): {
       if (!client.inspectCodexAccountUsage) throw new Error("Codex Account Usage is unavailable");
       return client.inspectCodexAccountUsage(input);
     },
-    consumeCodexAccountResetCredit: (
-      input: Parameters<NonNullable<RendererModelClient["consumeCodexAccountResetCredit"]>>[0],
-    ) => {
-      const client = currentModelClient();
-      if (!client.consumeCodexAccountResetCredit) {
-        throw new Error("Codex Account reset-credit consume is unavailable");
-      }
-      return client.consumeCodexAccountResetCredit(input);
-    },
     listHarnessAccountSources: () => {
       const client = currentModelClient();
       if (!client.listHarnessAccountSources) {
@@ -1152,14 +1143,6 @@ export function installCurrentRendererAdapter(): {
       const client = currentModelClient();
       return client.refreshCodexAccounts?.() ?? client.listCodexAccounts();
     },
-    deleteCodexAccount: (input: Parameters<RendererModelClient["deleteCodexAccount"]>[0]) =>
-      currentModelClient().deleteCodexAccount(input),
-    switchCodexAccount: (input: Parameters<RendererModelClient["switchCodexAccount"]>[0]) =>
-      currentModelClient().switchCodexAccount(input),
-    logoutCodexAccount: (input?: Parameters<RendererModelClient["logoutCodexAccount"]>[0]) =>
-      currentModelClient().logoutCodexAccount(input),
-    recoverCodexAccounts: (input?: Parameters<RendererModelClient["recoverCodexAccounts"]>[0]) =>
-      currentModelClient().recoverCodexAccounts(input),
     subscribeCodexAccounts: (
       listener: Parameters<NonNullable<RendererModelClient["subscribeCodexAccounts"]>>[0],
     ) => {
@@ -1167,14 +1150,6 @@ export function installCurrentRendererAdapter(): {
       if (!client.subscribeCodexAccounts) throw new Error("Codex Account updates are unavailable");
       return client.subscribeCodexAccounts(listener);
     },
-    startCodexAccountLogin: (input: Parameters<RendererModelClient["startCodexAccountLogin"]>[0]) =>
-      currentModelClient().startCodexAccountLogin(input),
-    cancelCodexAccountLogin: (
-      input: Parameters<RendererModelClient["cancelCodexAccountLogin"]>[0],
-    ) => currentModelClient().cancelCodexAccountLogin(input),
-    subscribeCodexAccountLogin: (
-      listener: Parameters<RendererModelClient["subscribeCodexAccountLogin"]>[0],
-    ) => currentModelClient().subscribeCodexAccountLogin(listener),
   });
   const forkControl = installRendererForkControl({
     getClient: () => modelControl,

@@ -91,7 +91,12 @@ describe("Account limit windows", () => {
   it("renders API remaining balance without synthesizing a percent meter", () => {
     const result = renderAccountUsage(
       document,
-      { status: "ready", credits: { remaining: 12.5, unit: "USD", periodType: "unknown" } },
+      {
+        status: "ready",
+        credits: { remaining: 12.5, unit: "USD", periodType: "unknown" },
+        freshness: "live",
+        observedAt: null,
+      },
       messages,
       "remaining",
       vi.fn(),
@@ -258,43 +263,32 @@ describe("Account reset-card details", () => {
   });
 
   it("does not invent a zero card count when no reset snapshot is provided", () => {
-    expect(
-      renderAccountResetCredits(document, credits, messages, {
-        usingReset: false,
-        resetDisabled: false,
-      }),
-    ).toBeNull();
+    expect(renderAccountResetCredits(document, credits, messages)).toBeNull();
   });
 
-  it("shows a count and reset action even without per-card expiry data", () => {
-    const onUseReset = vi.fn();
+  it("shows only a count without per-card expiry data", () => {
     const result = renderAccountResetCredits(
       document,
       { ...credits, resetCredits: { availableCount: 2 } },
       messages,
-      { usingReset: false, resetDisabled: false, onUseReset },
     );
     if (!result) throw new Error("Expected reset details");
     expect(text(result.summary)).toContain("2 张");
     expect(elements(result.details).some((el) => el.tagName === "ul")).toBe(false);
-    elements(result.details)
-      .find((el) => el.tagName === "button")
-      ?.listeners.get("click")?.();
-    expect(onUseReset).toHaveBeenCalledOnce();
+    expect(elements(result.details).some((el) => el.tagName === "button")).toBe(false);
   });
 
-  it("renders every expiry and disables consumption while another reset is pending", () => {
+  it("renders every expiry without a consume action", () => {
     const expiresAt = ["2026-09-10T16:12:00.000Z", "2026-09-18T08:00:00.000Z"];
     const result = renderAccountResetCredits(
       document,
       { ...credits, resetCredits: { availableCount: 2, nextExpiresAt: expiresAt[0], expiresAt } },
       messages,
-      { usingReset: false, resetDisabled: true, onUseReset: vi.fn() },
     );
     if (!result) throw new Error("Expected reset details");
     expect(elements(result.details).filter((el) => el.tagName === "li")).toHaveLength(2);
     expect(text(result.details)).toContain("第 1 张");
     expect(text(result.details)).toContain("第 2 张");
-    expect(elements(result.details).find((el) => el.tagName === "button")?.disabled).toBe(true);
+    expect(elements(result.details).some((el) => el.tagName === "button")).toBe(false);
   });
 });

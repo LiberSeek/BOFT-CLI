@@ -363,13 +363,6 @@
 .settings-account-usage > button {
   justify-self: start;
 }
-.settings-account-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
 .settings-account-action {
   padding: 4px 5px;
   min-height: 30px;
@@ -387,14 +380,6 @@
 .settings-account-action:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-.settings-account-delete {
-  color: var(--settings-danger);
-}
-.settings-account-delete:hover,
-.settings-account-delete:focus-visible {
-  color: var(--settings-danger);
-  background: var(--settings-danger-bg);
 }
 .settings-account-reset-summary {
   display: inline-flex;
@@ -454,26 +439,6 @@
   text-align: center;
   color: var(--settings-muted);
 }
-.settings-account-verification {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  color: var(--settings-muted);
-}
-.settings-account-verification a {
-  color: var(--settings-focus);
-  overflow-wrap: anywhere;
-}
-.settings-account-verification code {
-  padding: 5px 8px;
-  color: var(--settings-text);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  background: var(--settings-inset);
-  border-radius: 6px;
-}
 .settings-account-list :focus-visible,
 .settings-account-toolbar :focus-visible:not(.settings-segmented__item):not(input) {
   outline: 2px solid var(--settings-focus);
@@ -510,12 +475,6 @@
   position: absolute;
   top: 12px;
   right: 12px;
-}
-.settings-account-dialog__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 @container (max-width: 680px) {
@@ -570,10 +529,6 @@
   .settings-account-management {
     flex-direction: row;
     justify-content: space-between;
-  }
-  .settings-account-actions {
-    order: 1;
-    margin-left: auto;
   }
   .settings-account-native {
     justify-content: flex-start;

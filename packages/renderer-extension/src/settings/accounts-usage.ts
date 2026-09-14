@@ -355,7 +355,6 @@ export function renderAccountResetCredits(
   document: Document,
   credits: AccountCreditsSnapshot,
   messages: RendererSettingsMessages,
-  options: { onUseReset?: () => void; usingReset: boolean; resetDisabled: boolean },
 ): { summary: HTMLButtonElement; details: HTMLElement } | null {
   const resetCredits = credits.resetCredits;
   if (!resetCredits) return null;
@@ -406,16 +405,5 @@ export function renderAccountResetCredits(
     copy.append(list);
   }
   details.append(copy);
-  if (options.onUseReset) {
-    const use = document.createElement("button");
-    use.type = "button";
-    use.className = "settings-command-button settings-command-button--secondary";
-    use.textContent = options.usingReset
-      ? messages.accountResetCreditsUsing
-      : messages.accountResetCreditsUse;
-    use.disabled = options.resetDisabled;
-    use.addEventListener("click", options.onUseReset);
-    details.append(use);
-  }
   return { summary, details };
 }

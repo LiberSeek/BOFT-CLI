@@ -1,38 +1,40 @@
-## 1. 平台与边界
+## 1. Simplify storage and startup
 
-- [x] 1.1 使用公共 Workspace 契约；Rust 只拥有通用原生能力，Renderer 不接触凭据。
-- [x] 1.2 私有文件 helper 持锁执行有界 I/O，校验路径身份、权限和条件写入。
-- [x] 1.3 提供进程身份、监督、退出 receipt 和单批次 Codex 后端终止。
-- [x] 1.4 显式传递 home／profile 路径和 Chromium user-data-dir。
-- [x] 1.5 复用代码附带 opencodex 来源和 MIT 发行声明。
+- [ ] 1.1 Implement Node fs v3 Vault with exact native credential text, metadata, modes 0700/0600, atomic rename and no persisted current selector.
+- [ ] 1.2 Rewrite v1/v2 Vaults, mark missing copies requiresLogin, salvage missing/unknown credentials once from specified 0.8.x records and delete leftovers; preserve corrupt Vaults.
+- [ ] 1.3 Remove Journal recovery, process exit records, supervisor receipts, Rust private-file IPC and OS keyring access.
+- [ ] 1.4 Start the shared capability-token loopback backend before asynchronous management initialization; preserve native use on management failure and remote single-account SSH behavior.
 
-## 2. 账号核心
+## 2. Simplify Account operations
 
-- [x] 2.1 明文 Vault、Journal 与登录 candidate 保存完整原生凭据字节。
-- [x] 2.2 旧密文使用已有密钥原地转换；按文件 CAS，可恢复部分转换。
-- [x] 2.3 切换、首次激活、重登和退出共用一个事务执行者及提交收据。
-- [x] 2.4 先进入 changing，再停止受管和检测到的其他 Codex 后端；新请求立即拒绝，不排队或重放。
-- [x] 2.5 Host 设置页添加／重新登录、受控退出直接停止受管后端；凭据接入在受管后端退出后进行。独立 Host 刷新租约、身份和退出证明保护写入，不扫描或追踪会话。删除保存账号和恢复不以原生任务活动判忙；额度请求超时／客户端分离不单独关闭准入，真实连接故障仍保留保护。
-- [x] 2.6 原生认证直接转发，不重建协议；仅观察认证写入来阻止冲突切换。设置页设备代码登录保留 staging；旧原生登录激活记录兼容恢复。
-- [x] 2.7 冷启动先恢复后导入，允许外部 Codex 共存；不支持管理时按所有权事实选择原生路径。
-- [x] 2.8 管理连接优先初始化，generation 隔离，Host transport initialize 独立于 Codex readiness。
-- [x] 2.9 原生认证通知后异步同步收藏；备份失败不改变官方结果，Host 切换后的 Desktop 身份显示继续更新。
+- [ ] 2.1 Implement changing admission, native-auth busy handling, save/stop/external-stop/save/install/restart/native-verify switching without Model or quota probes.
+- [ ] 2.2 Keep executable-name-matched external termination with PID/start-identity checks and bounded escalation; document cross-home and terminal CLI interruption.
+- [ ] 2.3 Implement rollback to saved A and unavailable on failed rollback; recover by stop/restart/current-file verification and management initialization retry, without Journal replay.
+- [ ] 2.4 Implement Settings logout with no target or external stop, and inactive-only deletion without backend stop; retain saved credentials on logout.
+- [ ] 2.5 Run separate private-home Settings device-code login while main backend runs; save only unless no current or current re-login, install same-identity new bytes, stop on cancel/ten-minute timeout and always remove the directory.
+- [ ] 2.6 Preserve native authentication forwarding, pending-auth observation and post-notification credential collection.
 
-## 3. Desktop 与额度
+## 3. Contracts, Desktop and unchanged quota behavior
 
-- [x] 3.1 v2 快照、全局设置页、Host instance/revision、只读 Composer 身份。
-- [x] 3.2 原 Client 拥有在途应答；切换成功后通过原生入口恢复选中 Thread。
-- [x] 3.3 原生初始化与订阅参数支持原 ID 懒恢复，失败不投递用户工作。
-- [x] 3.4 当前原生额度及非当前 WHAM／OAuth 刷新使用 single-flight、修改租约和最新 Vault CAS。
-- [x] 3.5 旧布局凭据只读接入；主账号历史保持，其他 home 保留且不合并。
+- [ ] 3.1 Update v2 state/capabilities and remove cleanupRequired, legacyHistoryPreserved, keyring-unavailable and migration-required.
+- [ ] 3.2 Preserve generation isolation, Owner lazy native resume, Renderer selected-Thread reopening and original-client response ownership without promising temporary-content or full-settings restoration.
+- [ ] 3.3 Preserve current native quota reads, inactive WHAM/single-flight OAuth refresh, concurrent-write protection, last-good caching and current-only reset credits.
+- [x] 3.4 Replace documentation and OpenSpec requirements with the simplified design; retain attribution only for native credential envelope and inactive quota reading.
 
-## 4. 验收
+## 4. Validation pending for the simplified implementation
 
-- [x] 4.1 提供契约、账号事务、RPC 退休、登录取消、恢复及 UI 的聚焦测试。
-- [x] 4.2 完成类型、lint、边界、格式、聚焦 TS／E2E／Rust 和 OpenSpec 检查；结果与跳过条件见 evidence。
-- [ ] 4.3 完成各目标平台的原生文件、进程树、旧密钥读取失败和 Desktop 联合运行验证。
-- [ ] 4.4 实机验证检测到的 VS Code／CLI 后端 PID／启动身份退出及自动重启行为。
-- [ ] 4.5 同一真实 Thread 完成 A→B→A，验证后续请求认证、历史、Desktop／Host 连续性及其他 Harness 行为。
-- [ ] 4.6 完成当前支持矩阵验收后再进入发布。
+- [ ] 4.1 Add/run focused storage upgrade, corrupt Vault, atomic replacement, rollback/recover and login cancellation/timeout tests.
+- [ ] 4.2 Validate native authentication passthrough, busy admission, generation retirement, public contracts, Renderer behavior and unchanged quota behavior.
+- [ ] 4.3 Run applicable type, lint, boundary and focused TS/Rust checks through the owning workstreams; previous results do not validate this implementation.
+- [ ] 4.4 Validate real platform permissions and process exit behavior, including external VS Code/CLI termination and automatic restart risks.
+- [ ] 4.5 Validate real A→B→A on the same Thread, subsequent authentication/context, Desktop/Host continuity and other Harness behavior.
+- [ ] 4.6 Complete the support matrix and release acceptance after authorized real-account/platform validation.
 
-结果与未验证边界见 [evidence.md](evidence.md)。真实账号、进程和发布操作须在获得相应授权后执行。
+## 5. Explicitly deferred, not completed
+
+- [ ] 5.1 Consolidate OfficialWorkGate lease kinds.
+- [ ] 5.2 Choose between Owner lazy resume and Renderer navigation restoration.
+- [ ] 5.3 Narrow external termination to same CODEX_HOME or app-server only.
+- [ ] 5.4 Re-evaluate inactive-account OAuth refresh.
+
+Implementation boxes remain unchecked until confirmed by their owning workstreams. Documentation/OpenSpec checks do not validate code. See [evidence.md](evidence.md); real-account, process and release actions require appropriate authorization.
