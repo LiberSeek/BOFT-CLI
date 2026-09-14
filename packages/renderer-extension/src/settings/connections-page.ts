@@ -21,21 +21,6 @@ import type { RendererSettingsMessages } from "./localization.js";
 
 export const CODEXHOST_GITHUB_ISSUES_NEW_URL = "https://github.com/LiberSeek/BOFT-CLI/issues/new";
 
-const HARNESS_INSTALL_URLS: Readonly<Record<ExternalRendererAgent, string>> = Object.freeze({
-  pi: "https://pi.dev/",
-  "claude-code": "https://code.claude.com/docs/en/quickstart",
-  "deepseek-harness": "https://deepseek-harness.github.io/deepseek-harness/",
-  opencode: "https://opencode.ai/docs/",
-  grok: "https://grok.com/",
-  omp: "https://github.com/can1357/oh-my-pi",
-  antigravity: "https://antigravity.google/product/antigravity-cli",
-  hermes: "https://hermes-agent.nousresearch.com/docs",
-  muse: "https://www.meta.ai/",
-  "kiro-cli": "https://kiro.dev/docs/cli/",
-  codebuddy: "https://www.codebuddy.ai/docs/zh/cli/overview",
-  "cursor-cli": "https://cursor.com/docs/cli/installation",
-});
-
 export interface RendererConnectionAgentSnapshot {
   readonly agent: ExternalRendererAgent;
   readonly availability: RendererAgentAvailability;
