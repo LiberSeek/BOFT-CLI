@@ -8,6 +8,9 @@ const accountIdSchema = z
   .regex(/^[A-Za-z0-9._~-]+$/u);
 const nonBlankTextSchema = z.string().trim().min(1);
 
+export const codexAccountAuthKindSchema = z.enum(["api", "chatgpt"]);
+export type CodexAccountAuthKind = z.infer<typeof codexAccountAuthKindSchema>;
+
 export const codexAccountPlanTypeSchema = z.enum([
   "free",
   "go",
@@ -35,6 +38,8 @@ export const codexAccountSchema = z
     label: nonBlankTextSchema.max(256),
     email: z.string().email().max(320).optional(),
     planType: codexAccountPlanTypeSchema.optional(),
+    authKind: codexAccountAuthKindSchema.optional(),
+    authIdentity: nonBlankTextSchema.max(256).optional(),
   })
   .strict();
 export type CodexAccountSummary = z.infer<typeof codexAccountSchema>;

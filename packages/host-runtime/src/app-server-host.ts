@@ -51,6 +51,7 @@ import {
   hostItemIdSchema,
   hostThreadIdSchema,
   hostTurnIdSchema,
+  jsonObjectSchema,
   jsonValueSchema,
   threadInspectionParamsSchema,
   threadInspectionSchema,
@@ -133,6 +134,9 @@ import {
   SingleNativeCodexAccount,
   type CodexAccountControl,
 } from "./account/codex-account-control.js";
+import { inspectCodexApiAccountCredits } from "./account/codex-api-usage.js";
+import { projectCodexAccountAuth } from "./account/codex-account-auth-projection.js";
+import { inspectCodexHomeAuth, type CodexHomeAuthInspection } from "./account/codex-home-auth.js";
 
 import {
   createOwnedConnectionBackend,
@@ -483,6 +487,7 @@ export class AppServerHost {
   #officialRuntimeScope: OfficialRuntimeScope;
   #ownsOfficialRuntimeScope: boolean;
   #accountControl: CodexAccountControl;
+  #officialHomeAuth: CodexHomeAuthInspection | undefined;
   #nativeAccountObserver: NativeAccountObserver | undefined;
   #externalAdapters: Map<ExternalHarnessId, HarnessAdapter>;
   #pluginDescriptors: HarnessPluginDescriptor[] = [];
@@ -580,13 +585,19 @@ export class AppServerHost {
       ? new NativeAccountObserver({
           control: this.#accountControl,
           scope: this.#officialRuntimeScope,
-          notify: (method, params) => this.#writer.json({ method, params }),
+          notify: async (method, params) => {
+            if (method === "codexhost/account/changed") {
+              await this.#refreshOfficialHomeAuth();
+              params = jsonObjectSchema.parse(this.#projectCodexAccountSnapshot());
+            }
+            return this.#writer.json({ method, params });
+          },
           diagnose: () =>
             this.#diagnose("Codex Account identity or notification could not be updated"),
         })
       : undefined;
     this.#unsubscribeAccountState = this.#officialRuntimeScope.gate.subscribe(() => {
-      const snapshot = this.#accountControl.snapshot();
+      const snapshot = this.#projectCodexAccountSnapshot();
       void this.#writer
         .json({ method: "codexhost/account/changed", params: jsonValueSchema.parse(snapshot) })
         .catch(() => undefined);
@@ -1431,20 +1442,56 @@ export class AppServerHost {
     return this.#accountInspections.inspect(adapter, this.#pluginDescriptors, refresh);
   }
 
-  async #currentCodexAccountId(): Promise<string | null> {
-    return this.#accountControl.currentAccountId();
+  async #refreshOfficialHomeAuth(): Promise<void> {
+    try {
+      this.#officialHomeAuth = await inspectCodexHomeAuth(this.#officialRuntimeScope.permanentHome);
+    } catch {
+      this.#officialHomeAuth = undefined;
+    }
   }
 
-  async #codexAccountSnapshot() {
-    return this.#accountControl.refresh?.() ?? this.#accountControl.snapshot();
+  #projectCodexAccountSnapshot() {
+    return projectCodexAccountAuth(this.#accountControl.snapshot(), this.#officialHomeAuth);
+  }
+
+  async #currentCodexAccountId(): Promise<string | null> {
+    return this.#projectCodexAccountSnapshot().currentAccountId;
+  }
+
+  async #codexAccountSnapshot(refreshHomeAuth = false) {
+    const snapshot = refreshHomeAuth
+      ? ((await this.#accountControl.refresh?.()) ?? this.#accountControl.snapshot())
+      : this.#accountControl.snapshot();
+    if (refreshHomeAuth || this.#officialHomeAuth === undefined) {
+      await this.#refreshOfficialHomeAuth();
+    }
+    return projectCodexAccountAuth(snapshot, this.#officialHomeAuth);
   }
 
   async #handleCodexAccountRequest(request: JsonRpcRequest): Promise<void> {
     try {
       if (request.method === "codexhost/account/usage/inspect") {
         const { accountId, refresh } = codexAccountUsageParamsSchema.parse(requestObject(request));
-        if (accountId !== (await this.#currentCodexAccountId()))
+        const snapshot = await this.#codexAccountSnapshot(true);
+        const account = snapshot.accounts.find((candidate) => candidate.accountId === accountId);
+        if (!account || account.accountId !== snapshot.currentAccountId) {
           throw new Error("Unknown Codex Account");
+        }
+        if (account.authKind === "api") {
+          const observedAt = new Date().toISOString();
+          const accountCredits = await inspectCodexApiAccountCredits(
+            this.#officialRuntimeScope.permanentHome,
+          );
+          const parsed = codexAccountUsageResultSchema.parse({
+            accountId,
+            usage: null,
+            ...(accountCredits ? { accountCredits } : {}),
+            freshness: "live" as const,
+            observedAt,
+          });
+          await this.#writer.json(rpcEnvelope(request, { result: jsonValueSchema.parse(parsed) }));
+          return;
+        }
         const observation = await this.#refreshOfficialRateLimits(accountId, refresh === true);
         const usage = this.#officialRateLimits.get(accountId);
         const accountCredits = this.#officialAccountCredits(accountId);
@@ -1460,7 +1507,7 @@ export class AppServerHost {
       }
       await this.#writer.json(
         rpcEnvelope(request, {
-          result: jsonValueSchema.parse(await this.#codexAccountSnapshot()),
+          result: jsonValueSchema.parse(await this.#codexAccountSnapshot(true)),
         }),
       );
     } catch (error) {

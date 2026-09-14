@@ -55,6 +55,7 @@ export {
   codexAccountPhaseSchema,
   codexAccountListResultSchema,
   codexAccountPlanTypeSchema,
+  codexAccountAuthKindSchema,
   codexAccountSchema,
 } from "./codex-accounts.js";
 export type {
@@ -64,6 +65,7 @@ export type {
   CodexAccountPhase,
   CodexAccountListResult,
   CodexAccountPlanType,
+  CodexAccountAuthKind,
   CodexAccountSummary,
 } from "./codex-accounts.js";
 export { REASONING_TRANSCRIPT_COMMAND } from "./reasoning-transcript.js";

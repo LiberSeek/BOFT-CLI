@@ -918,7 +918,13 @@ describe("Renderer Plugin page", () => {
 
 describe("Renderer Codex Accounts page", () => {
   const accountSnapshot = (
-    accounts: { accountId: string; label: string; email?: string }[],
+    accounts: {
+      accountId: string;
+      label: string;
+      email?: string;
+      authKind?: "api" | "chatgpt";
+      authIdentity?: string;
+    }[],
     currentAccountId: string | null = accounts[0]?.accountId ?? null,
     revision = 1,
   ) => ({
@@ -1017,6 +1023,55 @@ describe("Renderer Codex Accounts page", () => {
     expect(visibleText(content)).not.toContain("登录");
     expect(visibleText(content)).not.toContain("添加 Codex 账号");
     expect(descendants(content).some(({ textContent }) => textContent === "使用重置")).toBe(false);
+    scope.dispose();
+  });
+
+  it("renders remaining API credits for API Accounts without requiring an email", async () => {
+    const inspectCodexAccountUsage = vi.fn(async ({ accountId }: { accountId: string }) => ({
+      accountId,
+      usage: null,
+      accountCredits: { remaining: 42.125, unit: "USD", periodType: "unknown" as const },
+      freshness: "live" as const,
+      observedAt: "2026-09-10T03:32:00.000Z",
+    }));
+    const client = {
+      listCodexAccounts: vi.fn(async () =>
+        accountSnapshot([
+          {
+            accountId: "bank",
+            label: "BANK OF TOKEN",
+            authKind: "api" as const,
+            authIdentity: "BANK OF TOKEN",
+          },
+        ]),
+      ),
+      inspectCodexAccountUsage,
+    };
+    const page = createDefaultRendererSettingsPages(
+      rendererSettingsMessages("zh-CN"),
+      () => null,
+      () => null,
+      () => client,
+    ).find(({ id }) => id === "accounts");
+    if (!page) throw new Error("Accounts page is not registered");
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+    await vi.waitFor(() =>
+      expect(inspectCodexAccountUsage).toHaveBeenCalledWith({ accountId: "bank" }),
+    );
+    expect(visibleText(content)).toContain("API 接入");
+    expect(visibleText(content)).toContain("API - BANK OF TOKEN");
+    expect(visibleText(content)).toContain("$42.125");
+    expect(visibleText(content)).not.toContain("登录");
+    expect(descendants(content).filter((element) => element.getAttribute("role") === "meter")).toHaveLength(
+      0,
+    );
     scope.dispose();
   });
 });

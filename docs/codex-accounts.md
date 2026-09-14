@@ -6,7 +6,7 @@
 
 ## 账号列表
 
-页面只有一张「账号 / 5 小时额度 / 7 天额度 / 管理」表格。窄窗口下每个账号独立排列，两个额度窗口并排，最窄布局再纵向堆叠。视觉沿用设置外壳：页头说明、带边框搜索、分段「已用 / 剩余」与行内刷新。工具栏的「账号」数量包含当前 Codex 账号和实际返回的其他 Harness 账号，不随搜索筛选改变。
+页面按认证方式分组：官方 home 为 API Key 时显示「API 接入」（身份与剩余额度，不要求邮箱）；ChatGPT 身份与其他 Harness 账号显示在「账号接入」。ChatGPT 表为「账号 / 5 小时额度 / 7 天额度 / 管理」；API 表为「账号 / 额度 / 管理」。窄窗口下每个账号独立排列，两个额度窗口并排，最窄布局再纵向堆叠。视觉沿用设置外壳：页头说明、带边框搜索、分段「已用 / 剩余」与行内刷新。仅 API 接入且没有其他 Harness 账号时隐藏已用/剩余切换。工具栏的「账号」数量包含当前 Codex 账号和实际返回的其他 Harness 账号，不随搜索筛选改变。
 
 - 主标题显示完整邮箱或账号名称，单行省略并可悬停查看完整身份；Agent 名称、真实套餐与「Codex 当前」标记作为次级信息，不显示本地 `CODEX_HOME` 路径。
 - 搜索按邮箱、账号名称、Agent 或套餐筛选整个列表，仅在两类账号都不匹配时显示一个空状态。Codex 按 Host 返回顺序在前，其他 Harness 通常按稳定的 Harness ID 顺序排列，Antigravity CLI 固定放在这些 Harness 的最后；不按剩余额度或当前状态重排。
@@ -15,6 +15,7 @@
 - 每个窗口在百分比旁显示弱化的倒计时，最多两个单位：超过一天为 `6d17h`，不足一天为 `4h54m`，不足一小时为 `14m`。下方右对齐显示本地时间 `09/15 10:08`；悬停和辅助技术可读取包含年份、时区的完整重置时间。无有效重置时间时不编造日期或倒计时。
 - 页面本地每分钟及重新获得焦点时更新倒计时，不重新查询 Host、不重建账号行。到点只显示「待刷新」，不会自动把额度设为 100%；关闭设置后停止计时。
 - Codex 当前额度来自官方 `account/rateLimits/read`。加载、读取失败、暂无数据分别展示；失败可重试，未知数据不按 0% 处理。页面关闭后的响应不会更新页面。
+- 官方 home 为 API 认证时，只读展示 `auth.toml` 中的 API 身份（默认 BANK OF TOKEN）和剩余额度，不展示 `CODEX_HOME` 路径，不收藏 API Key。这不是第二套账号管理：不提供添加、登录或切换。
 - Codex 套餐类型来自官方当前身份。`prolite` 按当前产品对应关系高亮显示为 Pro 5x，`pro` 高亮显示为 Pro 20x；Plus、Team 等保持普通标签，`unknown` 不显示。5x/20x 是展示层映射，不改变协议原值。官方接口不提供订阅续期时间，因此不显示续期日期。
 
 菜单栏 / 任务栏的当前 Codex 额度展示保持现有行为；本次不新增展示面或刷新机制。
@@ -53,6 +54,9 @@ SSH 维持远端原生单账号，不传输本地凭据。
 - `docs/codex-native-account-switching-design.md`：多账号能力已删除后的只读额度边界。
 - `openspec/changes/remove-codex-multi-account/`：删除 Host 多账号管理的产品契约。
 - `packages/host-runtime/src/account/codex-account-control.ts`：当前官方身份的只读投影。
+- `packages/host-runtime/src/account/codex-home-auth.ts`：只读检测官方 home 是 ChatGPT 还是 API。
+- `packages/host-runtime/src/account/codex-account-auth-projection.ts`：把 API 身份投影到当前账号快照，不暴露路径。
+- `packages/host-runtime/src/account/codex-api-usage.ts`：只读查询 API 剩余额度。
 - `packages/host-runtime/src/native-account-host.ts`：本地当前身份读取。
 - `packages/host-runtime/src/native-account-observer.ts`：原生认证后更新显示身份，不收藏凭据。
 - `packages/renderer-extension/src/settings/accounts-page.ts`：只读身份与额度页。

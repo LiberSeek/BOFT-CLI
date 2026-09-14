@@ -32,6 +32,7 @@ import {
   type RendererPermissionModeControlView,
   type RendererPermissionModePickerControl,
 } from "./renderer-permission-mode-picker.js";
+import { codexAccountAuthKind } from "./renderer-codex-account-options.js";
 import {
   mountRendererCreditsControl,
   renderRendererCreditsControl,
@@ -817,7 +818,13 @@ export function renderComposerAgentControl(
   control.harnessCommands.root.hidden = state.agent === "codex";
   control.harnessCommands.root.style.display = state.agent === "codex" ? "none" : "inline-flex";
   if (state.agent === "codex") control.harnessCommands.close();
-  renderRendererCreditsControl(control.credits, accountCredits, locale);
+  renderRendererCreditsControl(
+    control.credits,
+    selectedCodexAccount && codexAccountAuthKind(selectedCodexAccount) === "api"
+      ? null
+      : accountCredits,
+    locale,
+  );
 }
 
 export function disposeComposerAgentControl(control: ComposerAgentControl): void {

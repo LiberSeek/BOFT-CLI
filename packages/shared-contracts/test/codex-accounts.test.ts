@@ -54,6 +54,27 @@ describe("Codex Account browser contracts", () => {
     ).toBe(false);
   });
 
+  it("accepts optional API auth presentation without credential locations", () => {
+    const snapshot = {
+      ...baseSnapshot,
+      accounts: [
+        {
+          accountId: "account-api",
+          label: "BANK OF TOKEN",
+          authKind: "api" as const,
+          authIdentity: "BANK OF TOKEN",
+        },
+      ],
+    };
+    expect(codexAccountListResultSchema.parse(snapshot)).toEqual(snapshot);
+    expect(() =>
+      codexAccountListResultSchema.parse({
+        ...snapshot,
+        accounts: [{ ...snapshot.accounts[0], codexHome: "/private/home" }],
+      }),
+    ).toThrow();
+  });
+
   it("requires quota freshness and observation time", () => {
     expect(
       codexAccountUsageResultSchema.parse({

@@ -2,7 +2,11 @@ import type { CodexAccountSummary, HarnessAccountListResult } from "@codexhost/s
 
 import { KNOWN_RENDERER_AGENTS } from "../agent-selection-state.js";
 import { createRendererAgentIcon } from "../renderer-agent-icon.js";
-import { codexAccountDisplayName } from "../renderer-codex-account-options.js";
+import {
+  codexAccountAuthKind,
+  codexAccountDisplayName,
+  formatCodexAccountAuthLabel,
+} from "../renderer-codex-account-options.js";
 import { createAccountDetails } from "./accounts-details.js";
 import {
   accountUsageColumnLabel,
@@ -60,25 +64,42 @@ export function accountListFocusRestorer(list: HTMLElement, fallback: HTMLElemen
   };
 }
 
-export function createAccountsTable(document: Document, messages: RendererSettingsMessages) {
+export type AccountTableKind = "api" | "chatgpt";
+
+export function createAccountsTable(
+  document: Document,
+  messages: RendererSettingsMessages,
+  kind: AccountTableKind = "chatgpt",
+) {
   const table = document.createElement("table");
-  table.className = "settings-account-table";
-  table.setAttribute("aria-label", messages.pageLabels.accounts);
+  table.className = `settings-account-table settings-account-table--${kind}`;
+  table.setAttribute(
+    "aria-label",
+    kind === "api" ? messages.accountSectionApi : messages.accountSectionChat,
+  );
   const head = document.createElement("thead");
   const row = document.createElement("tr");
-  const headers = Array.from({ length: 4 }, () => {
+  const columnCount = kind === "api" ? 3 : 4;
+  const headers = Array.from({ length: columnCount }, () => {
     const cell = document.createElement("th");
     cell.scope = "col";
     row.append(cell);
     return cell;
   });
   const updateDisplay = (display: AccountUsageDisplay): void => {
-    const labels = [
-      messages.accountColumnAccount,
-      accountUsageColumnLabel("five_hour", display, messages),
-      accountUsageColumnLabel("seven_day", display, messages),
-      messages.accountColumnActions,
-    ];
+    const labels =
+      kind === "api"
+        ? [
+            messages.accountColumnAccount,
+            messages.accountColumnCredits,
+            messages.accountColumnActions,
+          ]
+        : [
+            messages.accountColumnAccount,
+            accountUsageColumnLabel("five_hour", display, messages),
+            accountUsageColumnLabel("seven_day", display, messages),
+            messages.accountColumnActions,
+          ];
     headers.forEach((cell, index) => {
       cell.textContent = labels[index] ?? "";
     });
@@ -88,6 +109,25 @@ export function createAccountsTable(document: Document, messages: RendererSettin
   const body = document.createElement("tbody");
   table.append(head, body);
   return { table, body, updateDisplay };
+}
+
+export function createAccountsGroup(
+  document: Document,
+  messages: RendererSettingsMessages,
+  kind: AccountTableKind,
+) {
+  const root = document.createElement("section");
+  root.className = "settings-account-group";
+  root.dataset.accountGroup = kind;
+  const title = document.createElement("h2");
+  title.className = "settings-account-group__title";
+  title.textContent = kind === "api" ? messages.accountSectionApi : messages.accountSectionChat;
+  const list = document.createElement("div");
+  list.className = "settings-account-list";
+  const { table, body, updateDisplay } = createAccountsTable(document, messages, kind);
+  list.append(table);
+  root.append(title, list);
+  return { root, body, updateDisplay };
 }
 
 function createAccountPerson(
@@ -164,7 +204,10 @@ export function renderAccountRows(
   row.dataset.accountFocus = `${account.accountId}:row`;
   row.tabIndex = -1;
   const name = codexAccountDisplayName(account);
-  row.setAttribute("aria-label", name.full);
+  const authKind = codexAccountAuthKind(account);
+  const authLabel = formatCodexAccountAuthLabel(account, messages);
+  const titleName = authKind === "api" ? authLabel : name.full;
+  row.setAttribute("aria-label", titleName);
   const personCell = document.createElement("td");
   personCell.className = "settings-account-person-cell";
   const mark = document.createElement("div");
@@ -173,7 +216,7 @@ export function renderAccountRows(
   mark.append(createRendererSettingsIcon("terminal", 17));
   personCell.append(
     createAccountPerson(document, messages, {
-      name: name.full,
+      name: titleName,
       agent: "Codex",
       plan: accountPlanLabel(account.planType),
       highlighted: account.planType === "pro" || account.planType === "prolite",
@@ -189,7 +232,10 @@ export function renderAccountRows(
     messages,
     input.display,
     input.onRetry,
-    { filter: account.planType === "pro" ? "weekly-only" : "all" },
+    {
+      usageColumns: authKind === "api" ? 1 : 2,
+      filter: account.planType === "pro" ? "weekly-only" : "all",
+    },
   );
   if (usage.additional) personCell.append(usage.additional);
   const actionsCell = document.createElement("td");
@@ -231,7 +277,7 @@ export function renderAccountRows(
   detailsRow.id = `settings-account-reset-${++resetDetailsSequence}`;
   detailsRow.hidden = !input.resetExpanded;
   const detailsCell = document.createElement("td");
-  detailsCell.colSpan = 4;
+  detailsCell.colSpan = authKind === "api" ? 3 : 4;
   detailsCell.append(reset.details);
   detailsRow.append(detailsCell);
   reset.summary.dataset.accountFocus = `${account.accountId}:reset`;
