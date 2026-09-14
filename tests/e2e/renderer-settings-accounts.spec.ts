@@ -184,7 +184,9 @@ test("shows adopted accounts without explanatory banners and allows switching", 
   page,
 }) => {
   await setup(page, { scenario: "legacy-adopted" });
-  await expect(page.locator(".settings-page-description")).toHaveCount(0);
+  await expect(page.locator(".settings-page-description")).toHaveText(
+    "查看各 Agent 的账号与额度，管理 Codex 默认账号。",
+  );
   await expect(page.locator(".settings-account-status")).toBeEmpty();
   await page.locator(teamRow).getByRole("button", { name: "切换", exact: true }).click();
   await expect(page.locator(teamRow)).toContainText("当前");

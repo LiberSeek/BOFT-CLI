@@ -655,7 +655,9 @@ export class HermesSession implements HarnessSession {
     if (this.#activeTurn) {
       return err("sessionBusy", "Hermes Session already has an active Turn", true);
     }
-    const text = command.input.map((chunk) => chunk.text).join("\n");
+    const text = command.input
+      .flatMap((chunk) => (chunk.type === "text" ? [chunk.text] : []))
+      .join("\n");
     if (text.trim().length === 0) {
       return err("invalidRequest", "turn.start requires non-empty text input");
     }

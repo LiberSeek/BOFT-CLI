@@ -60,7 +60,6 @@ const { outputFiles } = await build({
           ["codex", "pi", "claude-code", "grok"],
           () => {},
           () => {},
-          () => {},
           undefined,
           groups,
         );

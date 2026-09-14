@@ -65,6 +65,7 @@ export interface RendererSettingsMessages {
   readonly sessionImportRetryOpen: string;
   readonly sessionImportRetrying: string;
   readonly connectionsDescription: string;
+  readonly accountsDescription: string;
   readonly pluginsDescription: string;
   readonly pluginsRefresh: string;
   readonly pluginsRefreshing: string;
@@ -306,6 +307,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   pluginsRefreshing: "Scanning...",
   connectionsDescription:
     "View runtime status by Host. Select an item to inspect details or complete its setup.",
+  accountsDescription: "View Agent accounts and quotas, and manage the default Codex account.",
   accountConnected: "Accounts",
   accountDefaultBadge: "Current",
   accountAdd: "Add Codex account",
@@ -573,6 +575,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   pluginsRefresh: "扫描环境",
   pluginsRefreshing: "正在扫描...",
   connectionsDescription: "按 Host 查看运行时状态。选择一项，在右侧检查详情或完成配置。",
+  accountsDescription: "查看各 Agent 的账号与额度，管理 Codex 默认账号。",
   accountConnected: "账号",
   accountDefaultBadge: "当前",
   accountAdd: "添加 Codex 账号",

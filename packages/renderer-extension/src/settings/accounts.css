@@ -6,62 +6,75 @@
 }
 
 .settings-account-status {
-  margin: 0;
+  margin: 0 0 12px;
   color: var(--settings-muted);
   font-size: 12px;
+  line-height: 18px;
 }
 .settings-account-status:empty {
   display: none;
 }
 
 .settings-account-toolbar {
-  margin-top: 0;
-  padding: 0 0 16px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
+  margin: 0 0 16px;
 }
 .settings-account-count {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 6px;
+  color: var(--settings-muted);
+  font-size: 12px;
+  line-height: 18px;
   white-space: nowrap;
 }
 .settings-account-count > :last-child {
-  color: var(--settings-muted);
+  color: var(--settings-text);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 .settings-account-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--settings-muted);
-  margin-right: auto;
-  min-width: 0;
+  box-sizing: border-box;
+  height: 36px;
+  min-width: 180px;
   max-width: 100%;
+  margin-right: auto;
+  padding: 0 10px;
+  color: var(--settings-muted);
+  background: var(--settings-bg);
+  border: 1px solid var(--settings-border);
+  border-radius: 6px;
 }
 .settings-account-search svg {
   flex: none;
 }
-.settings-account-toolbar input {
-  min-width: 80px;
+.settings-account-search input {
+  flex: 1;
+  min-width: 0;
   width: 210px;
-  max-width: 100%;
-  padding: 5px 0;
+  padding: 0;
   color: var(--settings-text);
   background: transparent;
   border: 0;
   font-size: 13px;
 }
-.settings-account-toolbar input::placeholder {
+.settings-account-search input::placeholder {
   color: var(--settings-muted);
+}
+.settings-account-search:focus-within {
+  outline: 2px solid var(--settings-focus);
+  outline-offset: 2px;
 }
 
 .settings-account-groups {
   display: grid;
-  gap: 22px;
+  gap: 18px;
 }
 .settings-account-group__title {
   margin: 0 0 8px;
@@ -71,11 +84,10 @@
   letter-spacing: -0.01em;
 }
 .settings-account-list {
-  --account-border: light-dark(#e2e2e8, #36363b);
-  --account-muted: light-dark(#676773, #a5a5af);
-  border: 1px solid var(--account-border);
-  border-radius: 11px;
   overflow: hidden;
+  background: var(--settings-surface);
+  border: 1px solid var(--settings-border);
+  border-radius: 10px;
   container-type: inline-size;
 }
 .settings-account-list > .settings-account-empty {
@@ -89,11 +101,12 @@
   font-size: 12px;
 }
 .settings-account-table th {
-  padding: 12px 16px;
-  color: var(--account-muted);
-  background: light-dark(#f8f8fa, #202024);
-  font-size: 11px;
-  font-weight: 500;
+  padding: 10px 16px;
+  color: var(--settings-muted);
+  background: var(--settings-surface);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
   text-align: left;
 }
 .settings-account-table th:nth-child(1) {
@@ -123,10 +136,10 @@
   border-top: 1px solid var(--settings-divider);
 }
 .settings-account-row {
-  background: light-dark(#ffffff, #232326);
+  background: transparent;
 }
 .settings-account-row:hover {
-  background: light-dark(#f7f7fa, #26262a);
+  background: var(--settings-hover);
 }
 .settings-account-row__person {
   display: grid;
@@ -302,7 +315,7 @@
 }
 .settings-account-usage__sub {
   grid-column: 1 / -1;
-  color: var(--account-muted);
+  color: var(--settings-muted);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -462,9 +475,9 @@
   border-radius: 6px;
 }
 .settings-account-list :focus-visible,
-.settings-account-toolbar :focus-visible:not(.settings-segmented__item) {
+.settings-account-toolbar :focus-visible:not(.settings-segmented__item):not(input) {
   outline: 2px solid var(--settings-focus);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .settings-account-dialog {

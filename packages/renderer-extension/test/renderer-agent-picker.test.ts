@@ -60,9 +60,8 @@ describe("Renderer Agent picker presentation", () => {
           label: "Reviewer",
           email: "reviewer@example.com",
         },
-        2,
       ),
-    ).toBe("Agent: Codex · Account - reviewer@example.com (locked)");
+    ).toBe("Agent: Codex · reviewer@example.com (locked)");
     expect(rendererAgentPickerTooltip({ agent: "claude-code", phase: "locked" }, undefined)).toBe(
       "Agent: Claude Code (locked)",
     );

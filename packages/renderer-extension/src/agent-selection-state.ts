@@ -232,8 +232,6 @@ export class DraftAgentController<Composer extends object> {
     else if (agent === "codebuddy") delete state.codeBuddyModel;
     if (agent === "cursor-cli" && model) state.cursorCliModel = model;
     else if (agent === "cursor-cli") delete state.cursorCliModel;
-    if (agent === "hermes" && model) state.hermesModel = model;
-    else if (agent === "hermes") delete state.hermesModel;
     if (agent === "pi" && thinkingOptionId) state.piThinkingOptionId = thinkingOptionId;
     else if (agent === "pi") delete state.piThinkingOptionId;
     if (agent === "claude-code" && thinkingOptionId) {
@@ -301,7 +299,6 @@ export class DraftAgentController<Composer extends object> {
     if (agent === "kiro-cli") return state.kiroCliModel;
     if (agent === "codebuddy") return state.codeBuddyModel;
     if (agent === "cursor-cli") return state.cursorCliModel;
-    if (agent === "hermes") return state.hermesModel;
     return undefined;
   }
 
@@ -360,7 +357,6 @@ export class DraftAgentController<Composer extends object> {
     else if (agent === "kiro-cli") state.kiroCliModel = model;
     else if (agent === "codebuddy") state.codeBuddyModel = model;
     else if (agent === "cursor-cli") state.cursorCliModel = model;
-    else if (agent === "hermes") state.hermesModel = model;
     else state.antigravityModel = model;
     return state;
   }
