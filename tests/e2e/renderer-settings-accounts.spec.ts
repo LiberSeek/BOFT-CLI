@@ -651,7 +651,7 @@ test("keeps row order stable across global switches, display mode and refresh, a
     );
   await expect(rows).toHaveCount(6);
   const initial = await order();
-  expect(initial).toEqual(["native", "team", "pending", "antigravity", "claude-code", "grok"]);
+  expect(initial).toEqual(["native", "team", "pending", "claude-code", "grok", "antigravity"]);
   await page.locator(teamRow).getByRole("button", { name: "切换", exact: true }).click();
   await page.getByRole("button", { name: "已用", exact: true }).click();
   await expect(page.locator(".settings-account-table th")).toHaveText([

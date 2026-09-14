@@ -33,9 +33,6 @@ export class OfficialRuntimeScope {
       diagnosticOutput: input.diagnosticOutput,
       gate: this.gate,
       permanentHome: input.permanentHome,
-      ...(input.allowNativeAuthPassthrough === undefined
-        ? {}
-        : { allowNativeAuthPassthrough: input.allowNativeAuthPassthrough }),
     });
     this.gate.subscribe(() => {
       if (this.#started && this.gate.phase === "unavailable")

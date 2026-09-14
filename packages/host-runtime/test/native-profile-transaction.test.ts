@@ -34,7 +34,7 @@ describe("native profile transaction combinations", () => {
     state.runtime.rotateOnNextStop(state.store.home, a2);
 
     await transaction.execute(nativeAccountIds.b);
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.b);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.b);
     const savedA = state.store.vault.accounts.find(
       (account) => account.accountId === nativeAccountIds.a,
     );
@@ -47,7 +47,7 @@ describe("native profile transaction combinations", () => {
     );
 
     await transaction.execute(nativeAccountIds.a);
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.a);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.a);
     expect((await state.store.readCredentials())?.serializeForNativeStore()).toBe(
       a2.serializeForNativeStore(),
     );
@@ -66,7 +66,7 @@ describe("native profile transaction combinations", () => {
       code: "switch-failed",
       ready: true,
     });
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.a);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.a);
     expect((await state.store.readCredentials())?.serializeForNativeStore()).toBe(
       a1.serializeForNativeStore(),
     );
@@ -91,7 +91,7 @@ describe("native profile transaction combinations", () => {
       code: "switch-failed",
       ready: true,
     });
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.a);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.a);
     expect((await state.store.readCredentials())?.serializeForNativeStore()).toBe(
       a2.serializeForNativeStore(),
     );
@@ -116,13 +116,13 @@ describe("native profile transaction combinations", () => {
       code: "recovery-required",
       ready: false,
     });
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.b);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.b);
     expect((await state.store.readCredentials())?.serializeForNativeStore()).toBe(
       b1.serializeForNativeStore(),
     );
 
     await expect(transaction.recover()).resolves.toBe("target");
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.b);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.b);
     expect(await state.store.readJournal()).toBeNull();
   });
 
@@ -138,7 +138,7 @@ describe("native profile transaction combinations", () => {
       code: "recovery-required",
       ready: false,
     });
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.b);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.b);
     expect((await state.store.readCredentials())?.serializeForNativeStore()).toBe(
       b1.serializeForNativeStore(),
     );
@@ -157,14 +157,14 @@ describe("native profile transaction combinations", () => {
       code: "recovery-required",
       ready: false,
     });
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.b);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.b);
     expect((await state.store.readCredentials())?.serializeForNativeStore()).toBe(
       b1.serializeForNativeStore(),
     );
     expect((await state.store.readJournal())?.phase).toBe("vault-committed");
 
     await expect(transaction.recover()).resolves.toBe("target");
-    expect(state.store.vault.currentAccountId).toBe(nativeAccountIds.b);
+    expect(state.store.currentAccountId).toBe(nativeAccountIds.b);
     expect(await state.store.readJournal()).toBeNull();
   });
 });

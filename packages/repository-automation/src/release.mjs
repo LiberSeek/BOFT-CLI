@@ -6,6 +6,12 @@ import { readCi } from "./github.mjs";
 const execFileAsync = promisify(execFile);
 const semverPattern =
   /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+const RELEASE_CI_WAIT_TIMEOUT_MS = 30 * 60 * 1000;
+const RELEASE_CI_POLL_INTERVAL_MS = 10 * 1000;
+
+function sleep(delay) {
+  return new Promise((resolve) => setTimeout(resolve, delay));
+}
 
 export function validateReleaseVersion(version) {
   if (typeof version !== "string" || !semverPattern.test(version)) {
@@ -106,10 +112,44 @@ export function assertReleaseCi({ run, jobs }, sha) {
   return { ciRunId: run.id, ciRunAttempt: run.run_attempt, ciUrl: run.html_url };
 }
 
-export async function resolveRelease({ github, repo, root, tag, expectedRefSha }) {
+export async function waitForReleaseCi({
+  github,
+  repo,
+  sha,
+  timeoutMs = RELEASE_CI_WAIT_TIMEOUT_MS,
+  pollIntervalMs = RELEASE_CI_POLL_INTERVAL_MS,
+  now = Date.now,
+  sleepFor = sleep,
+  read = readCi,
+}) {
+  const deadline = now() + timeoutMs;
+  for (;;) {
+    const ci = await read({ github, repo, sha, release: true });
+    if (ci.run?.status === "completed") return assertReleaseCi(ci, sha);
+    const remaining = deadline - now();
+    if (remaining <= 0) {
+      throw new Error(`timed out waiting for release CI at the exact release commit: ${sha}`);
+    }
+    await sleepFor(Math.min(pollIntervalMs, remaining));
+  }
+}
+
+export async function resolveRelease({
+  github,
+  repo,
+  root,
+  tag,
+  expectedRefSha,
+  waitForCi = false,
+}) {
   const metadata = await readReleaseMetadata({ root, tag, expectedRefSha });
-  const ci = await readCi({ github, repo, sha: metadata.sha, release: true });
-  return { ...metadata, ...assertReleaseCi(ci, metadata.sha) };
+  const evidence = waitForCi
+    ? await waitForReleaseCi({ github, repo, sha: metadata.sha })
+    : assertReleaseCi(
+        await readCi({ github, repo, sha: metadata.sha, release: true }),
+        metadata.sha,
+      );
+  return { ...metadata, ...evidence };
 }
 
 export async function verifyRelease({

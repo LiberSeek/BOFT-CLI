@@ -159,7 +159,6 @@ export async function runHostRuntime(input: {
         const shared = {
           officialRuntimeScope: official.officialRuntimeScope,
           accountControl: official.accountControl,
-          allowNativeAuthPassthrough: official.allowNativeAuthPassthrough,
         };
         if (!remoteControlPlan) {
           try {
@@ -242,7 +241,6 @@ export async function runHostRuntime(input: {
         permanentHome: path.resolve(
           delegationEnvironment.CODEX_HOME ?? path.join(homedir(), ".codex"),
         ),
-        allowNativeAuthPassthrough: true,
         diagnosticOutput: process.stderr,
         createBackend: () =>
           createOwnedUnixBackend({
@@ -288,7 +286,6 @@ export async function runHostRuntime(input: {
             closeMappingStoreOnExit: false,
             officialRuntimeScope,
             accountControl,
-            allowNativeAuthPassthrough: true,
             onDelegationApi: (api) => registry.register(api),
             ...(updateCoordinator ? { updateCoordinator } : {}),
           });

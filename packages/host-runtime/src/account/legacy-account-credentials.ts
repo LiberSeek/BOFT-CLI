@@ -7,7 +7,6 @@ import {
 import {
   NativeAccountError,
   credentialDigest,
-  profileCurrent,
   sameVault,
   validateVault,
 } from "./native-profile-vault.js";
@@ -34,7 +33,10 @@ export async function importLegacyAccountCredentials(input: {
     throw new NativeAccountError("recovery-required");
   await input.assertAdmission();
   const current = await store.readCredentials();
-  matchProfile(current, profileCurrent(before));
+  matchProfile(
+    current,
+    before.accounts.find((a) => a.accountId === store.currentAccountId) ?? null,
+  );
   const sources = [];
   const next = structuredClone(before);
   for (const home of input.homes) {

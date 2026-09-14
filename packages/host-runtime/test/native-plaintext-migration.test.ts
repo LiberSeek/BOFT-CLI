@@ -10,7 +10,6 @@ import {
   decideProfileRecovery,
   type NativeProfileAccount,
   type LegacyEncryptedCredential,
-  type NativeProfileJournal,
 } from "../src/account/native-profile-vault.js";
 import {
   createNativeAccountTestState,
@@ -64,13 +63,13 @@ async function fixture() {
     current: { accountId: ids.a, credential: credential("a") },
     saved: [{ accountId: ids.b, credential: credential("b") }],
   });
-  const before = state.store.vault;
+  const before = { ...state.store.vault, version: 1, currentAccountId: ids.a };
   const a = before.accounts.find((a) => a.accountId === ids.a);
   const b = before.accounts.find((a) => a.accountId === ids.b);
   assert.ok(a && b);
+  a.payload = null; // Real v1 Vaults never backed up the selected account.
   b.payload = legacy(state.store.homeId, b, credential("b"));
-  const after = structuredClone(before);
-  after.currentAccountId = ids.b;
+  const after = { ...structuredClone(before), currentAccountId: ids.b };
   after.lastOperationId = operationId;
   after.revision++;
   const afterA = after.accounts.find((a) => a.accountId === ids.a);
@@ -78,7 +77,7 @@ async function fixture() {
   assert.ok(afterA && afterB);
   afterA.payload = legacy(state.store.homeId, a, credential("a"));
   afterB.payload = null;
-  const journal: NativeProfileJournal = {
+  const journal = {
     version: 1,
     operationId,
     phase: "prepared",

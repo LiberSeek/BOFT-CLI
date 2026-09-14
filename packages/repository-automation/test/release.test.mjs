@@ -4,7 +4,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assertReleaseCi, readReleaseMetadata, resolveRelease, verifyRelease } from "../index.mjs";
+import {
+  assertReleaseCi,
+  readReleaseMetadata,
+  resolveRelease,
+  verifyRelease,
+  waitForReleaseCi,
+} from "../index.mjs";
 import { ci, head, oldHead, repo } from "./fixtures.mjs";
 
 const exec = promisify(execFile);
@@ -185,6 +191,32 @@ describe("exact-commit CI release gate", () => {
     ]) {
       expect(() => assertReleaseCi({ ...ci(), jobs }, head)).toThrow("successful job");
     }
+  });
+
+  it("waits for the exact main CI run to complete after a tag push", async () => {
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce(ci({ status: "in_progress", conclusion: null }))
+      .mockResolvedValueOnce(ci());
+    const sleepFor = vi.fn(async () => {});
+    await expect(
+      waitForReleaseCi({ github: {}, repo, sha: head, read, sleepFor, now: () => 0 }),
+    ).resolves.toMatchObject({ ciRunId: 42, ciRunAttempt: 1 });
+    expect(sleepFor).toHaveBeenCalledOnce();
+  });
+
+  it("times out when the matching CI run does not become available", async () => {
+    const now = vi.fn().mockReturnValueOnce(0).mockReturnValue(100);
+    await expect(
+      waitForReleaseCi({
+        github: {},
+        repo,
+        sha: head,
+        timeoutMs: 100,
+        now,
+        read: async () => ({ jobs: [] }),
+      }),
+    ).rejects.toThrow("timed out waiting for release CI");
   });
 
   it("combines trusted metadata with exact-head CI provenance", async () => {

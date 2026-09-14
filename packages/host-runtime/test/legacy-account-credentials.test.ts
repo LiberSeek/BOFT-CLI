@@ -41,7 +41,8 @@ describe("non-destructive legacy Account credential adoption", () => {
     const before = (await f.state.store.readCredentials())?.serializeForNativeStore();
     await importLegacyAccountCredentials(f.input);
     const vault = f.state.store.vault;
-    expect(vault.currentAccountId).toBe(nativeAccountIds.a);
+    expect(f.state.store.currentAccountId).toBe(nativeAccountIds.a);
+    expect(vault).not.toHaveProperty("currentAccountId");
     expect(vault.accounts).toHaveLength(2);
     expect(vault.legacyRegistryDigest).toBe(f.input.registryDigest);
     const added = vault.accounts.find((a) => a.accountId !== nativeAccountIds.a);

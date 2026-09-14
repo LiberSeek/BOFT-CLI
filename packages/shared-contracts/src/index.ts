@@ -3,10 +3,23 @@ import { WORKSPACE_CONTRACT_VERSION } from "./version.js";
 
 export {
   harnessAccountSnapshotSchema,
+  harnessAccountSourceSchema,
+  harnessAccountSourceListParamsSchema,
+  harnessAccountSourceListResultSchema,
+  harnessAccountInspectParamsSchema,
+  harnessAccountInspectResultSchema,
   harnessAccountListParamsSchema,
   harnessAccountListResultSchema,
 } from "./harness-accounts.js";
-export type { HarnessAccountSnapshot, HarnessAccountListResult } from "./harness-accounts.js";
+export type {
+  HarnessAccountSnapshot,
+  HarnessAccountSource,
+  HarnessAccountSourceListResult,
+  HarnessAccountInspectParams,
+  HarnessAccountInspectResult,
+  HarnessAccountListParams,
+  HarnessAccountListResult,
+} from "./harness-accounts.js";
 
 export {
   HARNESS_PLUGIN_ROUTE_PREFIX,

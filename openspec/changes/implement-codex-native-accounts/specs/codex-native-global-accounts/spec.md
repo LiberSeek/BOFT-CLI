@@ -1,137 +1,206 @@
 ## ADDED Requirements
 
 ### Requirement: Account changes SHALL use one native backend and one session store
-Managed Codex SHALL use one canonical permanent home and at most one live Host-owned official app-server, including authentication staging. Account changes MUST stop and prove the owned writer tree has exited before replacing native credentials. They MUST NOT proxy Model requests, alter Provider headers, route Threads by Account, or create permanent per-Account homes.
+
+Managed Codex SHALL use one canonical permanent home and at most one live Host-owned official app-server, including authentication staging. Host credential replacement MUST stop and prove the owned writer tree has exited before replacing native credentials; native Desktop authentication SHALL remain owned by the official backend. They MUST NOT proxy Model requests, alter Provider headers, route Threads by Account, or create permanent per-Account homes.
 
 #### Scenario: Switch A to B
+
 - **WHEN** the user selects saved B
-- **THEN** Host SHALL save stopped A's latest credentials, install B, restart and authenticate B before committing current=B
+- **THEN** Host SHALL save stopped A's latest credentials, install B, restart and authenticate B before committing the credential collection and publishing native-derived current=B
 - **AND** Desktop, Host, external Harnesses and native Thread IDs SHALL remain intact
 - **AND** subsequent Turns in existing Codex Threads SHALL use the new global identity without replaying earlier requests
 
 #### Scenario: Exit is unconfirmed
+
 - **WHEN** Host cannot prove the owned backend tree or the external stop batch has exited
 - **THEN** it SHALL NOT install target credentials
 - **AND** a closed transport alone SHALL NOT count as proof of process-tree exit
 
 ### Requirement: Account switching SHALL stop native backends without an idle scan
-Switching SHALL enter changing synchronously, reject new work before connection or automatic startup, stop the owned backend and then the detected external Codex backends before replacing credentials. Login and logout SHALL also enter changing and stop the owned backend without scanning Threads, but SHALL NOT invoke external backend termination. Account admission SHALL track outstanding request leases, not native task activity, and SHALL NOT probe queues in response to native activity. Recovery SHALL stop the owned backend before credential mutation; saved-Account deletion SHALL NOT stop it. Both SHALL retain request-lease and ownership checks without waiting for acknowledged native tasks to complete.
+
+Switching SHALL enter changing synchronously, reject new work before connection or automatic startup, stop the owned backend and then the detected external Codex backends before replacing credentials. Host Settings login and controlled logout SHALL also enter changing and stop the owned backend without scanning Threads, but SHALL NOT invoke external backend termination. Native authentication SHALL be forwarded without stopping the backend, and its pending credential writes SHALL block conflicting Host stopping changes. Account admission SHALL track outstanding request leases, not native task activity, and SHALL NOT probe queues in response to native activity. Recovery SHALL stop the owned backend before credential mutation; saved-Account deletion SHALL NOT stop it. Recovery SHALL retain all request-lease and ownership checks without waiting for acknowledged native tasks to complete. Saved-Account deletion SHALL retain ownership and independent Host credential-writer checks, but ordinary native requests SHALL NOT block it.
 
 #### Scenario: Native requests and work are pending
-- **WHEN** the user switches, starts login or logs out while native requests, including quota reads, or native work are pending
+
+- **WHEN** the user switches or invokes Host Settings login/logout while ordinary native requests, including quota reads, or native work are pending
 - **THEN** Host SHALL stop without scanning Thread, Goal, queue or temporary-session state
 - **AND** outstanding native RPCs SHALL fail explicitly and release their leases on retirement, without poisoning changing admission merely because stop was intentional
 - **AND** new work and concurrent switching SHALL fail immediately, without replay into the target Account
 - **AND** independent Host credential-writer leases SHALL NOT be cleared to force credential replacement
 
 #### Scenario: Native activity continues after its RPC completes
+
 - **WHEN** native Turn, tool, Goal or queue activity continues after its request lease ends
 - **THEN** that activity SHALL NOT block saved-Account deletion or recovery admission
 - **AND** native requests and notifications SHALL continue through their normal routing without additional queue probes
 - **AND** recovery SHALL still require owned-process exit proof before changing credentials
 
+#### Scenario: Delete an inactive Account while native requests are pending
+
+- **WHEN** the user confirms deletion of saved B while ordinary native requests for current A or Account-list refreshes are pending
+- **THEN** Host SHALL delete B without stopping the backend, changing native authentication, or clearing existing request leases
+- **AND** concurrent Account changes and new credential writers SHALL remain excluded during collection mutation
+- **AND** an in-flight independent Host OAuth credential write SHALL still reject deletion as busy until it finishes; the user may then retry explicitly
+
 #### Scenario: A quota request times out or its client detaches
+
 - **WHEN** a local quota request times out or its client detaches while the owned backend remains available
 - **THEN** the request SHALL fail explicitly and release its lease without independently making Codex unavailable
 - **AND** actual connection failure SHALL still close admission
 - **AND** credential replacement SHALL still require process exit proof and independent Host credential-writer leases to finish
 
 #### Scenario: VS Code restarts its Codex backend
+
 - **WHEN** an editor starts a new backend after the detected batch was stopped
 - **THEN** Host SHALL NOT repeatedly hunt replacement processes
 - **AND** success SHALL depend on target native credentials and the verified Host-owned backend, not synchronized identity across all clients
 
 ### Requirement: Managed startup SHALL be owned by Account recovery
+
 The dedicated management connection SHALL initialize before Desktop clients. A managed Runtime Scope MUST NOT bypass failed Account initialization by starting a backend or publishing ready itself. Known protocol incompatibility without pending state SHALL be distinguished from recovery or ownership conflicts.
 
+#### Scenario: Quota service is unavailable
+
+- **WHEN** startup, recovery, login or switching verifies the native Account
+- **THEN** verification SHALL use native account state and credential identity without issuing `account/rateLimits/read`
+- **AND** quota values and quota-service availability SHALL NOT determine Account readiness or credential-transaction commit
+- **AND** independent quota display SHALL remain available without becoming a startup dependency; actual Model request authorization and quota enforcement belong to the native backend
+
 #### Scenario: Cold startup before Desktop attaches
+
 - **WHEN** Account recovery needs native configuration or authentication
 - **THEN** it SHALL use a unique management-only backend without depending on Desktop initialization
 - **AND** recovery records SHALL be interpreted before importing native credentials
 
+#### Scenario: Ordinary startup follows a retired supervisor without an exit receipt
+
+- **WHEN** no credential transaction or login stage is pending, the home lease is held, and a historical running supervisor is confirmed absent or its PID has been reused
+- **THEN** startup MAY retire that historical running record without an exit receipt and continue normal credential identity verification
+- **AND** this SHALL NOT be treated as proof that the historical process tree exited or as exit evidence for a credential change
+- **AND** live supervisors, failed identity inspection, unidentified spawn gaps and invalid or mismatched receipts SHALL remain blocked
+- **AND** pending-operation recovery, current backend stop and subsequent backend replacement SHALL retain strict exit checks
+
 #### Scenario: Management unsupported but native use is safe
+
 - **WHEN** no transaction or ownership conflict exists and management is unavailable because of storage, key or version capability
 - **THEN** the native single-account path SHALL retain ordinary native authentication semantics without creating plaintext credential backups
 - **AND** SSH SHALL retain remote authentication without transferring local credentials
 
 #### Scenario: Recovery is blocked
+
 - **WHEN** ownership, identity or exit facts cannot safely be established
 - **THEN** only Codex SHALL remain unavailable and existing external Harness work SHALL not be globally closed
 - **AND** recover SHALL be advertised only when the live control can actually retry it
 
 ### Requirement: Desktop transport initialization SHALL remain independent of native readiness
+
 When native Account admission is unavailable or changing, Host SHALL acknowledge Desktop initialization using Host-owned transport metadata without claiming native readiness, authentication or Model capabilities. It SHALL retain the client's native initialization parameters and attachment for recovery. A terminally closed Host client or Scope MUST NOT acknowledge new initialization.
 
 #### Scenario: Desktop starts while native recovery is blocked
+
 - **WHEN** Desktop sends initialize while native startup is blocked
 - **THEN** Host SHALL return its own identity, permanent Codex home and runtime platform instead of turning native unavailability into a fatal initialization error
 - **AND** native work SHALL remain rejected while external Harness requests remain available
 
 #### Scenario: Desktop connects during authentication staging
+
 - **WHEN** an authentication-only staging backend is running
 - **THEN** Desktop initialization SHALL NOT connect a task client to that backend or stop it
 - **AND** initialization metadata SHALL identify the permanent home, not the staging directory
 
 #### Scenario: Recovery follows Host-only initialization
+
 - **WHEN** the Account coordinator safely restores native readiness
 - **THEN** the existing Desktop client SHALL initialize its native connection using the original negotiation parameters
 - **AND** Host SHALL NOT require Desktop restart or replay its earlier initialization response
 
 #### Scenario: A recovered native generation fails before Desktop disconnects
+
 - **WHEN** recovered native work loses its transport and Desktop requests active-work draining
 - **THEN** Host SHALL retain that work until the Owner proves the writer has stopped
 - **AND** every confirmed backend retirement SHALL settle attached clients' native work bookkeeping, independently of any one-shot startup failure notification
 - **AND** client detach, EOF and an unconfirmed stop SHALL NOT emit that retirement fact
 
 ### Requirement: Thread restoration SHALL preserve native identity and generation
+
 Account replacement SHALL retain native Thread IDs, persisted history and Harness ownership through native resume semantics. Host SHALL retain initialization and subscription parameters for lazy restoration, without fabricating replacement Threads. Account operations SHALL NOT scan Threads or capture runtime settings snapshots; lossless recovery of temporary content and all runtime settings is not guaranteed.
 
 #### Scenario: Work follows a backend replacement
+
 - **WHEN** a subscribed Thread receives work in a new backend generation
 - **THEN** Host SHALL first rejoin the same native Thread using its subscription parameters
 - **AND** late frames from a retired generation SHALL NOT update the new generation
 - **AND** a failed native resume SHALL reject the requested work without replay or a fabricated replacement Thread
 
 #### Scenario: A loaded Thread is not persisted
-- **WHEN** login, logout or switching is requested with temporary or unmaterialized native content
+
+- **WHEN** Host Settings login/logout or switching is requested with temporary or unmaterialized native content
 - **THEN** Host SHALL stop the backend without probing Thread recoverability
 - **AND** any subsequent native inability to restore that content SHALL be reported explicitly
 
 ### Requirement: Native Desktop authentication SHALL retain its protocol semantics
-Managed native ChatGPT OAuth and device-code login SHALL use the same Account coordinator and transaction as Settings, but SHALL activate the signed-in identity. Native branding and streamlined-login parameters SHALL reach the native login backend. Unsupported token-injection and non-ChatGPT modes MUST NOT bypass managed credential ownership.
+
+Native `account/login/*` and `account/logout` SHALL be forwarded to the official backend regardless of Account management availability, subject to connection availability and conflicting Host credential transactions. Host SHALL NOT validate authentication modes or parameters, substitute login IDs, create authentication staging, execute a credential transaction, or reconstruct native results, errors or completion notifications. Official authentication capabilities SHALL NOT be limited to the credential collection's supported storage modes.
+
+#### Scenario: Native logout omits parameters or the protocol evolves
+
+- **WHEN** Desktop sends missing, null, scalar, array or object params, a new login mode, field or login method
+- **THEN** Host SHALL preserve the request and let the official backend accept or reject it
+- **AND** native result/error fields and login IDs SHALL reach Desktop unchanged
 
 #### Scenario: Native completion precedes the start response
-- **WHEN** native authentication completes before its start response can be delivered
-- **THEN** Host SHALL deliver the native response before its matching account/login/completed event
-- **AND** operation correlation and supported onboarding metadata SHALL be preserved
-- **AND** native cancellation SHALL return canceled/notFound status rather than the Settings boolean envelope
+
+- **WHEN** native authentication completes before its start response
+- **THEN** Host SHALL preserve native response/notification order and content rather than synthesizing another completion
+- **AND** activity observation SHALL reconcile the early native login ID without retaining a stale switching blocker
+
+#### Scenario: Host switch conflicts with native authentication
+
+- **WHEN** a native authentication request or asynchronous login is still pending
+- **THEN** Host credential switching SHALL fail as busy before stopping the backend, while ordinary native requests remain usable
+- **AND** completion, confirmed cancellation or confirmed backend exit SHALL release the native login activity; client detach alone SHALL NOT prove writer exit
+- **AND** native authentication arriving during a Host credential transaction SHALL be rejected without queueing or replay under the target identity
+
+#### Scenario: Native authentication succeeds but credential backup fails
+
+- **WHEN** an official account/updated or account/login/completed notification arrives
+- **THEN** Host SHALL forward it before asynchronously refreshing the collection and publishing the Host snapshot
+- **AND** backup failure SHALL NOT rewrite native success, close official admission or expose secret diagnostics; later notifications or list refresh MAY retry collection
+- **AND** current-generation native notifications SHALL NOT be filtered against a stale collection identity
 
 #### Scenario: Permanent backend generation becomes ready
+
 - **WHEN** a replacement or recovered permanent backend is verified and ready
 - **THEN** Host SHALL notify initialized Desktop clients with account/updated derived from that backend's actual account/read result
 - **AND** staging, retired-generation results and saved-but-unavailable state SHALL NOT be announced as authenticated readiness
 - **AND** an observer failure or slow Desktop writer SHALL NOT roll back committed credentials or hold the credential-change admission lease
 
-### Requirement: Public Account state SHALL express global committed facts
-The browser-safe v2 Account snapshot SHALL expose ready/changing/unavailable, revision and Host identity, capabilities, committed current metadata and necessary operation/cleanup status, but no credentials or private paths. Only Settings SHALL offer global switching. Composer SHALL not submit per-draft Account selectors; Harness locking SHALL remain independent.
+### Requirement: Public Account state SHALL express global observed and committed facts
+
+The browser-safe v2 Account snapshot SHALL expose ready/changing/unavailable, revision and Host identity, capabilities, native-derived current metadata, saved Accounts (including requiresLogin for unavailable legacy copies) and necessary operation/cleanup status, but no credentials or private paths. Only Settings SHALL offer global switching. Composer SHALL not submit per-draft Account selectors; Harness locking SHALL remain independent.
 
 #### Scenario: Commit succeeds but cleanup fails
+
 - **WHEN** the Vault commit is durable but cleanup or native readiness is incomplete
 - **THEN** the UI SHALL distinguish saved/committed Account state from readiness
 - **AND** old Host or old revision responses SHALL not replace newer state
 
 #### Scenario: Desktop replaces its Request Client while an Account response is in flight
+
 - **WHEN** Desktop changes its internal Request Client after an Account request was sent and receives that request's response
 - **THEN** the response SHALL complete the original request without dispatching another Account operation
 - **AND** a busy rejection SHALL end Settings' pending state and permit explicit user retry without weakening admission
 - **AND** successful native delivery SHALL NOT be completed twice, and another Host or unowned request ID SHALL NOT complete this request
 
 #### Scenario: Desktop resets navigation after switching Accounts
+
 - **WHEN** a successful Settings switch rebuilds Desktop's navigation while the window was displaying a local native Codex Thread
 - **THEN** Renderer SHALL retain that Thread ID for the operation and open the same Thread through the native UI once the replacement view is available
 - **AND** rejection, newer user navigation, expiration or disposal SHALL stop restoration without retrying the Account operation or replaying any Thread input
 - **AND** this window-local navigation intent SHALL NOT persist an Account-to-Thread mapping or reuse a retired Client
 
 #### Scenario: Retired account-selection API is used
+
 - **WHEN** a client submits activate or per-draft account-selection input
 - **THEN** Host SHALL reject it rather than silently restoring per-Thread routing

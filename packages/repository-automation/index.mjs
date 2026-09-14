@@ -6,5 +6,6 @@ export {
   verifyRelease,
   readReleaseMetadata,
   assertReleaseCi,
+  waitForReleaseCi,
   validateReleaseVersion,
 } from "./src/release.mjs";

@@ -11,7 +11,8 @@ import {
   sameVault,
   serializePrivate,
   type NativeProfileJournal,
-  type NativeProfileVault,
+  collectionFromSelection,
+  type NativeProfileSelection,
 } from "./native-profile-vault.js";
 
 export class NativeTransitionError extends Error {
@@ -56,8 +57,13 @@ export class NativeProfileTransaction {
   ): Promise<void> {
     let stopping = false,
       stopped = false;
-    const before = this.store.vault;
+    const observed = await this.store.readCredentials();
+    const before: NativeProfileSelection = {
+      ...this.store.vault,
+      currentAccountId: this.store.currentAccountId,
+    };
     try {
+      matchProfile(observed, profileCurrent(before));
       if (await this.store.readJournal()) throw new NativeAccountError("recovery-required");
       const target =
         accountId === null ? null : before.accounts.find((a) => a.accountId === accountId);
@@ -85,11 +91,11 @@ export class NativeProfileTransaction {
       const targetPayload =
         target && candidate ? this.store.snapshotCredential(target, candidate) : null;
       for (const account of after.accounts) {
-        if (account.accountId === accountId) account.payload = null;
+        if (account.accountId === accountId) account.payload = targetPayload;
         else if (account.accountId === before.currentAccountId) account.payload = sourcePayload;
       }
       const journal: NativeProfileJournal = {
-        version: 1,
+        version: 2,
         operationId,
         phase: "prepared",
         before,
@@ -98,7 +104,7 @@ export class NativeProfileTransaction {
         target: targetPayload,
       };
       // Capacity/format checks precede credential mutation and cover every durable variant.
-      serializePrivate(after);
+      serializePrivate(collectionFromSelection(after));
       serializePrivate(journal);
       await this.store.writeJournal(journal);
       await this.store.install(candidate, source);
@@ -181,7 +187,10 @@ export class NativeProfileTransaction {
     await this.runtime.verify(profileCurrent(journal.after)?.identity ?? null);
     matchProfile(await this.store.readCredentials(), profileCurrent(journal.after));
     this.store.assertOwnership();
-    await this.store.replaceVault(journal.after, journal.before);
+    await this.store.replaceVault(
+      collectionFromSelection(journal.after),
+      collectionFromSelection(journal.before),
+    );
     await this.store.writeJournal({ ...journal, phase: "vault-committed" });
     await this.store.clearJournal(journal.operationId);
   }
@@ -190,7 +199,7 @@ export class NativeProfileTransaction {
     actual: NativeCodexCredentials | null,
   ): Promise<void> {
     matchProfile(actual, profileCurrent(journal.after));
-    const rollback: NativeProfileVault = structuredClone(journal.before);
+    const rollback: NativeProfileSelection = structuredClone(journal.before);
     rollback.revision++;
     rollback.lastOperationId = journal.operationId;
     const target = profileCurrent(journal.after);
@@ -214,7 +223,11 @@ export class NativeProfileTransaction {
     matchProfile(await this.store.readCredentials(), profileCurrent(journal.before));
     await this.runtime.start();
     await this.runtime.verify(profileCurrent(journal.before)?.identity ?? null);
-    if (journal.rollback) await this.store.replaceVault(journal.rollback, journal.before);
+    if (journal.rollback)
+      await this.store.replaceVault(
+        collectionFromSelection(journal.rollback),
+        collectionFromSelection(journal.before),
+      );
     await this.store.clearJournal(journal.operationId);
   }
 }

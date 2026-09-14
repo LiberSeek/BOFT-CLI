@@ -11,7 +11,7 @@ import { OfficialRuntimeScope } from "../src/codex-runtime/official-runtime-scop
 import { OfficialWorkGate } from "../src/codex-runtime/official-work-gate.js";
 import type { OfficialAppServerExit } from "../src/official-app-server-connection.js";
 
-function fixture(allowNativeAuthPassthrough = false) {
+function fixture() {
   let live = 0;
   let peak = 0;
   const events: string[] = [];
@@ -130,7 +130,6 @@ function fixture(allowNativeAuthPassthrough = false) {
     diagnosticOutput: new PassThrough(),
     gate,
     permanentHome: "/permanent",
-    allowNativeAuthPassthrough,
   });
   const attach = () => {
     const output: JsonObject[] = [];
@@ -332,7 +331,35 @@ describe("single official runtime owner", () => {
     }
   });
 
-  it("keeps non-stopping changes blocked by pending credential reads", async () => {
+  it("settles existing native RPCs normally during a saved-Account collection change", async () => {
+    const f = fixture();
+    const { client } = f.attach();
+    try {
+      await f.owner.start();
+      await client.initialize(initialization);
+      f.gate.initialized();
+      f.connection().setResponse(() => null);
+      const result = client.request("model/list", {});
+      await vi.waitFor(() =>
+        expect(f.connection().requests.some((request) => request.method === "model/list")).toBe(
+          true,
+        ),
+      );
+      const request = f.connection().requests.find((request) => request.method === "model/list");
+      if (!request) throw new Error("Missing synthetic native request");
+      const change = f.gate.beginCollectionChange();
+      f.connection().stdout.write(`${JSON.stringify({ id: request.id, result: { data: [] } })}\n`);
+      await expect(result).resolves.toMatchObject({ result: { data: [] } });
+      expect(f.gate.busy).toBe(false);
+      change.finish("ready");
+      expect(f.gate.phase).toBe("ready");
+    } finally {
+      await f.owner.stop();
+      client.close();
+    }
+  });
+
+  it("keeps credential replacement and recovery blocked by pending credential reads", async () => {
     const f = fixture();
     const { client } = f.attach();
     try {
@@ -451,24 +478,63 @@ describe("single official runtime owner", () => {
     await f.owner.stop();
   });
 
-  it("allows native authentication only for an explicitly unmanaged owner", async () => {
-    const managed = fixture();
-    const managedClient = managed.attach();
-    await managed.owner.start();
-    managed.gate.initialized();
-    await expect(managedClient.client.request("account/logout", {})).rejects.toThrow(
-      "Host coordinator",
-    );
-    await managed.owner.stop();
+  it.each(["request", "send"] as const)(
+    "preserves native auth through %s while protecting explicit switches",
+    async (transport) => {
+      const f = fixture();
+      const { client, output } = f.attach();
+      try {
+        await f.owner.start();
+        f.gate.initialized();
+        f.connection().setResponse((request) => ({
+          id: request.id ?? null,
+          result: { type: "chatgpt", loginId: "native-id", futureField: true },
+        }));
+        const params = { type: "chatgpt", futureField: true };
+        if (transport === "request") {
+          await expect(client.request("account/login/start", params)).resolves.toMatchObject({
+            result: { loginId: "native-id", futureField: true },
+          });
+        } else {
+          await client.send({ id: 77, method: "account/login/start", params });
+          await vi.waitFor(() =>
+            expect(output).toContainEqual({
+              id: 77,
+              result: { type: "chatgpt", loginId: "native-id", futureField: true },
+            }),
+          );
+        }
+        expect(f.connection().requests[0]?.params).toEqual(params);
+        expect(() => f.gate.beginStoppingChange()).toThrow("busy");
+        expect(f.gate.phase).toBe("ready");
+        const completed = {
+          method: "account/login/completed",
+          params: { loginId: "native-id", success: true, futureField: true },
+        };
+        f.connection().emit(completed);
+        await vi.waitFor(() => expect(output).toContainEqual(completed));
+        expect(f.gate.busy).toBe(false);
+        f.gate.beginStoppingChange().finish("ready");
+      } finally {
+        await f.owner.stop();
+      }
+    },
+  );
 
-    const unmanaged = fixture(true);
-    const unmanagedClient = unmanaged.attach();
-    await unmanaged.owner.start();
-    unmanaged.gate.initialized();
-    await expect(unmanagedClient.client.request("account/logout", {})).resolves.toMatchObject({
-      result: {},
-    });
-    await unmanaged.owner.stop();
+  it("retains native login activity after client detach until backend exit", async () => {
+    const f = fixture();
+    const { client } = f.attach();
+    await f.owner.start();
+    f.gate.initialized();
+    f.connection().setResponse((request) => ({
+      id: request.id ?? null,
+      result: { loginId: "native-id" },
+    }));
+    await client.request("account/login/start", {});
+    client.close();
+    expect(() => f.gate.beginStoppingChange()).toThrow("busy");
+    await f.owner.stop();
+    expect(f.gate.busy).toBe(false);
   });
 
   it("shares one process across clients and reinitializes without duplicate Desktop responses", async () => {

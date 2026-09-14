@@ -12,26 +12,26 @@ ChatGPT 账号使用「账号 / 5 小时额度 / 7 天额度 / 管理」表；�
 
 - 主标题显示完整邮箱或账号名称；API 账号显示 `API - {identity}`，缺省身份为 BANK OF TOKEN。单行省略并可悬停查看完整身份；Agent 名称、真实套餐与「Codex 当前」标记作为次级信息，不显示本地 `CODEX_HOME` 路径。
 - API 账号不提供 ChatGPT 设备登录或退出；额度来自官方 home 的 usage 查询，不是 ChatGPT 窗口。
-- 搜索按邮箱、账号名称、接入身份、Agent 或套餐筛选整个列表，仅在两类账号都不匹配时显示一个空状态。有 API 账号时 Codex 的 API 接入组在前，ChatGPT 与其他 Harness 在后；不按剩余额度或当前状态重排。
+- 搜索按邮箱、账号名称、接入身份、Agent 或套餐筛选整个列表，仅在两类账号都不匹配时显示一个空状态。有 API 账号时 Codex 的 API 接入组在前，ChatGPT 与其他 Harness 在后；其他 Harness 通常按稳定的 Harness ID 顺序排列，Antigravity CLI 固定放在这些 Harness 的最后；不按剩余额度或当前状态重排。
 - 5 小时与 7 天额度分别对齐比较；周额度归入 7 天列。缺少的窗口仅显示「—」，不补成已用 0% 或剩余 100%。月额度、模型组及产品专属额度在账号信息下独立具名显示，不冒充全账号总额度，也不合并或丢弃重复报告。
 - 默认按「剩余」展示，也可切换为「已用」，表头同步说明口径。进度条和数字使用相同口径，风险颜色仍按已用比例判断：70% 起警示，90% 起强调。
 - 每个窗口在百分比旁显示弱化的倒计时，最多两个单位：超过一天为 `6d17h`，不足一天为 `4h54m`，不足一小时为 `14m`。下方右对齐显示本地时间 `09/15 10:08`；悬停和辅助技术可读取包含年份、时区的完整重置时间。无有效重置时间时不编造日期或倒计时。
 - 页面本地每分钟及重新获得焦点时更新倒计时，不重新查询 Host、不重建账号行。到点只显示「待刷新」，不会自动把额度设为 100%；关闭设置后停止计时。
 - Codex 额度查询不以邮箱是否存在筛选账号；无邮箱的已保存账号仍可查询和刷新。加载、读取失败、暂无数据分别展示；失败可重试，未知数据不按 0% 处理。单个账号的请求不会阻塞其他账号的额度展示，页面关闭后的响应不会更新页面。
-- Codex 套餐类型来自经原生认证验证的账号信息，`prolite` 按当前产品对应关系高亮显示为 Pro 5x，`pro` 高亮显示为 Pro 20x；Plus、Team 等保持普通标签，`unknown` 不显示。5x/20x 是展示层映射，不改变协议原值。官方接口不提供订阅续期时间，因此不显示续期日期。
+- Codex 套餐类型来自原生凭据中的账号信息；列表收集不代替启动或切换时的原生认证验证。`prolite` 按当前产品对应关系高亮显示为 Pro 5x，`pro` 高亮显示为 Pro 20x；Plus、Team 等保持普通标签，`unknown` 不显示。5x/20x 是展示层映射，不改变协议原值。官方接口不提供订阅续期时间，因此不显示续期日期。
 
 ## 其他 Harness 的只读账号额度
 
-统一列表中展示 Grok Build、agy（Antigravity）、Claude Code 当前原生认证可读取的真实额度。每行管理列标明「原生管理」，信息按钮解释其管理边界。这不是多账号管理：不提供添加、删除、切换、设为默认或重置卡操作，也不修改 Codex 当前账号。搜索和已用/剩余切换作用于所有行，刷新按钮重新查询两类额度。
+统一列表中展示 Grok Build、agy（Antigravity）、Claude Code 当前原生认证可读取的真实额度。每行管理列标明「原生管理」，信息按钮解释其管理边界。这不是多账号管理：不提供添加、删除、切换、设为默认或重置卡操作，也不修改 Codex 当前账号。搜索和已用/剩余切换作用于所有行，刷新按钮重新查询两类额度。各 Harness 独立并行查询，任一有效结果返回后立即显示，不等待其他 Harness；全局刷新期间同样逐项恢复。
 
-- 仅在返回有效额度窗口时显示账号。API Key、第三方 Provider、未登录、无可用数据或查询失败时不显示占位行。刷新后不复用上一份账号额度，避免退出或改变认证后展示旧账号。
+- 仅在返回有效额度窗口时显示账号。API Key、第三方 Provider、未登录、无可用数据或查询失败时不显示占位行。Host 按 Harness 缓存完成的账号检查结果 15 秒，关闭后立即重开设置页可复用该短期结果；工具栏「刷新额度」显式绕过缓存，刷新后不复用上一份账号额度，避免退出或改变认证后展示旧账号。
 - 左侧展示 Harness Logo；主标题优先显示邮箱或可识别名称，Harness 名称和套餐作为次级信息。没有账号身份时以 Harness 名称为主标题，不重复名称或显示「当前登录账号」，不会猜测邮箱。邮箱按列宽省略，悬停可查看完整身份。不记录或展示账号快照更新时间；原型中的示例套餐不作为真实数据来源。
 - Grok Build 复用原生 xAI OAuth 认证和 billing 查询，展示周期、重置时间及产品用量；不将其他 issuer 的 Token 发到 xAI。套餐使用比例优先读取 `creditUsagePercent`；省略时按原生规则使用旧版套餐额度 `monthlyLimit` / `used`，没有正数套餐上限但有可识别的周/月周期及有效重置时间时，按原生零用量语义展示已用 0% / 剩余 100%，保留账号行。请求失败、空配置或异常用量字段不补成 0%；不使用 `onDemandCap` / `onDemandUsed` 的按需消费金额替代套餐比例。显式配置 `XAI_API_KEY`、`GROK_API_KEY` 或 `GROK_TOKEN` 时保守地不展示保存的 OAuth 账号。此页展示 Harness 账号额度，不判定某个 Thread 的逐模型凭据或实际 Billing Source。
 - agy 执行原生 `--print=/usage --output-format stream-json`，由 CLI 自己解析认证，展示实际模型组与窗口。当前该输出不提供账号邮箱或套餐，以 Harness 名称为主标题。
 - Claude Code 使用 Agent SDK 0.3.220 的 `usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET()` 主动查询，并通过 `accountInfo()` 读取身份。仅投影 `rate_limits_available` 为真且有效的套餐窗口，包括原生返回的模型独立窗口；不将 session Token、会话花费或额外用量金额混为额度百分比。当前不展示 `extra_usage` 金额。旧 SDK/CLI 不支持该实验性操作时不展示。
 - 查询不需要已有 Thread，不发起 Model Turn；Claude SDK 检查使用空输入流、无工具且不持久化 Session，并在成功、失败、超时后关闭检查进程。Broker 路径转发同一个只读能力。
 
-公共数据链路是 `HarnessAdapter.inspectAccount()` → `codexhost/harness/accounts/list` → 设置页。账号快照只有可展示身份、套餐与额度，无凭据、原生路径或原始 SDK 对象；Host 不直接依赖具体 Adapter。仅查询当前 Host 已加载插件，单插件失败不会阻断其他账号。
+公共数据链路是 `HarnessAdapter.inspectAccount()` → `codexhost/harness/accounts/sources` / `codexhost/harness/accounts/inspect` → 设置页；旧 Host 仍可回退到聚合的 `codexhost/harness/accounts/list`。渐进式与聚合路由共享同一份按 Harness 的 15 秒缓存和在途请求。账号快照只有可展示身份、套餐与额度，无凭据、原生路径或原始 SDK 对象；Host 不直接依赖具体 Adapter。仅查询当前 Host 已加载插件，单插件失败或超时不会阻断其他账号的返回与展示。
 
 ## 重置卡
 
@@ -45,7 +45,7 @@ ChatGPT 账号使用「账号 / 5 小时额度 / 7 天额度 / 管理」表；�
 
 切换使用停止后端方案：进入 `changing`，拒绝新请求和重复切换，停止自己的受管后端并确认退出，再停止当次检测到的其他 Codex 后端，保存实际最新凭据、原子替换、重启并验证。不扫描会话、Goal、队列或临时状态，不等待额度查询；旧原生 RPC 随后端退休明确失败，不排队、不自动重放。
 
-停止范围包括 VS Code／CLI，且不限于当前 `CODEX_HOME`；不关闭编辑器、Desktop、Host 或其他 Harness，不递归停止外部后端的工具子进程，不追杀 IDE 自动重启的后端。任务和未保存内容可能丢失，完整运行时设置无损恢复不作保证。点击切换无额外确认弹窗。登录、退出也先关闭新准入并停止受管后端，不扫描会话；它们不主动停止外部后端。独立 Host 凭据刷新租约、退出证明、凭据 CAS 和身份校验保护后续写入。删除非当前保存账号不停止后台，也不因已获应答的原生任务仍活跃而拒绝；恢复先停止受管后台，不检查任务活动。两者仍受在途请求租约约束。Harness picker 只有一个 Codex，Composer 不提供账号选择。
+停止范围包括 VS Code／CLI，且不限于当前 `CODEX_HOME`；不关闭编辑器、Desktop、Host 或其他 Harness，不递归停止外部后端的工具子进程，不追杀 IDE 自动重启的后端。任务和未保存内容可能丢失，完整运行时设置无损恢复不作保证。点击切换无额外确认弹窗。原生登录尚未完成或官方认证请求在途时，Host 切换提示 busy，不强行打断认证。Host 设置页添加／重新登录、受控退出也先关闭新准入并停止受管后端，不扫描会话；它们不主动停止外部后端。独立 Host 凭据刷新租约、退出证明、凭据 CAS 和身份校验保护后续写入。删除非当前保存账号不停止后台，也不被普通原生请求、列表刷新或已获应答的原生任务阻挡；独立 Host 凭据写入仍须结束后才能删除。恢复先停止受管后台，不检查任务活动，仍受全部在途请求租约约束。Harness picker 只有一个 Codex，Composer 不提供账号选择。
 
 发生拒绝时，页面应结束等待并恢复按钮；需要重试时由用户显式发起。切换期间 Desktop 若更换内部 Request Client，响应仍应完成原请求，而不是让页面永久等待。
 
@@ -53,7 +53,7 @@ ChatGPT 账号使用「账号 / 5 小时额度 / 7 天额度 / 管理」表；�
 
 「添加 Codex 账号」使用原生设备代码登录。开始前停止任务后台，在私有、短命的认证 staging 目录中启动唯一登录后台，不执行用户任务。添加 B 不覆盖正式 home 中的 A，结束后仍使用 A；此前未登录时，首次成功登录成为当前账号。当前账号重新登录也必须安装新授权，不能因为 ID 相同跳过。
 
-Desktop 原生「登录」保留 OAuth 和设备代码两种 ChatGPT 协议，复用同一个 staging 和事务；与设置页「添加」不同，原生登录成功会使用本次登录的身份。原生完成通知不会早于启动应答；只有正式后台确实就绪才报告原生登录成功，并从该后台读取账号信息通知 Desktop 更新。不能把已保存但待恢复的账号冒充已登录。
+Desktop 原生登录、取消和退出直接交给官方后端，不进入 Host staging 或凭据事务。Host 不校验登录方式和未知参数，不替换 loginId，不重建原生结果、错误或完成通知。官方通知先交付 Desktop，再异步同步凭据收藏；备份失败不改变官方操作结果、不关闭原生准入，后续刷新可重试。Host 主动切换或恢复后台后，仍从正式后台读取实际身份并通知 Desktop 更新显示。
 
 已保存账号的「登录」入口可重新获取授权，邮箱缺失不代表未认证。完成事件按本次登录操作对账，即使早于启动应答也能处理；轮询只更新快照，不凭旧邮箱推断成功。操作已经结束但完成结果未收到时，显示「登录结果未确认」，请检查已保存账号状态。
 
@@ -66,10 +66,12 @@ Desktop 的 Host 连接初始化与 Codex 就绪状态分开：Codex unavailable
 ## 存储、安全与升级边界
 
 - Launcher 显式传递所支持的绝对 home／配置路径；指定 `CODEX_ELECTRON_USER_DATA_PATH` 时也传递 Chromium 的 `--user-data-dir`，避免只隔离部分 Electron 数据。不会把 API Key 等秘密拼入启动参数，也不把 SSH 管理环境的目录覆盖带入本地 Desktop。
-- 正式 `CODEX_HOME` 固定。当前凭据的权威是原生文件；非当前凭据完整明文保存在私有 `.codexhost-native-accounts/vault.json`，不另建长期账号 home，不额外加密。
+- 正式 `CODEX_HOME` 固定。原生文件决定当前登录身份；包括当前账号在内的全部已保存凭据副本完整明文保存在私有 `.codexhost-native-accounts/vault.json`，不另建长期账号 home，不额外加密，也不在 Vault 持久化独立的当前选择。
+- 启动、账号列表刷新、原生认证通知和切换前后按稳定身份收集原生凭据，更新轮换后的副本。外部登录或退出不是旧选择冲突；退出保留保存账号，但不会隐式重新登录。普通列表刷新不写 `auth.json`、不重启后台、不依赖额度查询。未决事务／登录仍须先恢复。
+- v1 Vault 自动转换为凭据集合。旧当前账号若缺少副本且已不在原生文件中，保留条目供重新登录，不伪造凭据；该条目禁用切换并显示登录入口。
 - `transaction.json` 和 `login.json` 记录未决操作，备份同样使用明文。旧密文在 home 租约下用已有 OS 密钥一次性转换，转换前全部验证，按文件 CAS，可在中途失败后恢复。转换完成后不再读取密钥；缺失旧密钥时不创建替代密钥，不覆盖无法解密的数据。
 - 文件 helper 持有 home 租约，并在同一进程中执行有界 I/O；退出未确认时不能让新写入者越过租约。账号切换时停止当次检测到的其他 Codex 后端，但不能阻止外部程序此后启动或改写文件，仍须验证文件与后台身份。
-- 公开快照只有 `ready/changing/unavailable`、已提交 current、能力、Host instance/revision 和必要清理提示，不含 Token 或存储路径。unavailable 时 current 不是后台已经可用的证明。
+- 公开快照只有 `ready/changing/unavailable`、原生观察推导的 current、能力、Host instance/revision 和必要清理提示，不含 Token 或存储路径。unavailable 时 current 不是后台已经可用的证明。
 - 非当前额度通过受控 WHAM 查询，不启动额外后台。OAuth 刷新有 single-flight、修改租约和凭据 CAS；缓存显示获取时间，失败使用 last-good，不把未知用量补成零。
 - 新安装和已有单一正式 home 原地使用，不复制历史。有效旧多 home 登记若当前账号恰好使用正式 home、其他旧 home 无托管状态或进程记录，可在正常恢复、原生身份和 file 存储验证完成后，停止后台，只读导入旧 `auth.json` 中缺失的身份到明文 Vault。来源登记与凭据摘要、writer 准入会重新校验；一次 Vault CAS 同时提交账号和登记摘要。已有保存凭据不被旧副本覆盖，重复启动不重新导入已删除账号。原生当前凭据、旧登记及其他目录不被导入过程改写。
 - 公开快照的 `legacyHistoryPreserved` 表示仅凭据已接入，不代表历史已迁移。设置页允许全局切换。其他 home 的数据库、附件、记忆、队列和项目关系保持原样；切换不改变 Thread 的历史目录或 Harness 归属。
@@ -92,7 +94,8 @@ Desktop 的 Host 连接初始化与 Codex 就绪状态分开：Codex unavailable
 - `packages/host-runtime/src/account/native-profile-transaction.ts`：切换、退出、重登和事实恢复。
 - `packages/host-runtime/src/account/native-account-store.ts`：明文 Vault、Journal 和 staging。
 - `packages/host-runtime/src/native-account-host.ts`：本地能力、所有权与降级组成。
-- `packages/host-runtime/src/managed-native-auth.ts`：原生登录协议、事件顺序和正式后台代次更新；不另持凭据或管理进程。
+- `packages/host-runtime/src/native-account-observer.ts`：原生认证后的收藏同步、Host 替换正式后台后的身份显示更新；不接管认证。
+- `packages/host-runtime/src/codex-runtime/official-native-auth-activity.ts`：观察原生认证写入，防止 Host 切换中断未完成登录。
 - `packages/desktop-control/src/renderer-host-response-ownership.ts`：通过原生请求生命周期保留在途 Host 响应的 Client 归属，不重发请求或解释事务结果。
 - `packages/renderer-extension/src/settings/accounts-page.ts`：账号生命周期、查询、登录与操作。
 - `packages/renderer-extension/src/settings/accounts-list.ts`：统一账号行、管理入口与重置卡展开。

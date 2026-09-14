@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -34,6 +35,7 @@ const native = vi.hoisted(() => {
     initializationError?: Error;
     startBeforeInitializationError: boolean;
     reconcileError?: Error;
+    staleProcessRecord: boolean;
     version: string;
     events: string[];
     managedSnapshot: {
@@ -113,8 +115,13 @@ const native = vi.hoisted(() => {
       void input;
       state.recordConstructions++;
     }
-    async reconcile(): Promise<void> {
+    async reconcile(options: { allowMissingExitReceipt?: boolean } = {}): Promise<void> {
       if (current().reconcileError) throw current().reconcileError;
+      if (current().staleProcessRecord) {
+        if (!options.allowMissingExitReceipt)
+          throw new Error("Official process tree exit is unconfirmed");
+        current().staleProcessRecord = false;
+      }
     }
     wrap(factory: (receipt: { directory: string; name: string; tag: string }) => object): object {
       return factory({ directory: "/synthetic", name: "process.json", tag: "fixture" });
@@ -263,6 +270,7 @@ vi.mock("../src/remote-official-app-server.js", () => ({
 
 import { prepareLocalCodex } from "../src/native-account-host.js";
 import { OfficialRuntimeClient } from "../src/codex-runtime/official-runtime-scope.js";
+import { nativeDigest, parseJournal } from "../src/account/native-profile-vault.js";
 import { stopNativeProcesses } from "../src/native-process-stop.js";
 
 interface HostFixture {
@@ -350,6 +358,7 @@ async function fixture(
     initializationError?: Error;
     startBeforeInitializationError?: boolean;
     reconcileError?: Error;
+    staleProcessRecord?: boolean;
     layout?: object;
   } = {},
 ): Promise<HostFixture> {
@@ -368,6 +377,7 @@ async function fixture(
     ...(options.initializationError ? { initializationError: options.initializationError } : {}),
     startBeforeInitializationError: options.startBeforeInitializationError ?? false,
     ...(options.reconcileError ? { reconcileError: options.reconcileError } : {}),
+    staleProcessRecord: options.staleProcessRecord ?? false,
     version: "0.153.4",
     events,
     managedSnapshot: {
@@ -439,7 +449,6 @@ describe("local native Account composition", () => {
   it("allows native authentication pass-through with no launcher and no managed state", async () => {
     const f = await fixture();
     const prepared = await prepareLocalCodex(f.input({ launcher: "" }));
-    expect(prepared.allowNativeAuthPassthrough).toBe(true);
     expect(prepared.accountControl.snapshot().capabilities.reason).toBe("unsupported-storage");
     expect(native.state.fileConstructions).toBe(0);
     await prepared.close();
@@ -449,7 +458,6 @@ describe("local native Account composition", () => {
     const f = await fixture();
     await mkdir(path.join(f.home, ".codexhost-native-accounts"));
     const prepared = await prepareLocalCodex(f.input({ launcher: "" }));
-    expect(prepared.allowNativeAuthPassthrough).toBe(false);
     expect(prepared.accountControl.snapshot().capabilities.reason).toBe("recovery-required");
     expect(native.state.fileConstructions).toBe(0);
     await expect(prepared.officialRuntimeScope.start()).rejects.toMatchObject({
@@ -488,7 +496,6 @@ describe("local native Account composition", () => {
     const input = f.input({ sharedListener: true });
     const prepared = await prepareLocalCodex(input);
     try {
-      expect(prepared.allowNativeAuthPassthrough).toBe(true);
       expect(prepared.accountControl.snapshot().capabilities).toMatchObject({
         manage: false,
         switch: false,
@@ -526,7 +533,6 @@ describe("local native Account composition", () => {
     });
     const prepared = await prepareLocalCodex(f.input({ sharedListener: true }));
     try {
-      expect(prepared.allowNativeAuthPassthrough).toBe(true);
       expect(prepared.accountControl.snapshot().capabilities).toMatchObject({
         manage: false,
         switch: false,
@@ -561,7 +567,6 @@ describe("local native Account composition", () => {
         launcher: "",
       }),
     );
-    expect(prepared.allowNativeAuthPassthrough).toBe(false);
     await expect(prepared.officialRuntimeScope.start()).rejects.toMatchObject({
       code: "unavailable",
     });
@@ -582,7 +587,6 @@ describe("local native Account composition", () => {
         },
       });
       const prepared = await prepareLocalCodex(f.input({ sharedListener: true }));
-      expect(prepared.allowNativeAuthPassthrough).toBe(true);
       native.current().layout = {
         kind: "migration-required",
         reason: "multiple-homes",
@@ -602,7 +606,6 @@ describe("local native Account composition", () => {
   it("initializes normal account management without an available keyring", async () => {
     const f = await fixture({ keyAvailable: false });
     const prepared = await prepareLocalCodex(f.input());
-    expect(prepared.allowNativeAuthPassthrough).toBe(false);
     expect(prepared.accountControl.snapshot().capabilities.manage).toBe(true);
     expect(f.files.activeLeases).toBe(1);
 
@@ -622,7 +625,6 @@ describe("local native Account composition", () => {
         Buffer.from("pending"),
       );
       const prepared = await prepareLocalCodex(f.input());
-      expect(prepared.allowNativeAuthPassthrough).toBe(false);
       expect(prepared.accountControl.snapshot().capabilities.reason).toBe("recovery-required");
       expect(native.current().events).toEqual(["lease-release"]);
       expect(f.files.activeLeases).toBe(0);
@@ -630,10 +632,90 @@ describe("local native Account composition", () => {
     },
   );
 
+  it("allows ordinary startup after a retired supervisor lost its exit receipt", async () => {
+    const f = await fixture({ staleProcessRecord: true });
+    const prepared = await prepareLocalCodex(f.input());
+    try {
+      expect(native.current().staleProcessRecord).toBe(false);
+      expect(prepared.officialRuntimeScope.gate.phase).toBe("ready");
+      expect(native.current().events).toContain("backend-start");
+      expect(stopNativeProcesses).not.toHaveBeenCalled();
+    } finally {
+      await prepared.close();
+    }
+  });
+
+  it.each(["transaction.json", "login.json"])(
+    "preserves stale process evidence when startup encounters unreadable pending %s",
+    async (name) => {
+      const f = await fixture({ staleProcessRecord: true });
+      f.files.contents.set(
+        fileKey(path.join(f.home, ".codexhost-native-accounts"), name),
+        Buffer.from("pending"),
+      );
+      const prepared = await prepareLocalCodex(f.input());
+      try {
+        expect(native.current().staleProcessRecord).toBe(true);
+        expect(prepared.officialRuntimeScope.gate.phase).toBe("unavailable");
+        expect(native.current().events).not.toContain("backend-start");
+      } finally {
+        await prepared.close();
+      }
+    },
+  );
+
+  it.each(["transaction.json", "login.json"])(
+    "does not waive missing exit evidence for a valid pending %s",
+    async (name) => {
+      const f = await fixture({ staleProcessRecord: true });
+      const homeId = nativeDigest(process.platform === "win32" ? f.home.toLowerCase() : f.home);
+      const before = {
+        version: 1,
+        homeId,
+        revision: 0,
+        currentAccountId: null,
+        lastOperationId: null,
+        accounts: [],
+      };
+      const operationId = randomUUID();
+      const pending = Buffer.from(
+        JSON.stringify(
+          name === "transaction.json"
+            ? {
+                version: 1,
+                operationId,
+                phase: "prepared",
+                before,
+                after: { ...before, revision: 1, lastOperationId: operationId },
+                source: null,
+                target: null,
+              }
+            : {
+                version: 1,
+                operationId,
+                sourceAccountId: null,
+                expiresAt: Date.now() + 60_000,
+              },
+        ),
+      );
+      if (name === "transaction.json") expect(() => parseJournal(pending, homeId)).not.toThrow();
+      const key = fileKey(path.join(f.home, ".codexhost-native-accounts"), name);
+      f.files.contents.set(key, pending);
+      const prepared = await prepareLocalCodex(f.input());
+      try {
+        expect(native.current().staleProcessRecord).toBe(true);
+        expect(prepared.officialRuntimeScope.gate.phase).toBe("unavailable");
+        expect(native.current().events).not.toContain("backend-start");
+        expect(f.files.contents.get(key)).toEqual(pending);
+      } finally {
+        await prepared.close();
+      }
+    },
+  );
+
   it("does not start a competing backend when previous-writer reconciliation is unconfirmed", async () => {
     const f = await fixture({ keyAvailable: false, reconcileError: new Error("writer active") });
     const prepared = await prepareLocalCodex(f.input());
-    expect(prepared.allowNativeAuthPassthrough).toBe(false);
     expect(prepared.officialRuntimeScope.gate.phase).toBe("unavailable");
     expect(native.current().events).not.toContain("backend-start");
     await prepared.close();
@@ -645,7 +727,6 @@ describe("local native Account composition", () => {
       const error = Object.assign(new Error(code), { code });
       const f = await fixture({ initializationError: error });
       const prepared = await prepareLocalCodex(f.input());
-      expect(prepared.allowNativeAuthPassthrough).toBe(true);
       expect(prepared.accountControl.snapshot().capabilities.reason).toBe(code);
       expect(f.files.activeLeases).toBe(1);
       expect(native.current().events).toEqual(["runtime-stop", "accounts-close"]);
@@ -660,7 +741,6 @@ describe("local native Account composition", () => {
       startBeforeInitializationError: true,
     });
     const prepared = await prepareLocalCodex(f.input());
-    expect(prepared.allowNativeAuthPassthrough).toBe(false);
     expect(prepared.accountControl.snapshot()).toMatchObject({
       phase: "unavailable",
       capabilities: { reason: "recovery-required", recover: true },

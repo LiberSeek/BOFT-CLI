@@ -7,17 +7,15 @@ import type {
   CodexAccountUsageResult,
 } from "@codexhost/shared-contracts";
 
-import type { NativeChatgptLogin, NativeChatgptLoginParams } from "./native-chatgpt-login.js";
-
 /** Global Codex Account control plane. Credentials never cross this boundary. */
 export interface CodexAccountControl {
   snapshot(): CodexAccountListResult;
+  /** Refresh native-derived selection and collect credentials without changing native auth. */
+  refresh?(): Promise<CodexAccountListResult>;
   currentAccountId(): string | null;
   switch(accountId: string): Promise<void>;
   remove(accountId: string): Promise<void>;
   startLogin(accountId?: string): Promise<CodexAccountLoginStartResult>;
-  /** Native login activates the signed-in identity; Settings may only save it. */
-  startNativeLogin?(params: NativeChatgptLoginParams): Promise<NativeChatgptLogin>;
   cancelLogin(loginId: string): Promise<boolean>;
   logout(): Promise<void>;
   recover(): Promise<void>;

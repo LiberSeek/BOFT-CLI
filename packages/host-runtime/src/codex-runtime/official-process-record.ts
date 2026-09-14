@@ -53,7 +53,11 @@ export class OfficialProcessRecord {
     this.#supervisorExitClosesProcessTree = input.supervisorExitClosesProcessTree ?? false;
   }
 
-  async reconcile(): Promise<void> {
+  /** Clean startup may retire a historical supervisor record without a receipt.
+   * The caller must hold the home lease and rule out pending credential/login
+   * transactions. This is not process-tree exit proof for a credential change.
+   * Current-process stop and backend replacement retain the strict default. */
+  async reconcile(options: { allowMissingExitReceipt?: boolean } = {}): Promise<void> {
     this.#assertOwnership();
     const previous = await this.#read();
     if (!previous) {
@@ -72,7 +76,12 @@ export class OfficialProcessRecord {
       closedWindowsJob = this.#supervisorExitClosesProcessTree;
     }
     const receipt = await this.#receipt();
-    if ((receipt && receipt.tag !== previous.record.nonce) || (!receipt && !closedWindowsJob))
+    const retiredStartup =
+      options.allowMissingExitReceipt === true && previous.record.phase === "running";
+    if (
+      (receipt && receipt.tag !== previous.record.nonce) ||
+      (!receipt && !closedWindowsJob && !retiredStartup)
+    )
       throw new Error("Official process tree exit is unconfirmed");
     this.#assertOwnership();
     await this.#files.remove(this.#home, name, privateFileDigest(previous.bytes));

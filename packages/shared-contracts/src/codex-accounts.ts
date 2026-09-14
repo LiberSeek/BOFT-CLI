@@ -40,6 +40,8 @@ export const codexAccountSchema = z
     planType: codexAccountPlanTypeSchema.optional(),
     authKind: codexAccountAuthKindSchema.optional(),
     authIdentity: nonBlankTextSchema.max(256).optional(),
+    /** Legacy metadata retained when its credential was never backed up. */
+    requiresLogin: z.boolean().optional(),
   })
   .strict();
 export type CodexAccountSummary = z.infer<typeof codexAccountSchema>;

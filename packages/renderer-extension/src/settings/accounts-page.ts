@@ -27,7 +27,7 @@ import {
   accountPlanLabel,
   createAccountsGroup,
   renderAccountRows,
-  renderHarnessAccountRow,
+  renderHarnessAccountRows,
 } from "./accounts-list.js";
 import { createHarnessAccounts, type RendererHarnessAccountClient } from "./harness-accounts.js";
 import { mountAccountResetCountdowns } from "./accounts-reset-time.js";
@@ -136,7 +136,7 @@ export function createAccountsSettingsPage(
       refreshUsage.addEventListener("click", () => {
         usageByAccountId.clear();
         loadUsage(accounts);
-        void harnessAccounts?.refresh();
+        void harnessAccounts?.refresh(true);
       });
       search.addEventListener("input", () => render());
       toolbar.append(connected, searchWrapper, displayControls, refreshUsage);
@@ -428,7 +428,7 @@ export function createAccountsSettingsPage(
             for (const account of visibleChat) appendCodexAccount(chatGroup.body, account);
             for (const account of visibleHarnessAccounts) {
               chatGroup.body.append(
-                renderHarnessAccountRow(document, account, messages, usageDisplay),
+                ...renderHarnessAccountRows(document, account, messages, usageDisplay),
               );
             }
             groups.append(chatGroup.root);
@@ -454,7 +454,9 @@ export function createAccountsSettingsPage(
         for (const accountId of [...usageByAccountId.keys()]) {
           if (!keep.has(accountId)) usageByAccountId.delete(accountId);
         }
-        const pending = saved.filter((account) => !usageByAccountId.has(account.accountId));
+        const pending = saved.filter(
+          (account) => !account.requiresLogin && !usageByAccountId.has(account.accountId),
+        );
         if (!inspect || pending.length === 0) {
           render();
           return;

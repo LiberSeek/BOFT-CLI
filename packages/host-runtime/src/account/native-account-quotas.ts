@@ -433,9 +433,10 @@ export class NativeAccountQuotas {
     expected: NativeCodexCredentials,
   ): Promise<NativeCodexCredentials> {
     // Admission pins account mutations. A late 401 must not refresh an obsolete grant.
+    await this.#credentials.readCredentials();
     const vault = this.#credentials.vault;
     const latest = vault.accounts.find((entry) => entry.accountId === account.accountId);
-    if (!latest || vault.currentAccountId === account.accountId)
+    if (!latest || this.#credentials.currentAccountId === account.accountId)
       throw new CodexAccountQuotaError("unavailable");
     const credential = this.#credentials.restoreCredential(latest);
     if (credentialDigest(credential) !== credentialDigest(expected)) return credential;

@@ -59,7 +59,7 @@ describe("native Codex Account manager combinations", () => {
       current: null,
       saved: [{ accountId: nativeAccountIds.b, credential: b }],
     });
-    const before = state.store.vault;
+    const before = { ...state.store.vault, currentAccountId: state.store.currentAccountId };
     const after = structuredClone(before);
     after.currentAccountId = nativeAccountIds.b;
     after.revision++;
@@ -67,9 +67,9 @@ describe("native Codex Account manager combinations", () => {
     const afterB = after.accounts.find((account) => account.accountId === nativeAccountIds.b);
     const beforeB = before.accounts.find((account) => account.accountId === nativeAccountIds.b);
     if (!afterB || !beforeB?.payload) throw new Error("missing synthetic B");
-    afterB.payload = null;
+    afterB.payload = beforeB.payload;
     const journal: NativeProfileJournal = {
-      version: 1,
+      version: 2,
       operationId: after.lastOperationId,
       phase: "prepared",
       before,
@@ -205,7 +205,7 @@ describe("native Codex Account manager combinations", () => {
     expect(savedA?.payload).not.toBeNull();
   });
 
-  it("reports unavailable instead of ready when native facts conflict", async () => {
+  it("adopts an external native login instead of enforcing a stale selection", async () => {
     const state = await createNativeAccountTestState();
     resources.push({ state });
     await state.seedAccounts({
@@ -222,12 +222,13 @@ describe("native Codex Account manager combinations", () => {
     });
     attachManager(state, manager);
 
-    await expect(manager.initialize()).rejects.toThrow("Codex Account recovery-required");
-    expect(manager.snapshot()).toMatchObject({
-      phase: "unavailable",
-      cleanupRequired: true,
-      capabilities: { recover: true },
-    });
+    await manager.initialize();
+    expect(manager.snapshot()).toMatchObject({ phase: "ready", cleanupRequired: false });
+    expect(state.store.vault.accounts).toHaveLength(2);
+    expect(
+      state.store.vault.accounts.find((a) => a.accountId === manager.currentAccountId())?.identity
+        .subject,
+    ).toBe("third-party");
   });
 
   it("finishes a verified staged candidate left by a crash", async () => {

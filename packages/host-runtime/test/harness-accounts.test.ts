@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { FakeHarnessAdapter } from "@codexhost/harness-adapter/testing";
 import { harnessIdSchema, type HarnessAccountSnapshot } from "@codexhost/shared-contracts";
-import { inspectHarnessAccounts } from "../src/harness-accounts.js";
+import {
+  HarnessAccountInspectionCache,
+  inspectHarnessAccount,
+  inspectHarnessAccounts,
+  listHarnessAccountSources,
+} from "../src/harness-accounts.js";
 
 const snapshot: HarnessAccountSnapshot = {
   email: "person@example.com",
@@ -11,6 +16,43 @@ const snapshot: HarnessAccountSnapshot = {
 const adapter = (id: string) => new FakeHarnessAdapter(harnessIdSchema.parse(id));
 
 describe("read-only Harness accounts", () => {
+  it("lists only progressive account sources with their plugin display names", () => {
+    const ready = Object.assign(adapter("sample-agent"), {
+      inspectAccount: vi.fn(async () => snapshot),
+    });
+    expect(
+      listHarnessAccountSources(
+        [ready, adapter("legacy-agent")],
+        [{ id: ready.harnessId, name: "Sample Agent", version: "1.0.0" }],
+      ),
+    ).toEqual({
+      sources: [{ harnessId: "sample-agent", harnessName: "Sample Agent" }],
+    });
+  });
+
+  it("inspects one account without exposing plugin failures or malformed snapshots", async () => {
+    const ready = Object.assign(adapter("sample-agent"), {
+      inspectAccount: vi.fn(async () => snapshot),
+    });
+    const malformed = Object.assign(adapter("bad-agent"), {
+      inspectAccount: async () => ({ ...snapshot, token: "must not escape" }),
+    });
+    await expect(
+      inspectHarnessAccount(ready, [
+        { id: ready.harnessId, name: "Sample Agent", version: "1.0.0" },
+      ]),
+    ).resolves.toEqual({
+      harnessId: "sample-agent",
+      harnessName: "Sample Agent",
+      account: snapshot,
+    });
+    await expect(inspectHarnessAccount(malformed, [])).resolves.toEqual({
+      harnessId: "bad-agent",
+      harnessName: "bad-agent",
+      account: null,
+    });
+  });
+
   it("returns only real quota, isolates failure, and uses plugin display metadata without opening Threads", async () => {
     const ready = Object.assign(adapter("sample-agent"), {
       inspectAccount: vi.fn(async () => snapshot),
@@ -31,6 +73,29 @@ describe("read-only Harness accounts", () => {
       accounts: [{ ...snapshot, harnessId: "sample-agent", harnessName: "Sample Agent" }],
     });
     expect(open).not.toHaveBeenCalled();
+  });
+
+  it("caches each Harness account for 15 seconds and lets manual refresh bypass it", async () => {
+    let now = 0;
+    const inspectAccount = vi
+      .fn<() => Promise<HarnessAccountSnapshot | null>>()
+      .mockResolvedValueOnce(snapshot)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(snapshot);
+    const native = Object.assign(adapter("sample-agent"), { inspectAccount });
+    const cache = new HarnessAccountInspectionCache(15_000, () => now);
+
+    expect((await cache.inspect(native, [])).account).toEqual(snapshot);
+    expect((await cache.inspect(native, [])).account).toEqual(snapshot);
+    expect(inspectAccount).toHaveBeenCalledOnce();
+
+    expect((await cache.inspect(native, [], true)).account).toBeNull();
+    expect(inspectAccount).toHaveBeenCalledTimes(2);
+    expect((await cache.inspect(native, [])).account).toBeNull();
+
+    now = 15_001;
+    expect((await cache.inspect(native, [])).account).toEqual(snapshot);
+    expect(inspectAccount).toHaveBeenCalledTimes(3);
   });
 
   it("does not reuse the previous account when native authentication stops returning quota", async () => {

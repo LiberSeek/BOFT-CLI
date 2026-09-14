@@ -91,6 +91,68 @@ describe("shared-home process witness", () => {
       expect(f.files.contents.has(f.key)).toBe(false);
     },
   );
+  it.each([null, "different-birth"])(
+    "retires a historical running witness at clean startup after supervisor exit (%s)",
+    async (current) => {
+      const f = fixture();
+      await f.backend.start();
+      f.identity.mockResolvedValue(current);
+      await f.record.reconcile({ allowMissingExitReceipt: true });
+      expect(f.files.contents.has(f.key)).toBe(false);
+      expect(f.native.stop).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still rejects a live supervisor during clean startup", async () => {
+    const f = fixture();
+    await f.backend.start();
+    await expect(f.record.reconcile({ allowMissingExitReceipt: true })).rejects.toThrow(
+      "still running",
+    );
+    expect(f.files.contents.has(f.key)).toBe(true);
+  });
+
+  it("does not retire an unidentified spawn gap during clean startup", async () => {
+    const f = fixture();
+    f.files.contents.set(
+      f.key,
+      Buffer.from(JSON.stringify({ version: 1, nonce: randomUUID(), phase: "starting" })),
+    );
+    await expect(f.record.reconcile({ allowMissingExitReceipt: true })).rejects.toThrow(
+      "tree exit is unconfirmed",
+    );
+    expect(f.files.contents.has(f.key)).toBe(true);
+  });
+
+  it("preserves a witness when startup identity inspection fails", async () => {
+    const f = fixture();
+    await f.backend.start();
+    f.identity.mockRejectedValue(new Error("identity unavailable"));
+    await expect(f.record.reconcile({ allowMissingExitReceipt: true })).rejects.toThrow(
+      "identity unavailable",
+    );
+    expect(f.files.contents.has(f.key)).toBe(true);
+  });
+
+  it.each(["mismatched", "invalid"])(
+    "does not ignore an existing %s receipt during clean startup",
+    async (kind) => {
+      const f = fixture();
+      await f.backend.start();
+      f.identity.mockResolvedValue(null);
+      f.files.contents.set(
+        "/home/.codexhost-process-exit.json",
+        Buffer.from(
+          kind === "invalid"
+            ? "invalid"
+            : JSON.stringify({ version: 1, tag: randomUUID(), pid: 42, treeExited: true }),
+        ),
+      );
+      await expect(f.record.reconcile({ allowMissingExitReceipt: true })).rejects.toThrow();
+      expect(f.files.contents.has(f.key)).toBe(true);
+    },
+  );
+
   it("accepts confirmed Windows supervisor exit as Job tree-exit proof", async () => {
     const f = fixture();
     await f.backend.start();

@@ -9,7 +9,7 @@ import {
   parseJournal,
   serializePrivate,
   type NativeProfileJournal,
-  type NativeProfileVault,
+  type NativeProfileSelection,
 } from "../src/account/native-profile-vault.js";
 import { credential, nativeAccountIds } from "./fixtures/native-account-state.js";
 
@@ -22,8 +22,8 @@ function switchingJournal(phase: NativeProfileJournal["phase"] = "prepared") {
   const profileA = newProfile(a, nativeAccountIds.a);
   const profileB = newProfile(b, nativeAccountIds.b);
   profileB.payload = snapshotCredential(profileB, b);
-  const before: NativeProfileVault = {
-    version: 1,
+  const before: NativeProfileSelection = {
+    version: 2,
     homeId,
     revision: 7,
     currentAccountId: profileA.accountId,
@@ -38,9 +38,9 @@ function switchingJournal(phase: NativeProfileJournal["phase"] = "prepared") {
   const afterB = after.accounts.find((account) => account.accountId === profileB.accountId);
   if (!afterA || !afterB) throw new Error("missing synthetic profiles");
   afterA.payload = snapshotCredential(profileA, a);
-  afterB.payload = null;
+  afterB.payload = profileB.payload;
   const journal: NativeProfileJournal = {
-    version: 1,
+    version: 2,
     operationId,
     phase,
     before,
@@ -100,8 +100,8 @@ describe("native profile Vault codec", () => {
     const a1 = credential("same", 1);
     const a2 = credential("same", 2);
     const profile = newProfile(a1, nativeAccountIds.a);
-    const before: NativeProfileVault = {
-      version: 1,
+    const before: NativeProfileSelection = {
+      version: 2,
       homeId,
       revision: 2,
       currentAccountId: profile.accountId,
@@ -112,7 +112,7 @@ describe("native profile Vault codec", () => {
     after.revision++;
     after.lastOperationId = operationId;
     const journal: NativeProfileJournal = {
-      version: 1,
+      version: 2,
       operationId,
       phase: "prepared",
       before,

@@ -51,7 +51,7 @@ function completion(manager: NativeCodexAccounts): Promise<CodexAccountLoginComp
 }
 
 describe("native Account boundary regressions", () => {
-  it("refuses unknown current identity before a cold bootstrap can refresh it", async () => {
+  it("collects an externally selected identity before a cold bootstrap", async () => {
     const state = await createNativeAccountTestState();
     resources.push({ state });
     await state.seedAccounts({
@@ -64,9 +64,10 @@ describe("native Account boundary regressions", () => {
     );
     const preflight = vi.spyOn(state.runtime, "preflight");
     const manager = new NativeCodexAccounts({ store: state.store, runtime: state.runtime });
-    await expect(manager.initialize()).rejects.toThrow("recovery-required");
-    expect(preflight).not.toHaveBeenCalled();
-    expect(state.runtime.starts).toEqual([]);
+    await manager.initialize();
+    expect(preflight).toHaveBeenCalled();
+    expect(manager.snapshot().phase).toBe("ready");
+    expect(state.store.vault.accounts).toHaveLength(2);
     await manager.close();
   });
 
@@ -253,10 +254,8 @@ describe("native Account boundary regressions", () => {
 
     expect(boundary.stage).toMatchObject({ operationId: result.loginId });
     expect(boundary.stage?.candidate?.accountId).toBe(result.accountId);
-    expect(boundary.vault).toMatchObject({
-      currentAccountId: null,
-      lastOperationId: result.loginId,
-    });
+    expect(boundary.vault).toMatchObject({ lastOperationId: result.loginId });
+    expect(boundary.vault).not.toHaveProperty("currentAccountId");
     expect(boundary.vault.accounts.some((account) => account.accountId === result.accountId)).toBe(
       true,
     );

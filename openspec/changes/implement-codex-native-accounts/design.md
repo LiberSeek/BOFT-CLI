@@ -5,12 +5,12 @@
 ## Decisions
 
 1. **单个受管后台**：`OfficialRuntimeOwner` 统一拥有管理和 Desktop 连接、工作准入、generation 与订阅；任务和认证 staging 不并行。
-2. **统一事务**：`NativeCodexAccounts` 负责操作归属，`NativeProfileTransaction` 执行切换、激活、重登、退出和恢复。Vault 的 revision、current、lastOperationId 与 Journal 共同表达持久事实。
+2. **统一事务**：`NativeCodexAccounts` 负责操作归属，`NativeProfileTransaction` 执行切换、激活、重登、退出和恢复。Vault 的 revision、lastOperationId 与 Journal 共同表达持久事实；集合保存全部凭据副本，当前身份由原生文件推导，只有未决事务持久记录 source/target 选择。
 3. **中断切换**：进入 changing，停止受管及当次检测到的其他 Codex 后端，安装凭据并重启验证。登录、退出也在 changing 下直接停止受管后端，但不主动停止外部后端。新请求立即拒绝，旧 RPC 明确失败，不排队或重放；不扫描或追踪会话是否空闲。busy 仅表示在途请求租约；删除非当前账号不停止后台，恢复先确认受管后台退出。额度请求本地超时或客户端分离不单独关闭全局准入，真实连接故障仍使 Codex unavailable。
 4. **有限外部终止**：跨 CODEX_HOME 匹配 Codex 可执行文件名，核对 PID／启动身份后有界终止；不关闭编辑器、不递归停止外部工具子进程、不追杀自动重启实例。启动、普通关闭、回滚和恢复不执行此批次。
 5. **私有明文存储**：完整凭据字节保存在 Vault、Journal 和 staging 中，受权限、租约、容量及 CAS 保护。旧密文使用已有密钥原地转换，失败保留原数据，部分转换可恢复。
 6. **事实验证**：确认旧后台退出后才写凭据；新后台通过原生身份和认证接口验证后才提交。独立 Host 凭据刷新租约不得强制清空，文件或身份冲突不覆盖。
-7. **隔离登录**：设置页添加 B 保持 A，原生登录激活新身份；同一 staging／事务持久记录意图。启动、取消、完成事件关联 operationId、native loginId 与 generation。
+7. **认证职责分离**：Desktop 原生登录／取消／退出直接转发，Host 不改写参数、loginId、结果和通知；通知后异步收集凭据，备份失败不影响原生结果。只观察原生认证写入以阻止冲突切换。设置页添加 B 保持 A，仍使用隔离 staging；旧原生 staging 激活意图仅用于兼容恢复。
 8. **能力与健康分离**：启动允许外部客户端共存，所有权和布局事实决定恢复。Host transport initialize 独立于 Codex readiness，不将客户端连接到 staging，不因 Codex 故障关闭其他 Harness。
 9. **Thread 连续性**：使用原生初始化和订阅参数按原 ID 懒恢复；账号操作不采集设置快照，临时内容及完整运行时设置无损恢复不作保证。
 10. **响应和导航**：在途 Host 应答属于原 Request Client，不重新发起账号操作。切换成功后，发起窗口通过原生入口打开先前选中的同一 Thread；超时、卸载或用户导航结束恢复。

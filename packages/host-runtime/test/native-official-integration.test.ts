@@ -151,13 +151,27 @@ describe.skipIf(!stock || !launcher)("real official CLI with an isolated signed-
         ).resolves.toMatchObject({ result: { account: null } });
         expect(await store.readCredentials()).toBeNull();
 
-        const login = await accounts.startNativeLogin({ type: "chatgpt" });
+        const generation = scope.owner.generation;
+        const login = await desktop.request("account/login/start", { type: "chatgpt" });
         // Do not print the native OAuth URL/state or open a browser.
-        expect(login.response.type).toBe("chatgpt");
-        expect(scope.gate.phase).toBe("changing");
+        const result = login.result;
+        if (
+          !result ||
+          typeof result !== "object" ||
+          Array.isArray(result) ||
+          result.type !== "chatgpt" ||
+          typeof result.loginId !== "string"
+        )
+          throw new Error("Native OAuth did not return a login ID");
+        expect(scope.gate.phase).toBe("ready");
+        expect(() => scope.gate.beginStoppingChange()).toThrow("busy");
+        expect(scope.owner.generation).toBe(generation);
+        expect(await store.readStage()).toBeNull();
         expect(await store.readCredentials()).toBeNull();
-        expect(await accounts.cancelLogin(login.response.loginId)).toBe(true);
-        expect((await login.completed).success).toBe(false);
+        await expect(
+          desktop.request("account/login/cancel", { loginId: result.loginId }),
+        ).resolves.toMatchObject({ result: { status: "canceled" } });
+        await vi.waitFor(() => expect(scope.gate.busy).toBe(false));
         expect(await store.readStage()).toBeNull();
         expect(await store.readCredentials()).toBeNull();
         expect(scope.gate.phase).toBe("ready");
@@ -181,11 +195,11 @@ describe.skipIf(!stock || !launcher)("real official CLI with an isolated signed-
           cwd: z.string(),
         }).parse(started.result);
         await vi.waitFor(() => expect(scope.gate.busy).toBe(false));
-        // Login stops the backend even when native history is not materialized.
-        const nextLogin = await accounts.startNativeLogin({ type: "chatgpt" });
-        expect(scope.gate.phase).toBe("changing");
+        // Native logout also stays on the same backend and does not touch Host staging.
+        await expect(desktop.request("account/logout", {})).resolves.toMatchObject({ result: {} });
+        expect(scope.owner.generation).toBe(generation);
         expect(live).toBe(1);
-        expect(await accounts.cancelLogin(nextLogin.response.loginId)).toBe(true);
+        expect(await store.readStage()).toBeNull();
         expect(scope.gate.phase).toBe("ready");
         expect(await store.readCredentials()).toBeNull();
         expect(peak).toBe(1);

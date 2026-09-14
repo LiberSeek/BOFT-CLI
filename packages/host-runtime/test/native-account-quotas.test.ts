@@ -90,7 +90,7 @@ describe("native inactive-account quota combinations", () => {
       directory: state.store.directory,
       credentials: state.store,
       fetch,
-      admitCredentialRefresh: () => state.runtime.gate.admit(),
+      admitCredentialRefresh: () => state.runtime.gate.admit("credential-write"),
     });
     await quotas.initialize(new Set([nativeAccountIds.a, nativeAccountIds.b, nativeAccountIds.c]));
     const profileB = state.store.vault.accounts.find(

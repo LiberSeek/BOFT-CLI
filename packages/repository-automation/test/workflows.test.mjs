@@ -72,5 +72,7 @@ describe("workflow and form contracts", () => {
     ).toHaveLength(2);
     expect(workflow.match(/await verifyRelease\(/gu)).toHaveLength(2);
     expect(workflow).toContain("release-evidence.json");
+    expect(workflow).toContain("timeout-minutes: 35");
+    expect(workflow).toContain("waitForCi: true");
   });
 });

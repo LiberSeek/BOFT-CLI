@@ -317,17 +317,14 @@ export async function createNativeAccountTestState(
         const entries = [...(input.current ? [input.current] : []), ...(input.saved ?? [])];
         next.accounts = entries.map((entry) => {
           const account = newProfile(entry.credential, entry.accountId);
-          account.payload =
-            input.current?.accountId === entry.accountId
-              ? null
-              : store.snapshotCredential(account, entry.credential);
+          account.payload = store.snapshotCredential(account, entry.credential);
           return account;
         });
-        next.currentAccountId = input.current?.accountId ?? null;
       });
       if (input.current) {
         files.seed(home, "auth.json", input.current.credential.serializeForNativeStore());
       }
+      await store.readCredentials();
     },
     async initializeManager(fetch) {
       // Store ownership is established above before the Manager can recover or import.

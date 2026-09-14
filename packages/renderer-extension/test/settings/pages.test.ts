@@ -3,7 +3,10 @@ import {
   hostThreadIdSchema,
   type CodexAccountListResult,
   type CodexAccountLoginCompleted,
+  type HarnessAccountInspectResult,
   type HarnessAccountListResult,
+  type HarnessAccountSourceListResult,
+  type HarnessId,
   type HarnessSessionListParams,
   type UpdateCheckResult,
   type UpdateStatus,
@@ -266,6 +269,149 @@ describe("Read-only Harness accounts", () => {
     await refresh;
     expect(mounted.accounts).toEqual([]);
     expect(changed).toHaveBeenCalledOnce();
+  });
+
+  it("keeps Antigravity after the other Harness account rows", async () => {
+    const scope = new RendererSettingsPageScope();
+    const mounted = createHarnessAccounts(
+      scope.signal,
+      () => ({
+        listHarnessAccounts: async () => ({
+          accounts: [
+            {
+              harnessId: harnessIdSchema.parse("antigravity"),
+              harnessName: "Antigravity CLI",
+              credits: { usedPercent: 10, periodType: "weekly" },
+            },
+            {
+              harnessId: harnessIdSchema.parse("grok"),
+              harnessName: "Grok",
+              credits: { usedPercent: 20, periodType: "weekly" },
+            },
+            {
+              harnessId: harnessIdSchema.parse("claude-code"),
+              harnessName: "Claude Code",
+              credits: { usedPercent: 30, periodType: "weekly" },
+            },
+          ],
+        }),
+      }),
+      vi.fn(),
+    );
+    await mounted.refresh();
+    expect(mounted.accounts.map(({ harnessId }) => harnessId)).toEqual([
+      "claude-code",
+      "grok",
+      "antigravity",
+    ]);
+    scope.dispose();
+  });
+
+  it("falls back to the aggregate account request when progressive discovery is unavailable", async () => {
+    const scope = new RendererSettingsPageScope();
+    const listHarnessAccounts = vi.fn(async () => result);
+    const mounted = createHarnessAccounts(
+      scope.signal,
+      () => ({
+        listHarnessAccountSources: vi.fn(async () => {
+          throw new Error("unsupported");
+        }),
+        inspectHarnessAccount: vi.fn(),
+        listHarnessAccounts,
+      }),
+      vi.fn(),
+    );
+    await mounted.refresh();
+    expect(listHarnessAccounts).toHaveBeenCalledOnce();
+    expect(mounted.accounts).toEqual(result.accounts);
+    scope.dispose();
+  });
+
+  it("forces progressive Harness inspection only for an explicit quota refresh", async () => {
+    const scope = new RendererSettingsPageScope();
+    const inspectHarnessAccount = vi.fn(async ({ harnessId }: { harnessId: HarnessId }) => ({
+      harnessId,
+      harnessName: "Sample Agent",
+      account: {
+        email: "person@example.com",
+        credits: { usedPercent: 25, periodType: "weekly" as const },
+      },
+    }));
+    const mounted = createHarnessAccounts(
+      scope.signal,
+      () => ({
+        listHarnessAccountSources: async () => ({
+          sources: [
+            { harnessId: harnessIdSchema.parse("sample-agent"), harnessName: "Sample Agent" },
+          ],
+        }),
+        inspectHarnessAccount,
+      }),
+      vi.fn(),
+    );
+
+    await mounted.refresh();
+    expect(inspectHarnessAccount).toHaveBeenLastCalledWith({ harnessId: "sample-agent" });
+    await mounted.refresh(true);
+    expect(inspectHarnessAccount).toHaveBeenLastCalledWith({
+      harnessId: "sample-agent",
+      refresh: true,
+    });
+    scope.dispose();
+  });
+
+  it("renders each Harness account as soon as its independent inspection completes", async () => {
+    const scope = new RendererSettingsPageScope();
+    const sources = deferred<HarnessAccountSourceListResult>();
+    const grok = deferred<HarnessAccountInspectResult>();
+    const claude = deferred<HarnessAccountInspectResult>();
+    const inspectHarnessAccount = vi.fn(({ harnessId }: { harnessId: string }) =>
+      harnessId === "grok" ? grok.promise : claude.promise,
+    );
+    const changed = vi.fn();
+    const mounted = createHarnessAccounts(
+      scope.signal,
+      () => ({
+        listHarnessAccountSources: () => sources.promise,
+        inspectHarnessAccount,
+      }),
+      changed,
+    );
+
+    const refresh = mounted.refresh();
+    sources.resolve({
+      sources: [
+        { harnessId: harnessIdSchema.parse("grok"), harnessName: "Grok" },
+        { harnessId: harnessIdSchema.parse("claude-code"), harnessName: "Claude Code" },
+      ],
+    });
+    await vi.waitFor(() => expect(inspectHarnessAccount).toHaveBeenCalledTimes(2));
+
+    grok.resolve({
+      harnessId: harnessIdSchema.parse("grok"),
+      harnessName: "Grok",
+      account: { credits: { usedPercent: 25, periodType: "weekly" } },
+    });
+    await vi.waitFor(() =>
+      expect(mounted.accounts).toEqual([
+        {
+          harnessId: "grok",
+          harnessName: "Grok",
+          credits: { usedPercent: 25, periodType: "weekly" },
+        },
+      ]),
+    );
+    expect(mounted.refreshing).toBe(true);
+
+    claude.resolve({
+      harnessId: harnessIdSchema.parse("claude-code"),
+      harnessName: "Claude Code",
+      account: { credits: { usedPercent: 50, periodType: "five_hour" } },
+    });
+    await refresh;
+    expect(mounted.accounts.map(({ harnessId }) => harnessId)).toEqual(["claude-code", "grok"]);
+    expect(mounted.refreshing).toBe(false);
+    scope.dispose();
   });
 });
 
@@ -792,6 +938,63 @@ describe("Renderer Codex Accounts page", () => {
     instanceId: "settings-host",
     capabilities,
     accounts: [...accounts],
+  });
+
+  it("offers login rather than switching or querying quota for a missing legacy credential", async () => {
+    const client = {
+      listCodexAccounts: vi.fn(async () =>
+        accountSnapshot(
+          [
+            {
+              accountId: "legacy",
+              label: "Legacy",
+              email: "legacy@example.com",
+              requiresLogin: true,
+            },
+          ],
+          null,
+        ),
+      ),
+      deleteCodexAccount: vi.fn(),
+      switchCodexAccount: vi.fn(),
+      logoutCodexAccount: vi.fn(),
+      recoverCodexAccounts: vi.fn(),
+      startCodexAccountLogin: vi.fn(),
+      cancelCodexAccountLogin: vi.fn(),
+      inspectCodexAccountUsage: vi.fn(),
+    };
+    const page = createDefaultRendererSettingsPages(
+      rendererSettingsMessages("en"),
+      () => null,
+      () => null,
+      () => client,
+    ).find(({ id }) => id === "accounts");
+    if (!page) throw new Error("Accounts page is not registered");
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+    try {
+      await vi.waitFor(() =>
+        expect(
+          descendants(content).some(({ dataset }) => dataset.accountFocus === "legacy:login"),
+        ).toBe(true),
+      );
+      const buttons = descendants(content);
+      expect(
+        buttons.find(({ dataset }) => dataset.accountFocus === "legacy:activate")?.disabled,
+      ).toBe(true);
+      expect(buttons.find(({ dataset }) => dataset.accountFocus === "legacy:login")?.disabled).toBe(
+        false,
+      );
+      expect(client.inspectCodexAccountUsage).not.toHaveBeenCalled();
+    } finally {
+      scope.dispose();
+    }
   });
 
   it("renders cached Accounts before live metadata refresh completes", async () => {

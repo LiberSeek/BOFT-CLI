@@ -11,9 +11,9 @@ codexhost 在固定的正式 `CODEX_HOME` 中管理全局 Codex 身份，使用�
 - 设置页提供全局切换。已有 Codex Thread 的后续请求使用当前账号；Thread ID、已持久化历史和 Harness 归属保持。已有上下文可用于新账号的请求，账号不是独立的数据空间。
 - 切换会中断本机 Codex 后端，包括不同 `CODEX_HOME` 下的 VS Code／CLI 后端。任务和未保存内容可能丢失，点击切换没有额外确认弹窗。
 - Desktop、Host、编辑器及其他 Harness 不因切换重启。外部后端的工具子进程不递归终止，工具副作用不保证停止或回滚。
-- 启动允许与 VS Code／CLI 共存，不枚举或停止外部 Codex 后端。布局、来源、凭据和自身进程恢复记录仍须验证。
+- 启动允许与 VS Code／CLI 共存，不枚举或停止外部 Codex 后端。没有未完成的凭据事务或登录时，历史 `running` 记录中的监督进程若已退出或 PID 已复用，可清除该历史记录，不再强制要求它留下退出凭证。活监督进程、身份查询失败、未记录进程身份的 `starting` 状态以及损坏／不匹配的退出凭证仍阻止启动。布局、来源和凭据校验保持。
 - 添加账号使用原生设备代码登录。当前为 A 时添加 B 只保存 B，完成后继续使用 A；未登录时首次成功登录成为当前账号。Desktop 原生登录则使用本次登录身份。
-- 登录、退出登录在关闭新准入后直接停止受管后端；凭据接入也在受管后端退出后进行，不扫描会话。删除只允许非当前保存账号，并保留确认；不删除 Thread、home 或源目录。退出登录保存当前最新授权并清除运行身份，保存账号仍可再次选择。
+- Host 设置页添加／重新登录、受控退出在关闭新准入后直接停止受管后端；凭据接入也在受管后端退出后进行，不扫描会话。删除只允许非当前保存账号，并保留确认；不删除 Thread、home 或源目录。退出登录保存当前最新授权并清除运行身份，保存账号仍可再次选择。
 - Harness picker 只有一个 Codex；Composer 可只读显示当前身份，不提交 per-draft 账号选择。
 
 从源码构建启动使用 `npm start`；macOS／Windows 启动脚本会停止正在运行的 Desktop。
@@ -35,17 +35,22 @@ Desktop / 设置页 / Host 内部委派
        私有文件 / 旧密钥读取 / 进程监督
 ```
 
-- `CodexAccountControl` 提供快照、切换、登录、取消、删除、退出和恢复。调用者不传入凭据或文件路径，不控制 Journal 阶段。
+- `CodexAccountControl` 提供快照、原生状态刷新、切换、登录、取消、删除、退出和恢复。调用者不传入凭据或文件路径，不控制 Journal 阶段。
 - `NativeCodexAccounts` 拥有操作归属、登录意图及恢复协调。`NativeProfileTransaction` 是切换、首次激活、重登和退出的统一事务执行者。
 - `OfficialRuntimeOwner` 拥有唯一受管后台、管理及任务连接、工作准入、generation 与原生订阅。所有 Desktop 和 Host 委派共享同一准入边界。
-- `ManagedNativeAuth` 处理 Desktop 原生认证响应及事件投递，不拥有凭据事务。
-- `host-runtime` 拥有账号、OAuth、凭据格式与原生协议语义。Rust 只提供通用文件、密钥读取和进程能力。
+- Desktop 原生认证请求直接交给官方后端；Host 不重建认证响应、替换 loginId 或解释登录参数。`NativeAccountObserver` 只同步凭据收藏，以及在 Host 替换后台后通知 Desktop 更新身份。
+- `OfficialNativeAuthActivity` 只观察原生认证写入的生命周期，防止 Host 切换打断它；不执行认证或改写协议。
+- `host-runtime` 拥有凭据收藏、Host 设置页设备代码登录与凭据切换；原生 Desktop 认证语义属于官方后端。Rust 只提供通用文件、密钥读取和进程能力。
 - `shared-contracts` 提供浏览器安全状态；Renderer 只显示、提交操作和处理状态修订，不接触 Token、私有路径、Harness SDK 或原生连接。
 - 非当前额度与旧布局接入是独立职责，不进入每个 Codex 工作请求的路径。
 
 ## 4. 凭据与私有存储
 
-正式 home 固定。当前凭据以原生 `auth.json` 为权威，非当前凭据以 `.codexhost-native-accounts/vault.json` 为权威。Vault 原子保存账号元数据、current、revision、lastOperationId 和非当前 payload；当前账号的 payload 为空。
+正式 home 固定。原生 `auth.json` 决定当前登录身份；`.codexhost-native-accounts/vault.json` 是凭据集合，保存包括当前账号在内的完整凭据副本、账号元数据、revision 和 lastOperationId。v2 Vault 不持久化 `currentAccountId`；公开 current 按最近观察到的原生身份与集合匹配推导。
+
+启动、账号列表刷新、原生认证通知及凭据切换前后同步集合：按 issuer、subject、workspace 去重，收集新身份并更新同身份轮换后的副本。普通刷新不写原生凭据、不重启后台、不查询额度；原生退出只清除观察到的当前选择，保存副本仍保留，绝不由副本隐式恢复登录。存在 Journal 或 staging 时必须先完成操作恢复，不能用普通同步覆盖未决意图。
+
+v1 Vault 在租约下以 CAS 转为 v2，保留账号 ID、修订和提交收据；匹配当前原生身份的旧条目在同步时补齐凭据。旧 current 若已被外部登录或退出替换，其原有空 payload 无法凭空恢复：保留元数据并公开 `requiresLogin`，禁用切换并提供登录入口。旧 Journal 先按旧约束验证，再转换为含临时 source/target 选择的事务事实；此选择不写回集合。
 
 payload 使用 `{ format: "plaintext", nativeDocument, digest }`。Vault、Journal、登录 candidate 及 staging 文件均是敏感明文。保留完整原生字节和未知字段，不重建等价文档。身份使用 issuer、稳定用户标识及 workspace 关联；JWT 解码和邮箱不能替代原生认证验证。
 
@@ -60,7 +65,7 @@ payload 使用 `{ format: "plaintext", nativeDocument, digest }`。Vault、Journ
 
 ### 旧密文转换
 
-`legacy-credential-migration.ts` 在正式 home 租约下读取 Vault、transaction 和 login 文件。存在 AES payload 时读取已有 OS 密钥，验证全部解密结果、身份、摘要和容量后，按文件 CAS 转换。原 `auth.json`、账号 ID、current、revision、事务阶段及凭据字节保持。
+`legacy-credential-migration.ts` 在正式 home 租约下读取 Vault、transaction 和 login 文件。存在 AES payload 时读取已有 OS 密钥，验证全部解密结果、身份、摘要和容量后，按文件 CAS 转换。原 `auth.json`、账号 ID、revision、事务选择与阶段及凭据字节保持；Vault 的旧 current 按上述 v2 集合规则移除。
 
 部分转换可在下次启动继续；密钥缺失、授权失败或数据损坏时保留原数据并报告错误。明文库不访问 OS 密钥，生产接口只提供旧密钥读取。旧 OS 条目保留以支持尚需解密的备份。
 
@@ -69,7 +74,7 @@ payload 使用 `{ format: "plaintext", nativeDocument, digest }`。Vault、Journ
 本地托管模式使用官方受保护 loopback listener：回环地址、动态端口和 capability-token 认证。令牌只在 Host 内存中，启动参数仅携带官方要求的摘要。一个进程支持管理连接和多个 Desktop 连接；模型网络请求由官方 Codex 自己发起。
 
 1. 接通 Host 控制面，官方工作保持不可用。Codex 故障不触发其他 Harness 的全局清理。
-2. 解析规范化 home，取得租约，检查自身进程记录、Vault、Journal 和 staging；先恢复，再考虑首次凭据导入。
+2. 解析规范化 home，取得租约，检查自身进程记录、Vault、Journal 和 staging；只有无未完成事务／登录的普通启动可以退役已消失监督进程的历史 `running` 记录。这不宣称旧进程树已退出，也不能作为凭据替换的退出证明。未完成操作走严格恢复，再同步实际原生凭据；没有未决操作时，外部登录、退出或更换已知账号不是身份冲突。
 3. 如需读取有效配置，以唯一管理后台探测，不恢复用户工作。需要写凭据时先确认后台退出。
 4. 根据文件、身份、摘要和提交事实完成恢复，启动正式后台，初始化管理连接并验证认证。
 5. 准入开放后，Desktop 客户端按保留的初始化参数连接。
@@ -87,16 +92,16 @@ Host transport initialize 独立于 Codex readiness：在 changing／unavailable
   → 停止当次检测到的其他 Codex 后端
   → 确认独立 Host 凭据刷新租约已结束
   → 读取实际最新源凭据，核对身份
-  → 写 prepared Journal：源／目标、before／after Vault
+  → 写 prepared Journal：源／目标、before／after 集合及临时选择
   → 原子安装目标并读回校验，写 auth-replaced
   → 启动唯一正式后台，原生验证目标身份与认证
-  → 原子提交 Vault，写 vault-committed 并清理
+  → 原子提交凭据集合，写 vault-committed 并清理，收集原生刷新后的副本
   → 开放工作，发布确认状态
 ```
 
 切换不扫描 Thread、Goal、队列或临时会话，不等待额度查询。旧原生 RPC 随连接退休明确失败并释放各自租约；主动停止不因未完成额度请求而破坏 changing 状态。新 RPC 在连接和自动启动之前拒绝，不排队、不自动重放。独立 Host 凭据刷新不能靠清空租约强制结束。
 
-准入的 busy 只表示尚未结束的请求租约，不表示原生任务是否活跃。Host 不为账号操作追踪 Turn、工具、Goal 或队列活动，也不额外探测队列。删除非当前保存账号不停止后台；恢复先确认受管后台退出，两者仍受请求租约和所有权检查约束，不等待已获应答的原生任务完成。额度请求本地超时或客户端主动分离只结束该请求，不单独将 Codex 标为 unavailable；真实连接故障仍关闭准入。
+准入的 busy 表示尚未结束的请求／凭据写入租约，不表示原生任务是否活跃。原生登录的写入租约从请求发出持续到官方完成或确认取消；开始应答前到达的完成通知仍按原生 loginId 关联，不改变消息顺序。Host 切换遇到原生认证写入时直接报 busy，普通原生请求继续运行；客户端断开不能代替后台退出证明。Host 不为账号操作追踪 Turn、工具、Goal 或队列活动，也不额外探测队列。删除非当前保存账号不停止后台，也不被当前账号的普通原生请求或列表刷新阻挡；它仍须等待独立 Host 凭据写入租约结束，并保持所有权与集合串行写入检查。删除期间不清空已有请求租约。恢复先确认受管后台退出，仍受全部请求租约和所有权检查约束，不等待已获应答的原生任务完成。额度请求本地超时或客户端主动分离只结束该请求，不单独将 Codex 标为 unavailable；真实连接故障仍关闭准入。
 
 外部停止 helper 按官方可执行文件 basename、`codex`、`codex.exe` 精确匹配，记录 PID／启动身份。先终止并等待 2 秒，仍存活则强制终止并再等待 2 秒。只处理当次批次，不追杀 IDE 自动拉起的新进程。启动、普通关闭、回滚和恢复不调用外部停止 helper。
 
@@ -104,28 +109,36 @@ Host 的锁不能阻止其他客户端以后写共享凭据。成功要求目标
 
 ### 失败与恢复
 
-| 事实 | 处理 |
-| --- | --- |
-| 后台退出无法确认 | 不安装目标，不启动竞争后台；受管退出不明则 unavailable |
-| 文件仍是源且目标未提交 | 保留源的最新凭据，验证恢复源运行 |
-| 目标已安装但未提交 | 操作失败时停止目标并保全最新授权，恢复源；崩溃恢复按持久意图验证目标或补偿 |
-| Vault 已提交，Journal 或清理未完成 | 提交收据为准，保留已提交身份；不能安全收尾则关闭准入 |
-| 第三方身份、无法解释的摘要或 Journal 不匹配 | 不覆盖文件，保留记录并要求恢复 |
-| 同身份重登 | 依据字节摘要和安装事实区分授权版本，不降级原生轮换后的 Token |
+| 事实                                                    | 处理                                                                           |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 当次受管后台退出无法确认，或未完成事务缺少所需退出证明  | 不安装目标，不启动竞争后台，保持 unavailable                                   |
+| 普通启动仅缺少历史退出凭证，且已确认旧监督进程退役      | 无未完成事务／登录时清除历史运行记录，继续原有身份验证；当次切换仍要求退出证明 |
+| 文件仍是源且目标未提交                                  | 保留源的最新凭据，验证恢复源运行                                               |
+| 目标已安装但未提交                                      | 操作失败时停止目标并保全最新授权，恢复源；崩溃恢复按持久意图验证目标或补偿     |
+| Vault 已提交，Journal 或清理未完成                      | 提交收据为准，保留已提交身份；不能安全收尾则关闭准入                           |
+| 未决操作出现第三方身份、无法解释的摘要或 Journal 不匹配 | 不覆盖文件，保留记录并要求恢复                                                 |
+| 同身份重登                                              | 依据字节摘要和安装事实区分授权版本，不降级原生轮换后的 Token                   |
 
-任何可能刷新目标 Token 的启动之前须持久化安装阶段。`lastOperationId` 是 Vault 提交收据；补偿前持久保存最新目标和 rollback 意图。recover 根据事实执行同一事务，不删除 Journal 来假装成功。认证验证使用原生接口，不发送 Model Turn。
+任何可能刷新目标 Token 的启动之前须持久化安装阶段。`lastOperationId` 是 Vault 提交收据；补偿前持久保存最新目标和 rollback 意图。recover 根据事实执行同一事务，不删除 Journal 来假装成功。账号验证使用原生 `account/read`（允许官方刷新凭据）并复核落盘身份，不发送 Model Turn，也不查询 `account/rateLimits/read`。启动、恢复、登录和切换均不以额度或额度服务可用性作为准入／提交条件；Model 请求能否实际执行由官方后端判断。
 
 ## 7. 登录与退出
 
-登录进入 changing，停止任务后台并确认退出、请求租约结束后在私有短命 staging 目录启动唯一认证后台。staging 只继承最小认证配置，不包含用户任务、插件或 Thread。确认本次原生登录完成后，停止认证进程树，读取最后落盘凭据并核对用户及 workspace。
+### Desktop 原生认证
+
+`account/login/*`、`account/logout` 原样转发，参数缺省／null／未知字段、原生 loginId、结果、错误和通知由官方解释。Host 不启动 staging、不代替官方清除凭据、不重新生成登录完成事件。当前代次的账号通知不按可能滞后的收藏身份过滤。
+
+原生通知先交付 Desktop，再异步刷新凭据收藏并发布 Host 快照；备份失败只记录固定诊断，不改变官方结果、不关闭原生准入、不自动重试。后续通知或列表刷新可重新同步。新请求遇到 Host 凭据事务仍明确拒绝，不排队到另一个身份下执行。
+
+### Host 设置页添加／重新登录与受控退出
+
+设置页登录进入 changing，停止任务后台并确认退出、请求租约结束后在私有短命 staging 目录启动唯一认证后台。staging 只继承最小认证配置，不包含用户任务、插件或 Thread。确认本次原生登录完成后，停止认证进程树，读取最后落盘凭据并核对用户及 workspace。
 
 - 设置页添加 B 时 A 的正式凭据保持不变；保存 B 后恢复 A。无当前账号时通过统一事务安装首次身份。
-- 非当前账号重登只更新对应 payload。当前账号重登及 Desktop 原生登录通过统一事务安装新授权；staging 持久记录 `activateOnSuccess`。
+- 非当前账号重登只更新对应 payload。当前账号重登通过统一事务安装新授权。新 staging 不再记录原生登录激活选项；旧记录的 `activateOnSuccess` 仅保留恢复兼容，不能丢失已持久化的用户意图。
 - 取消、超时和迟到事件关联 operationId、原生 loginId 和 generation。先结束登录后台再清理；迟到写入仅能落在该 staging。
 - 已保存但清理／正式后台恢复失败时显示已保存及待恢复，不把它当成尚未保存。
-- Desktop ChatGPT OAuth／设备代码参数保持原生语义；启动应答先于完成事件，取消返回原生 status，正式后台就绪才发布成功。
 - 正式 generation 的 `account/updated` 来自其真实 `account/read`；慢客户端或观察者失败不回滚已提交凭据。
-- 退出登录是以无凭据为目标的事务：关闭新准入并停止后台、保存最新授权、清除正式凭据、启动验证并提交 current=null。
+- Host 设置页受控退出是以无凭据为目标的事务：关闭新准入并停止后台、保存最新授权、清除正式凭据、启动验证并提交凭据集合；从实际无凭据状态推导 current=null。
 
 ## 8. Thread、响应与公开状态
 
@@ -135,11 +148,11 @@ Owner 保留原生初始化和订阅参数，后续请求按原 ID 懒恢复，�
 
 Renderer 记录切换发起窗口中选中的本地 Codex Thread。成功后等待界面可用，经原生入口打开同一 Thread 一次；拒绝、超时、用户导航或卸载结束恢复。Desktop 更换 Request Client 时，在途应答归原请求所有者，不重新发送账号操作。
 
-v2 快照包含 `ready/changing/unavailable`、Host instance、revision、已提交 current、能力、账号列表及必要的操作／清理状态。UI 以 Host 身份与单调 revision 接收更新；current 不等于后台已就绪。busy 是操作错误，不是持久账号状态。账号 API 为 list、switch、login/start、login/cancel、delete、logout、recover；activate 和 per-draft 账号输入明确拒绝。
+v2 快照包含 `ready/changing/unavailable`、Host instance、revision、原生观察推导的 current、能力、账号列表及必要的操作／清理状态；仅原生选择变化（包括退出）也增加快照 revision。UI 以 Host 身份与单调 revision 接收更新；current 不等于后台已就绪。busy 是操作错误，不是持久账号状态。账号 API 为 list、switch、login/start、login/cancel、delete、logout、recover；activate 和 per-draft 账号输入明确拒绝。
 
 ## 9. 额度与旧布局
 
-当前额度走正式原生后台；非当前额度由 Host 直接查询 WHAM，不启动额外后台或隐式切换。OAuth 刷新使用每账号 single-flight、修改租约、身份复核和最新 Vault CAS。失败保留 last-good 和获取时间，不补零。只有当前账号能消费重置卡，消费请求不自动重试。Thread 累计用量与账号额度分离。
+额度展示独立于启动和账号验证，查询失败不关闭账号准入。当前额度走正式原生后台；非当前额度由 Host 直接查询 WHAM，不启动额外后台或隐式切换。OAuth 刷新使用每账号 single-flight、修改租约、身份复核和最新 Vault CAS。失败保留 last-good 和获取时间，不补零。只有当前账号能消费重置卡，消费请求不自动重试。Thread 累计用量与账号额度分离。
 
 有效旧登记的当前账号已使用正式 home，且其他 home 无托管状态或进程记录时，可以在恢复、原生验证及退出确认后只读接入缺失凭据。单次 Vault CAS 同时保存账号及 `legacyRegistryDigest`，不覆盖已有授权，不因重启复活已删除账号。正式 home 的托管状态走正常恢复；损坏登记、foreign home、孤立绑定和未知退出状态不绕过校验。
 

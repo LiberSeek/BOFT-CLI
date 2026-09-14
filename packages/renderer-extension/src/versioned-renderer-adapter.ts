@@ -1124,10 +1124,28 @@ export function installCurrentRendererAdapter(): {
       }
       return client.consumeCodexAccountResetCredit(input);
     },
-    listHarnessAccounts: () => {
+    listHarnessAccountSources: () => {
+      const client = currentModelClient();
+      if (!client.listHarnessAccountSources) {
+        throw new Error("Harness account source discovery is unavailable");
+      }
+      return client.listHarnessAccountSources();
+    },
+    inspectHarnessAccount: (
+      input: Parameters<NonNullable<RendererModelClient["inspectHarnessAccount"]>>[0],
+    ) => {
+      const client = currentModelClient();
+      if (!client.inspectHarnessAccount) {
+        throw new Error("Harness account inspection is unavailable");
+      }
+      return client.inspectHarnessAccount(input);
+    },
+    listHarnessAccounts: (
+      input?: Parameters<NonNullable<RendererModelClient["listHarnessAccounts"]>>[0],
+    ) => {
       const client = currentModelClient();
       if (!client.listHarnessAccounts) throw new Error("Harness account inspection is unavailable");
-      return client.listHarnessAccounts();
+      return client.listHarnessAccounts(input);
     },
     listCodexAccounts: () => currentModelClient().listCodexAccounts(),
     refreshCodexAccounts: () => {

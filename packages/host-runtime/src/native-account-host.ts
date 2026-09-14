@@ -15,7 +15,7 @@ import { canonicalCodexHome, inspectNativeAccountLayout } from "./account/native
 import { NativeAccountStore } from "./account/native-account-store.js";
 import { importLegacyAccountCredentials } from "./account/legacy-account-credentials.js";
 import { NativeCodexCredentials } from "./account/native-codex-credentials.js";
-import { NativeAccountError, profileCurrent } from "./account/native-profile-vault.js";
+import { NativeAccountError } from "./account/native-profile-vault.js";
 import { NativeCodexAccounts } from "./account/native-codex-accounts.js";
 import { OfficialAccountRuntime } from "./account/official-account-runtime.js";
 import { officialEnvironment } from "./app-server-host.js";
@@ -42,7 +42,6 @@ import { createRemoteOfficialAppServerConnection } from "./remote-official-conne
 export interface PreparedLocalCodex {
   officialRuntimeScope: OfficialRuntimeScope;
   accountControl: CodexAccountControl;
-  allowNativeAuthPassthrough: boolean;
   close(): Promise<void>;
 }
 interface LocalCodexOptions {
@@ -113,7 +112,6 @@ function blocked(
       phase: scope.gate.phase,
       revision: scope.gate.revision,
     })),
-    allowNativeAuthPassthrough: false,
     close: () => scope.close(),
   };
 }
@@ -172,7 +170,6 @@ function nativeFallback(
   const scope = new OfficialRuntimeScope({
     permanentHome: home,
     diagnosticOutput: input.diagnosticOutput,
-    allowNativeAuthPassthrough: true,
     createBackend: () => {
       if (ownership)
         return guarded(
@@ -225,7 +222,6 @@ function nativeFallback(
   return {
     officialRuntimeScope: scope,
     accountControl: control,
-    allowNativeAuthPassthrough: true,
     close: async () => {
       await scope.close();
       await ownership?.store.close();
@@ -329,8 +325,14 @@ export async function prepareLocalCodex(input: LocalCodexOptions): Promise<Prepa
         opened = false;
         return blocked(home, input.diagnosticOutput, "keyring-unavailable");
       }
-      await processRecord.reconcile();
+      await processRecord.reconcile({ allowMissingExitReceipt: true });
       return fallback("keyring-unavailable");
+    }
+    if (!(await store.readJournal()) && !(await store.readStage())) {
+      // Startup does not replace credentials. A retired supervisor's missing
+      // shutdown receipt must not permanently block an otherwise clean home.
+      // Pending operations and every subsequent reconciliation remain strict.
+      await processRecord.reconcile({ allowMissingExitReceipt: true });
     }
     const reconcile = async (): Promise<void> => {
       await processRecord.reconcile();
@@ -355,7 +357,6 @@ export async function prepareLocalCodex(input: LocalCodexOptions): Promise<Prepa
       permanentHome: home,
       managedAccounts: true,
       diagnosticOutput: input.diagnosticOutput,
-      allowNativeAuthPassthrough: false,
       createBackend: (role) =>
         processRecord.wrap((receipt) =>
           createOwnedLoopbackBackend({
@@ -421,7 +422,8 @@ export async function prepareLocalCodex(input: LocalCodexOptions): Promise<Prepa
             },
           });
           await runtime.start();
-          await runtime.verify(profileCurrent(store.vault)?.identity ?? null);
+          await runtime.verify((await store.readCredentials())?.identity ?? null);
+          await store.captureCurrent();
           change.finish("ready");
         } catch (error) {
           change.finish("unavailable");
@@ -450,7 +452,6 @@ export async function prepareLocalCodex(input: LocalCodexOptions): Promise<Prepa
     return {
       officialRuntimeScope,
       accountControl: accounts,
-      allowNativeAuthPassthrough: false,
       close: async () => {
         await accounts.close();
         await officialRuntimeScope.close();

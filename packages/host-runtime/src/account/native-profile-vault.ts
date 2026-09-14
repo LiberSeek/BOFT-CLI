@@ -63,10 +63,9 @@ const accountSchema = z
 export type NativeProfileAccount = z.infer<typeof accountSchema>;
 const vaultSchema = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     homeId: digestSchema,
     revision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
-    currentAccountId: z.string().uuid().nullable(),
     lastOperationId: z.string().uuid().nullable(),
     /** Credential adoption provenance, not proof of native history migration. */
     legacyRegistryDigest: digestSchema.optional(),
@@ -74,17 +73,21 @@ const vaultSchema = z
   })
   .strict();
 export type NativeProfileVault = z.infer<typeof vaultSchema>;
+// Selection is transaction intent only. It never belongs in the credential collection.
+const selectionSchema = vaultSchema.extend({ currentAccountId: z.string().uuid().nullable() });
+export type NativeProfileSelection = z.infer<typeof selectionSchema>;
+const legacyVaultSchema = selectionSchema.extend({ version: z.literal(1) });
 const journalSchema = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     operationId: z.string().uuid(),
     phase: z.enum(["prepared", "auth-replaced", "vault-committed"]),
-    before: vaultSchema,
-    after: vaultSchema,
+    before: selectionSchema,
+    after: selectionSchema,
     source: storedCredentialSchema.nullable(),
     target: storedCredentialSchema.nullable(),
     /** Durable compensation intent preserves rotated target Tokens before restoring source. */
-    rollback: vaultSchema.optional(),
+    rollback: selectionSchema.optional(),
   })
   .strict();
 export type NativeProfileJournal = z.infer<typeof journalSchema>;
@@ -102,15 +105,35 @@ export function parseProfileAccount(value: unknown): NativeProfileAccount {
     throw new NativeAccountError("recovery-required");
   }
 }
-export function profileCurrent(vault: NativeProfileVault): NativeProfileAccount | null {
+export function profileCurrent(vault: NativeProfileSelection): NativeProfileAccount | null {
   return vault.accounts.find((account) => account.accountId === vault.currentAccountId) ?? null;
 }
+export function collectionFromSelection(selection: NativeProfileSelection): NativeProfileVault {
+  return vaultSchema.strip().parse(selection);
+}
 export function sameVault(left: NativeProfileVault, right: NativeProfileVault): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  // Journal selections are not collection state. Parse the same ordered collection fields.
+  const collection = vaultSchema.strip();
+  return JSON.stringify(collection.parse(left)) === JSON.stringify(collection.parse(right));
+}
+function normalizeVault(value: unknown): NativeProfileVault {
+  if (typeof value === "object" && value !== null && "version" in value && value.version === 1) {
+    const legacy = legacyVaultSchema.parse(value);
+    if (
+      legacy.currentAccountId !== null &&
+      !legacy.accounts.some((a) => a.accountId === legacy.currentAccountId)
+    )
+      throw new Error("legacy current");
+    for (const account of legacy.accounts)
+      if ((account.accountId === legacy.currentAccountId) !== (account.payload === null))
+        throw new Error("legacy placement");
+    return collectionFromSelection({ ...legacy, version: 2 });
+  }
+  return vaultSchema.parse(value);
 }
 export function validateVault(value: unknown, homeId: string): NativeProfileVault {
   try {
-    const vault = vaultSchema.parse(value);
+    const vault = normalizeVault(value);
     if (vault.homeId !== homeId) throw new Error("home");
     const ids = new Set<string>();
     const identities = new Set<string>();
@@ -119,11 +142,9 @@ export function validateVault(value: unknown, homeId: string): NativeProfileVaul
       if (ids.has(account.accountId) || identities.has(identity)) throw new Error("duplicate");
       ids.add(account.accountId);
       identities.add(identity);
-      if ((account.accountId === vault.currentAccountId) !== (account.payload === null))
-        throw new Error("placement");
+      // A null payload is a legacy entry whose credential was never backed up.
+      // Keep its metadata for re-login; it is not an implicit current Account.
     }
-    if (vault.currentAccountId !== null && !ids.has(vault.currentAccountId))
-      throw new Error("current");
     return vault;
   } catch {
     throw new NativeAccountError("recovery-required");
@@ -140,11 +161,38 @@ export function parseVault(bytes: Buffer, homeId: string): NativeProfileVault {
 export function parseJournal(bytes: Buffer, homeId: string): NativeProfileJournal {
   try {
     if (bytes.length > JOURNAL_LIMIT) throw new Error("large");
-    const journal = journalSchema.parse(JSON.parse(bytes.toString("utf8")));
-    validateVault(journal.before, homeId);
-    validateVault(journal.after, homeId);
+    let value = JSON.parse(bytes.toString("utf8"));
+    if (value?.version === 1) {
+      const legacy = journalSchema
+        .extend({
+          version: z.literal(1),
+          before: legacyVaultSchema,
+          after: legacyVaultSchema,
+          rollback: legacyVaultSchema.optional(),
+        })
+        .parse(value);
+      const convert = (selection: z.infer<typeof legacyVaultSchema>): NativeProfileSelection => ({
+        ...validateVault(selection, homeId),
+        currentAccountId: selection.currentAccountId,
+      });
+      value = {
+        ...legacy,
+        version: 2,
+        before: convert(legacy.before),
+        after: convert(legacy.after),
+        ...(legacy.rollback ? { rollback: convert(legacy.rollback) } : {}),
+      };
+    }
+    const journal = journalSchema.parse(value);
+    const validateSelection = (selection: NativeProfileSelection) => {
+      validateVault(collectionFromSelection(selection), homeId);
+      if (selection.currentAccountId !== null && !profileCurrent(selection))
+        throw new Error("selection");
+    };
+    validateSelection(journal.before);
+    validateSelection(journal.after);
     if (journal.rollback) {
-      validateVault(journal.rollback, homeId);
+      validateSelection(journal.rollback);
       if (
         journal.rollback.legacyRegistryDigest !== journal.before.legacyRegistryDigest ||
         journal.rollback.currentAccountId !== journal.before.currentAccountId ||
@@ -173,7 +221,7 @@ export function parseJournal(bytes: Buffer, homeId: string): NativeProfileJourna
       (profileCurrent(journal.after) === null) !== (journal.target === null)
     )
       throw new Error("invariant");
-    // Switching only changes placement/current, not unrelated identities or membership.
+    // Switching changes credential copies and transaction selection, not membership.
     if (journal.before.accounts.length !== journal.after.accounts.length)
       throw new Error("membership");
     for (const before of journal.before.accounts) {
