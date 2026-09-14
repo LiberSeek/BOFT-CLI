@@ -44,7 +44,7 @@ fn production_launcher_rejects_the_removed_process_stop_command() {
         .expect("run launcher");
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("codexhost inspect"));
+    assert!(stderr.contains("boft inspect"));
     assert!(!stderr.contains("native process stop"));
 }
 
