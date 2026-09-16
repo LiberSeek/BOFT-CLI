@@ -23,6 +23,8 @@ import type {
   JsonValue,
 } from "@codexhost/shared-contracts";
 import { REASONING_TRANSCRIPT_COMMAND } from "@codexhost/shared-contracts";
+import { createTwoFilesPatch } from "diff";
+import { summarizeFileChanges } from "./file-change-summary.js";
 
 import {
   projectCodexApprovalRequest,
@@ -68,7 +70,6 @@ interface ProjectedItem {
   reasoningPartStarted: boolean;
   streamedCommandOutput: boolean;
   wireStarted: boolean;
-  wireFileChanges: HostFileChange[] | null;
   startedAtMs?: number;
   durationMs?: number;
 }
@@ -114,15 +115,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function nestedString(value: unknown, keys: readonly string[]): string | undefined {
+function nestedString(
+  value: unknown,
+  keys: readonly string[],
+  preserveText = false,
+): string | undefined {
   if (!isRecord(value)) return undefined;
   for (const key of keys) {
     const field = value[key];
-    if (typeof field === "string" && field.trim().length > 0) return field.trim();
+    if (typeof field === "string" && (preserveText || field.trim().length > 0))
+      return preserveText ? field : field.trim();
   }
   for (const wrapper of ["input", "arguments", "params"] as const) {
-    const nested = nestedString(value[wrapper], keys);
-    if (nested) return nested;
+    const nested = nestedString(value[wrapper], keys, preserveText);
+    if (nested !== undefined) return nested;
   }
   return undefined;
 }
@@ -212,22 +218,12 @@ function simpleUnifiedDiff(
   newText: string,
   kind: "add" | "update",
 ): string {
-  const oldLines = oldText === "" ? [] : oldText.split("\n");
-  const newLines = newText === "" ? [] : newText.split("\n");
-  if (oldLines.at(-1) === "") oldLines.pop();
-  if (newLines.at(-1) === "") newLines.pop();
-  const oldHeader = kind === "add" ? "/dev/null" : `a/${displayedPath}`;
-  const newHeader = `b/${displayedPath}`;
-  const oldRange = kind === "add" ? "0,0" : `1,${oldLines.length}`;
-  const newRange = newLines.length === 0 ? "0,0" : `1,${newLines.length}`;
-  return [
-    `--- ${oldHeader}`,
-    `+++ ${newHeader}`,
-    `@@ -${oldRange} +${newRange} @@`,
-    ...oldLines.map((line) => `-${line}`),
-    ...newLines.map((line) => `+${line}`),
-    "",
-  ].join("\n");
+  return createTwoFilesPatch(
+    kind === "add" ? "/dev/null" : `a/${displayedPath}`,
+    `b/${displayedPath}`,
+    oldText,
+    newText,
+  );
 }
 
 export function fileChangeFromTool(toolName: string, args: JsonValue): HostFileChange[] | null {
@@ -235,38 +231,37 @@ export function fileChangeFromTool(toolName: string, args: JsonValue): HostFileC
   const displayedPath = nestedString(args, ["path", "file_path", "filePath", "file"]);
   if (!displayedPath) return null;
   if (isWriteTool(toolName)) {
-    const content = nestedString(args, [
-      "content",
-      "new_string",
-      "newString",
-      "newText",
-      "file_text",
-      "text",
-      "new",
-    ]);
+    const content = nestedString(
+      args,
+      ["content", "new_string", "newString", "newText", "file_text", "text", "new"],
+      true,
+    );
     if (content === undefined) return null;
     return [
       {
         path: displayedPath,
         kind: "add",
+        diffScope: "fragment",
         unifiedDiff: simpleUnifiedDiff(displayedPath, "", content, "add"),
       },
     ];
   }
-  const oldText = nestedString(args, ["old_string", "oldString", "oldText", "old_text", "old"]);
-  const newText = nestedString(args, [
-    "new_string",
-    "newString",
-    "newText",
-    "new_text",
-    "content",
-    "new",
-  ]);
+  const oldText = nestedString(
+    args,
+    ["old_string", "oldString", "oldText", "old_text", "old"],
+    true,
+  );
+  const newText = nestedString(
+    args,
+    ["new_string", "newString", "newText", "new_text", "content", "new"],
+    true,
+  );
   if (oldText === undefined || newText === undefined) return null;
   return [
     {
       path: displayedPath,
       kind: "update",
+      diffScope: "fragment",
       unifiedDiff: simpleUnifiedDiff(displayedPath, oldText, newText, "update"),
     },
   ];
@@ -285,15 +280,32 @@ function projectFileChanges(changes: HostFileChange[]): JsonValue[] {
   }));
 }
 
-function wireFileChangeItem(
-  projected: ProjectedItem,
+function itemFileChanges(item: HostItem): HostFileChange[] | null {
+  return item.type === "fileChange"
+    ? item.changes
+    : item.type === "toolExecution"
+      ? fileChangeFromTool(item.toolName, item.arguments)
+      : null;
+}
+
+function summarizeHostFiles(
+  items: readonly { item: HostItem; outcome: HostItemOutcome | null }[],
+  cwd: string,
 ): Extract<HostItem, { type: "fileChange" }> | null {
-  if (projected.item.type === "fileChange") return projected.item;
-  if (!projected.wireFileChanges) return null;
+  const first = items.find(({ item }) => itemFileChanges(item) !== null);
+  if (!first) return null;
+  const nativeSources = new Set(
+    items.flatMap(({ item }) => (item.type === "fileChange" ? (item.sourceItemIds ?? []) : [])),
+  );
+  const changes = items.flatMap(({ item, outcome }) =>
+    (outcome && outcome.status !== "succeeded") || nativeSources.has(item.itemId)
+      ? []
+      : (itemFileChanges(item) ?? []),
+  );
   return {
     type: "fileChange",
-    itemId: projected.item.itemId,
-    changes: projected.wireFileChanges,
+    itemId: first.item.itemId,
+    changes: summarizeFileChanges(changes, cwd),
   };
 }
 
@@ -637,6 +649,7 @@ function historicalStatus(outcome: HistoricalTurnOutcome): "completed" | "interr
 
 export function projectHistoricalTurn(input: HistoricalTurnProjectionInput): JsonObject {
   const { turnId, cwd, snapshot } = input;
+  const files = summarizeHostFiles(snapshot.items, cwd);
   const error =
     snapshot.outcome.status === "failed"
       ? {
@@ -665,21 +678,14 @@ export function projectHistoricalTurn(input: HistoricalTurnProjectionInput): Jso
         content: userInputContent(snapshot.input),
       },
       ...snapshot.items.flatMap(({ item, outcome }) => {
+        if (itemFileChanges(item) !== null) {
+          return files?.itemId === item.itemId
+            ? [projectItem(files, { status: "succeeded" }, cwd)]
+            : [];
+        }
         if (item.type === "toolExecution") {
           if (isTodoTool(item.toolName) || todoPlanFromTool(item.toolName, item.arguments))
             return [];
-          const changes = fileChangeFromTool(item.toolName, item.arguments);
-          if (changes) {
-            return [
-              projectItem(
-                { type: "fileChange", itemId: item.itemId, changes },
-                outcome,
-                cwd,
-                true,
-                "",
-              ),
-            ];
-          }
           if (isFileMutatingTool(item.toolName)) return [];
         }
         return item.type === "reasoning"
@@ -729,7 +735,6 @@ export class CodexTurnProjector {
   readonly #input: HostTurnSnapshot["input"];
   readonly #interactions = new Map<HostInteractionId, ProjectedInteraction>();
   readonly #items = new Map<HostItemId, ProjectedItem>();
-  readonly #itemOrder: HostItemId[] = [];
   readonly #wireItemOrder: HostItemId[] = [];
   readonly #startedAt: number;
   readonly #startedAtMs: number;
@@ -737,6 +742,7 @@ export class CodexTurnProjector {
   readonly #turnId: HostTurnId;
   #completed = false;
   #started = false;
+  #fileItemId: HostItemId | null = null;
 
   constructor(input: {
     threadId: string;
@@ -765,8 +771,9 @@ export class CodexTurnProjector {
           if (projected.item.type === "agentMessage") {
             return [projectItem(projected.item, projected.outcome, this.#cwd)];
           }
-          const fileItem = wireFileChangeItem(projected);
-          return fileItem ? [projectItem(fileItem, projected.outcome, this.#cwd)] : [];
+          return itemId === this.#fileItemId
+            ? [projectItem(this.#fileSummary(), null, this.#cwd)]
+            : [];
         }),
       ],
       error: null,
@@ -895,11 +902,9 @@ export class CodexTurnProjector {
       reasoningPartStarted: false,
       streamedCommandOutput: false,
       wireStarted: false,
-      wireFileChanges: null,
       startedAtMs,
     };
     this.#items.set(event.item.itemId, projected);
-    this.#itemOrder.push(event.item.itemId);
     if (
       (event.item.type === "agentMessage" || event.item.type === "reasoning") &&
       event.item.text.length === 0
@@ -915,21 +920,11 @@ export class CodexTurnProjector {
       }
       const changes = fileChangeFromTool(event.item.toolName, event.item.arguments);
       if (changes) {
-        projected.wireFileChanges = changes;
-        const fileItem = {
-          type: "fileChange" as const,
-          itemId: event.item.itemId,
-          changes,
-        };
-        return {
-          messages: [
-            this.#startWireItem(projected, fileItem, startedAtMs),
-            ...this.#fileChangeUpdates(event.item.itemId, changes),
-          ],
-        };
+        return { messages: this.#fileChangeUpdates(startedAtMs) };
       }
       if (isFileMutatingTool(event.item.toolName)) return { messages: [] };
     }
+    if (event.item.type === "fileChange") return { messages: this.#fileChangeUpdates(startedAtMs) };
     const startedItem = event.item.type === "reasoning" ? { ...event.item, text: "" } : event.item;
     const messages = [this.#startWireItem(projected, startedItem, startedAtMs)];
     if (event.item.type === "reasoning") {
@@ -938,9 +933,6 @@ export class CodexTurnProjector {
         this.#reasoningOutputDelta(event.item.itemId, event.item.text, startedAtMs),
         ...this.#reasoningDelta(projected, event.item.text, startedAtMs),
       );
-    }
-    if (event.item.type === "fileChange") {
-      messages.push(...this.#fileChangeUpdates(event.item.itemId, event.item.changes));
     }
     return { messages };
   }
@@ -1014,7 +1006,7 @@ export class CodexTurnProjector {
         }
       }
     } else if (event.update.type === "fileChanges.replace") {
-      messages.push(...this.#fileChangeUpdates(event.itemId, event.update.changes));
+      messages.push(...this.#fileChangeUpdates(emittedAtMs));
     } else if (event.update.type === "subagents.replace") {
       messages.push({
         method: "item/started",
@@ -1059,6 +1051,9 @@ export class CodexTurnProjector {
     const durationMs = resolvedItemDurationMs(projected.item, startedAtMs, emittedAtMs);
     projected.item = withResolvedDuration(projected.item, durationMs);
     projected.durationMs = durationMs;
+    if (itemFileChanges(projected.item) !== null) {
+      return { messages: this.#fileChangeUpdates(emittedAtMs) };
+    }
     const completedItem = (item: JsonObject): JsonObject => ({
       method: "item/completed",
       emittedAtMs,
@@ -1077,32 +1072,13 @@ export class CodexTurnProjector {
             planFromTodoValue(projected.item.arguments) ?? planFromTodoValue(projected.item.output);
           return { messages: plan ? [this.#planUpdated(plan, emittedAtMs)] : [] };
         }
-        const changes = fileChangeFromTool(projected.item.toolName, projected.item.arguments);
-        if (changes) {
-          projected.wireFileChanges = changes;
-          const fileItem = {
-            type: "fileChange" as const,
-            itemId: projected.item.itemId,
-            changes,
-          };
-          return {
-            messages: [
-              this.#startWireItem(projected, fileItem, startedAtMs),
-              ...this.#fileChangeUpdates(projected.item.itemId, changes),
-              completedItem(
-                projectItem(fileItem, projected.outcome, this.#cwd, true, this.#threadId),
-              ),
-            ],
-          };
-        }
       }
       return { messages: [] };
     }
-    const fileItem = wireFileChangeItem(projected);
     const messages = [
       completedItem(
         projectItem(
-          fileItem ?? projected.item,
+          projected.item,
           projected.outcome,
           this.#cwd,
           !projected.streamedCommandOutput,
@@ -1181,8 +1157,9 @@ export class CodexTurnProjector {
           if (projected.item.type === "agentMessage") {
             return [projectItem(projected.item, projected.outcome, this.#cwd)];
           }
-          const fileItem = wireFileChangeItem(projected);
-          return fileItem ? [projectItem(fileItem, projected.outcome, this.#cwd)] : [];
+          return itemId === this.#fileItemId
+            ? [projectItem(this.#fileSummary(), { status: "succeeded" }, this.#cwd)]
+            : [];
         }),
       ],
       error,
@@ -1194,6 +1171,19 @@ export class CodexTurnProjector {
     return {
       completedTurn: turn,
       messages: [
+        ...(this.#fileItemId
+          ? [
+              {
+                method: "item/completed",
+                emittedAtMs: completedAtMs,
+                params: {
+                  threadId: this.#threadId,
+                  turnId: this.#turnId,
+                  item: projectItem(this.#fileSummary(), { status: "succeeded" }, this.#cwd),
+                },
+              },
+            ]
+          : []),
         ...(error
           ? [
               {
@@ -1326,15 +1316,31 @@ export class CodexTurnProjector {
     };
   }
 
-  #fileChangeUpdates(itemId: HostItemId, changes: HostFileChange[]): JsonObject[] {
-    const projectedChanges = projectFileChanges(changes);
+  #fileSummary(): Extract<HostItem, { type: "fileChange" }> {
+    // ponytail: recompute per update; cache contributions if large Turns make this costly.
+    const summary = summarizeHostFiles([...this.#items.values()], this.#cwd);
+    if (!summary) throw new Error("File summary requested without a file Item");
+    return this.#fileItemId ? { ...summary, itemId: this.#fileItemId } : summary;
+  }
+
+  #fileChangeUpdates(emittedAtMs: number): JsonObject[] {
+    const summary = this.#fileSummary();
+    const messages: JsonObject[] = [];
+    if (!this.#fileItemId) {
+      this.#fileItemId = summary.itemId;
+      const source = this.#items.get(summary.itemId);
+      if (!source) throw new Error("File summary references an unknown Item");
+      messages.push(this.#startWireItem(source, summary, emittedAtMs));
+    }
+    const projectedChanges = projectFileChanges(summary.changes);
     return [
+      ...messages,
       {
         method: "item/fileChange/patchUpdated",
         params: {
           threadId: this.#threadId,
           turnId: this.#turnId,
-          itemId,
+          itemId: this.#fileItemId,
           changes: projectedChanges,
         },
       },
@@ -1343,19 +1349,10 @@ export class CodexTurnProjector {
         params: {
           threadId: this.#threadId,
           turnId: this.#turnId,
-          diff: diffText(this.#allFileChanges()),
+          diff: diffText(summary.changes),
         },
       },
     ];
-  }
-
-  #allFileChanges(): HostFileChange[] {
-    return this.#itemOrder.flatMap((itemId) => {
-      const projected = this.#items.get(itemId);
-      if (!projected) return [];
-      if (projected.item.type === "fileChange") return projected.item.changes;
-      return projected.wireFileChanges ?? [];
-    });
   }
 
   #activeItem(itemId: HostItemId): ProjectedItem {

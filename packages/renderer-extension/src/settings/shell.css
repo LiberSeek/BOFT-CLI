@@ -1,5 +1,6 @@
 :host {
   /* Inherit Codex Desktop color-scheme; light-dark() tracks the host page. */
+  --settings-titlebar-height: env(titlebar-area-height, 0px);
   --settings-bg: light-dark(#ffffff, #181818);
   --settings-sidebar: light-dark(#f4f4f5, #1c1c1c);
   --settings-panel: transparent;
@@ -38,7 +39,7 @@
   --settings-success: light-dark(#16784a, #4ade80);
   --settings-dialog-max-width: 1120px;
   --settings-dialog-max-height: 780px;
-  --settings-dialog-inset: max(52px, env(titlebar-area-height, 0px));
+  --settings-dialog-inset: 52px;
   color: var(--settings-text);
   color-scheme: inherit;
   font:
@@ -75,8 +76,14 @@
 }
 
 .codexhost-settings-dialog {
+  /* Native window controls sit above the DOM top layer. Center below them. */
+  inset: var(--settings-titlebar-height) 0 0;
   width: min(var(--settings-dialog-max-width), calc(100vw - 2 * var(--settings-dialog-inset)));
-  height: min(var(--settings-dialog-max-height), calc(100vh - 2 * var(--settings-dialog-inset)));
+  height: min(
+    var(--settings-dialog-max-height),
+    calc(100vh - var(--settings-titlebar-height) - 2 * var(--settings-dialog-inset))
+  );
+  -webkit-app-region: no-drag;
   max-width: none;
   max-height: none;
   margin: auto;
@@ -90,7 +97,11 @@
 }
 
 .codexhost-settings-dialog::backdrop {
-  background: var(--settings-backdrop);
+  /* Backdrops do not inherit the shell's custom properties. */
+  top: env(titlebar-area-height, 0px);
+  -webkit-app-region: no-drag;
+  background: light-dark(rgb(15 23 42 / 28%), rgb(0 0 0 / 52%));
+  backdrop-filter: blur(1px);
 }
 
 .settings-frame,
@@ -2177,6 +2188,8 @@
 
 @media (max-width: 720px) {
   .codexhost-settings-dialog {
+    width: calc(100vw - 16px);
+    height: calc(100vh - var(--settings-titlebar-height) - 16px);
     border-radius: 10px;
   }
 
