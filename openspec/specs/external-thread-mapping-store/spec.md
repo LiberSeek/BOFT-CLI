@@ -44,6 +44,14 @@ Mapping Store SHALL acquire one exclusive process lock, serialize writes per Thr
 - **WHEN** a live writer already owns the Store lock
 - **THEN** initialization SHALL fail with a clear locked error and SHALL NOT write records
 
+#### Scenario: macOS reuses a stale lock owner's PID
+- **WHEN** a live process has the lock's PID but its queried start time differs from the recorded `processStartedAt` by more than the five-second tolerance
+- **THEN** initialization SHALL recover the stale lock rather than report a live writer
+
+#### Scenario: macOS cannot verify a live PID's start time
+- **WHEN** the recorded process start time is absent or invalid, or the bounded process metadata query fails or returns an invalid start time
+- **THEN** initialization SHALL preserve the live-PID lock and fail with a locked error
+
 #### Scenario: Replacement fails
 - **WHEN** temp write, sync, backup, or atomic replacement fails
 - **THEN** the prior valid record and indexes SHALL remain authoritative

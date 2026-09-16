@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 
-import { sanitizeDiagnosticTail } from "@codexhost/harness-adapter";
+import { filterAmbientNodeWarnings, sanitizeDiagnosticTail } from "@codexhost/harness-adapter";
 
 import {
   deepSeekProcessInvocation,
@@ -519,9 +519,15 @@ export async function probeDeepSeekExecutableGeneration(
     },
     dependencies,
   );
-  if (output.stderr.length > 0) {
+  // Node >= 22 emits `(node:PID) [UNDICI-EHPA] Warning: ...` (plus a
+  // `--trace-warnings` hint line) on stderr whenever the runtime injects
+  // NODE_USE_ENV_PROXY — e.g. the macOS broker enables it while a system
+  // proxy is active. Those lines carry no harness signal, so only stderr
+  // that survives filtering counts as unexpected.
+  const substantiveStderr = filterAmbientNodeWarnings(output.stderr);
+  if (substantiveStderr.length > 0) {
     throw probeError("protocolError", "DeepSeek Harness --version wrote unexpected stderr", {
-      stderrTail: sanitizeDiagnosticTail(output.stderr),
+      stderrTail: sanitizeDiagnosticTail(substantiveStderr),
     });
   }
   return { ...classifyDeepSeekVersionOutput(output.stdout), command };

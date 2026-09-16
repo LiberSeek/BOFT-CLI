@@ -1,4 +1,4 @@
-import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -402,6 +402,95 @@ describe("Harness plugin discovery and loading", () => {
       expect(await readFile(path.join(slow, "closed"), "utf8")).toBe("yes"),
     );
     await registry.close();
+  });
+
+  it("gives later plugins a full timeout after earlier plugins finish", async () => {
+    const ids = ["alpha-agent", "beta-agent", "gamma-agent", "delta-agent", "epsilon-agent"];
+    const directory = await root(ids);
+    for (const id of ids) {
+      await plugin(directory, id, {
+        code: `
+      import { FakeHarnessAdapter } from ${JSON.stringify(fakeModule)};
+      export async function createHarnessAdapter() {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        return new FakeHarnessAdapter(${JSON.stringify(id)});
+      }
+    `,
+      });
+    }
+    const diagnose = vi.fn();
+    const registry = await loadHarnessPlugins({
+      roots: [directory],
+      context,
+      loadTimeoutMs: 130,
+      diagnose,
+    });
+    try {
+      expect(diagnose).not.toHaveBeenCalled();
+      const inspections = await Promise.all(
+        [...registry.adapters.values()].map((adapter) => adapter.inspect()),
+      );
+      expect(inspections).toHaveLength(ids.length);
+      expect(inspections.every((inspection) => inspection.status === "ready")).toBe(true);
+    } finally {
+      await registry.close();
+    }
+  });
+
+  it("stops taking later plugins when the load is aborted", async () => {
+    const ids = ["a-agent", "b-agent", "c-agent", "d-agent", "e-agent"];
+    const directory = await root(ids);
+    const started = path.join(directory, "started");
+    const finished = path.join(directory, "finished");
+    await mkdir(started);
+    await mkdir(finished);
+    const release = path.join(directory, "release");
+    const controller = new AbortController();
+    for (const id of ids) {
+      await plugin(directory, id, {
+        code: `
+      import { access, writeFile } from "node:fs/promises";
+      import { FakeHarnessAdapter } from ${JSON.stringify(fakeModule)};
+      const started = ${JSON.stringify(pathToFileURL(path.join(started, id)).href)};
+      const finished = ${JSON.stringify(pathToFileURL(path.join(finished, id)).href)};
+      const release = ${JSON.stringify(pathToFileURL(release).href)};
+      export async function createHarnessAdapter() {
+        await writeFile(new URL(started), "yes");
+        try {
+          for (;;) {
+            try {
+              await access(new URL(release));
+              return new FakeHarnessAdapter(${JSON.stringify(id)});
+            } catch {
+              await new Promise((resolve) => setTimeout(resolve, 20));
+            }
+          }
+        } finally {
+          await writeFile(new URL(finished), "yes");
+        }
+      }
+    `,
+      });
+    }
+    const pending = loadHarnessPlugins({
+      roots: [directory],
+      context,
+      loadTimeoutMs: 5_000,
+      signal: controller.signal,
+    });
+    await vi.waitFor(async () => expect(await readdir(started)).toHaveLength(4));
+    controller.abort();
+    const registry = await pending;
+    try {
+      expect((await readdir(started)).sort()).toEqual(["a-agent", "b-agent", "c-agent", "d-agent"]);
+      expect(registry.list().map(({ id }) => id)).not.toContain("e-agent");
+    } finally {
+      await writeFile(release, "ok");
+      await vi.waitFor(async () =>
+        expect((await readdir(finished)).sort()).toEqual((await readdir(started)).sort()),
+      );
+      await registry.close();
+    }
   });
 });
 

@@ -197,7 +197,7 @@ boft remote status
 
 Then start Codex Desktop through local `boft`, open the SSH workspace, and choose the target Harness in the remote composer’s Agent/Model selector.
 
-[SSH setup, diagnostics, and uninstall →](remote-ssh-host.md)
+[SSH setup, diagnostics, and uninstall →](../platforms/remote/remote-ssh-host.md)
 
 #### 2️⃣ Remote Control remote (experimental · recommended for Windows)
 
@@ -205,7 +205,7 @@ When Windows is the controlled Host, you can keep Codex Desktop’s official pai
 
 This path does not add a public service or TCP port. Harness credentials remain on the controlled Windows machine.
 
-[Remote Control setup, transport boundary, and diagnostics →](remote-control-host.md)
+[Remote Control setup, transport boundary, and diagnostics →](../platforms/remote/remote-control-host.md)
 
 </details>
 
@@ -247,7 +247,7 @@ Using Pi as the example. Left to right is one request’s call chain: Desktop �
 ### Adding a Harness
 
 The main work is implementing the plugin Manifest, factory, Adapter, Session, and the native communication and conversion logic. The Renderer still has some static wiring, so full Desktop integration needs additional work.
-When adding a Harness, you can have a coding Agent use the in-repo [codexhost-add-harness Skill](../.agents/skills/codexhost-add-harness/SKILL.md). It covers plugin structure, the public Adapter interface, capability implementation, and test requirements.
+When adding a Harness, you can have a coding Agent use the in-repo [codexhost-add-harness Skill](../../.agents/skills/codexhost-add-harness/SKILL.md). It covers plugin structure, the public Adapter interface, capability implementation, and test requirements.
 
 ## Acknowledgements
 

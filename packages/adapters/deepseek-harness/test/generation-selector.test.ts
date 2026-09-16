@@ -307,12 +307,58 @@ describe("DeepSeek executable generation probe", () => {
       { command: executable() },
       dependencies(child),
     );
-    child.stdout.emit("data", "0.1.5-rc.1\n");
+    child.stdout.emit("data", "0.1.1-rc.2\n");
     child.stderr.emit("data", "API_KEY=secret-canary unexpected warning\n");
     close(child, 0);
     await expect(pending).rejects.toMatchObject({
       code: "protocolError",
       stderrTail: "API_KEY=[redacted] unexpected warning\n",
+    });
+  });
+
+  it("accepts version probes whose only stderr is ambient Node warnings", async () => {
+    const child = childProcess();
+    const pending = probeDeepSeekExecutableGeneration(
+      { command: executable() },
+      dependencies(child),
+    );
+    child.stdout.emit("data", "0.1.2-rc.1\n");
+    // Two separate data chunks, exactly how Node's undici emits them.
+    child.stderr.emit(
+      "data",
+      "(node:34177) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n",
+    );
+    child.stderr.emit(
+      "data",
+      "(Use `node --trace-warnings ...` to show where the warning was created)\n",
+    );
+    close(child, 0);
+    await expect(pending).resolves.toMatchObject({
+      generation: "modern",
+      version: "0.1.2-rc.1",
+    });
+  });
+
+  it("still rejects when real stderr accompanies ambient Node warnings", async () => {
+    const child = childProcess();
+    const pending = probeDeepSeekExecutableGeneration(
+      { command: executable() },
+      dependencies(child),
+    );
+    child.stdout.emit("data", "0.1.1-rc.2\n");
+    child.stderr.emit(
+      "data",
+      "(node:34177) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n",
+    );
+    child.stderr.emit(
+      "data",
+      "(Use `node --trace-warnings ...` to show where the warning was created)\n",
+    );
+    child.stderr.emit("data", "EADDRINUSE port 3080 is taken\n");
+    close(child, 0);
+    await expect(pending).rejects.toMatchObject({
+      code: "protocolError",
+      stderrTail: "EADDRINUSE port 3080 is taken\n",
     });
   });
 
