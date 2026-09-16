@@ -79,6 +79,18 @@ const runtimeLicenses = [
     source: "scripts/release/licenses/opencode-ai-sdk-1.18.25-MIT.txt",
     output: "OpenCode-SDK-LICENSE.txt",
   },
+  {
+    packageName: "@qoder-ai/qoder-agent-sdk",
+    license: "SEE LICENSE IN LICENSE",
+    source: "LICENSE",
+    output: "Qoder-Agent-SDK-LICENSE.txt",
+  },
+  {
+    packageName: "@qodercn-ai/qodercn-agent-sdk",
+    license: "SEE LICENSE IN LICENSE",
+    source: "LICENSE",
+    output: "QoderCN-Agent-SDK-LICENSE.txt",
+  },
   { packageName: "diff", license: "BSD-3-Clause", source: "LICENSE", output: "diff-LICENSE.txt" },
   { packageName: "lucide", license: "ISC", source: "LICENSE", output: "lucide-LICENSE.txt" },
   {
@@ -221,6 +233,8 @@ export function expectedNpmPackagePaths(target) {
     "licenses/Claude-Agent-SDK-LICENSE.md",
     "licenses/MCP-SDK-LICENSE.txt",
     "licenses/OpenCode-SDK-LICENSE.txt",
+    "licenses/Qoder-Agent-SDK-LICENSE.txt",
+    "licenses/QoderCN-Agent-SDK-LICENSE.txt",
     "licenses/opencodex-LICENSE.txt",
     "licenses/diff-LICENSE.txt",
     "licenses/lucide-LICENSE.txt",

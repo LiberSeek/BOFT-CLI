@@ -107,6 +107,8 @@ const externalHarnessIds = {
   "kiro-cli": harnessIdSchema.parse("kiro-cli"),
   codebuddy: harnessIdSchema.parse("codebuddy"),
   "cursor-cli": harnessIdSchema.parse("cursor-cli"),
+  qoder: harnessIdSchema.parse("qoder"),
+  "qoder-cn": harnessIdSchema.parse("qoder-cn"),
 } as const;
 
 const externalAgents: readonly ExternalRendererAgent[] = [
@@ -122,6 +124,8 @@ const externalAgents: readonly ExternalRendererAgent[] = [
   "kiro-cli",
   "codebuddy",
   "cursor-cli",
+  "qoder",
+  "qoder-cn",
 ];
 type HarnessAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
 type HarnessAvailabilityErrors = Partial<Record<ExternalRendererAgent, CodexhostError | undefined>>;
@@ -533,7 +537,9 @@ function restoredPluginRouteOwnership(inspection: ThreadInspection): RestoredThr
   }
   const model = inspection.effectiveModel ?? transportSelection?.model;
   const thinkingOptionId =
-    selectableThinkingOptionId(inspection) ?? transportSelection?.thinkingOptionId;
+    inspection.availableThinkingOptions !== undefined
+      ? selectableThinkingOptionId(inspection)
+      : (inspection.effectiveThinkingOptionId ?? transportSelection?.thinkingOptionId);
   const permissionModeId =
     inspection.effectivePermissionModeId ?? transportSelection?.permissionModeId;
   return {
@@ -790,6 +796,8 @@ export function installRendererBindingProbe(
       "kiro-cli": undefined,
       codebuddy: undefined,
       "cursor-cli": undefined,
+      qoder: undefined,
+      "qoder-cn": undefined,
     },
     webUi: Object.fromEntries(
       externalAgents.map((agent) => [agent, false]),

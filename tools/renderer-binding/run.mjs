@@ -25,6 +25,8 @@ export const RENDERER_PROBE_AGENTS = Object.freeze([
   "hermes",
   "muse",
   "kiro-cli",
+  "qoder",
+  "qoder-cn",
 ]);
 
 function usage() {

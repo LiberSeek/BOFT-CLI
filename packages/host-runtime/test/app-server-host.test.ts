@@ -792,6 +792,29 @@ describe("AppServerHost installed Harness plugins", () => {
     }
   }, 15_000);
 
+  it("keeps Qoder Global and CN Threads on distinct shared plugin routes", async () => {
+    const ids = [harnessIdSchema.parse("qoder"), harnessIdSchema.parse("qoder-cn")];
+    const fixture = createFixture({
+      externalAdapters: new Map(ids.map((id) => [id, new FakeHarnessAdapter(id)])),
+    });
+    try {
+      await fixture.ready;
+      const threads: string[] = [];
+      for (const [index, id] of ids.entries()) {
+        const model = encodeHarnessPluginRoute({ harnessId: id });
+        const threadId = await startExternalThread(fixture, model, 950 + index);
+        threads.push(threadId);
+        expect(
+          await fixture.mappingStore.getThread(hostThreadIdSchema.parse(threadId)),
+        ).toMatchObject({ harnessId: id });
+      }
+      expect(new Set(threads).size).toBe(2);
+      expect(fixture.official.stdin.readableLength).toBe(0);
+    } finally {
+      await stopFixture(fixture);
+    }
+  });
+
   const pluginWaitMethods = [
     "codexhost/harness/inspect",
     "codexhost/harness/commands/inspect",

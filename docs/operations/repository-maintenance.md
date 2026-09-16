@@ -89,6 +89,8 @@ npm run test:typescript -- --exclude 'packages/repository-automation/test/**'
 4. 构建和发布固定 commit SHA；发布前再次验证远端 tag object SHA、提交仍在 `main`、CI run ID / attempt 和结果。
 5. 校验失败就停止发布，不自动改版本、等待后重试或放宽条件；维护者核实后手动重新准备发布。
 
+npm 发布受阻时，可从默认分支手动运行 `Release packages`，指定原 annotated tag 并启用 `skip_npm`。该模式跳过 npm 发布，仍从标签的固定提交构建安装包，保留全部版本、Tag 和确切提交 CI 校验，通过后只发布 GitHub Release。无需移动或重建标签；默认发布仍要求 npm 发布成功。
+
 标签推送使用标签提交里的工作流定义，新校验不会追溯改写旧标签的发布逻辑。这不是不可绕过的权限控制；未设置分支、标签或发布环境保护。
 
 ## 验证

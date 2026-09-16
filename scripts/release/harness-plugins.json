@@ -11,16 +11,27 @@
     "packages/adapters/muse",
     "packages/adapters/kiro-cli",
     "packages/adapters/codebuddy",
-    "packages/adapters/cursor-cli"
+    "packages/adapters/cursor-cli",
+    "packages/adapters/qoder",
+    "packages/adapters/qoder-cn"
   ],
   "runtimePackages": [
     "@agentclientprotocol/sdk",
     "@anthropic-ai/claude-agent-sdk",
     "@deepseek-ai/cosmokit",
     "@deepseek-ai/schemastery",
+    "@modelcontextprotocol/sdk",
     "@opencode-ai/sdk",
+    "@qoder-ai/qoder-agent-sdk",
+    "@qodercn-ai/qodercn-agent-sdk",
+    "ajv",
+    "ajv-formats",
     "diff",
+    "fast-deep-equal",
+    "fast-uri",
+    "json-schema-traverse",
     "ws",
-    "zod"
+    "zod",
+    "zod-to-json-schema"
   ]
 }

@@ -95,6 +95,28 @@ describe("Renderer connection diagnostics", () => {
     },
   );
 
+  it("round trips Qoder carrier route and restores Thread ownership", () => {
+    const model = harnessModelRefSchema.parse({ id: "qoder-default" });
+    const selection = modelSelectionForAgent(null, "medium", "qoder", model);
+    if (!selection || typeof selection.model !== "string") throw new Error("Missing Qoder carrier");
+    expect(decodeHarnessPluginRoute(selection.model)).toMatchObject({
+      harnessId: "qoder",
+      model,
+    });
+    const inspection = {
+      owner: "external" as const,
+      harnessId: "qoder",
+      transportModelId: selection.model,
+      locked: true as const,
+      effectiveModel: model,
+      history: { fork: false, forkAcrossCwd: false, rollbackLastTurn: false },
+    };
+    expect(restoredThreadOwnership(inspection)).toMatchObject({
+      agent: "qoder",
+      model,
+    });
+  });
+
   it("resolves only the Host-wide current Codex Account", () => {
     const accounts = [
       { accountId: "old", label: "Old" },
@@ -176,8 +198,7 @@ describe("Renderer Composer DOM behavior", () => {
           hermes: undefined,
           muse: undefined,
           "kiro-cli": undefined,
-          codebuddy: undefined,
-          "cursor-cli": undefined,
+          qoder: undefined,
         },
       ),
     ).toEqual([]);
@@ -211,8 +232,7 @@ describe("Renderer Composer DOM behavior", () => {
           hermes: undefined,
           muse: undefined,
           "kiro-cli": undefined,
-          codebuddy: undefined,
-          "cursor-cli": undefined,
+          qoder: undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);
@@ -246,8 +266,7 @@ describe("Renderer Composer DOM behavior", () => {
           hermes: undefined,
           muse: undefined,
           "kiro-cli": undefined,
-          codebuddy: undefined,
-          "cursor-cli": undefined,
+          qoder: undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);
@@ -279,8 +298,7 @@ describe("Renderer Composer DOM behavior", () => {
           hermes: undefined,
           muse: undefined,
           "kiro-cli": undefined,
-          codebuddy: undefined,
-          "cursor-cli": undefined,
+          qoder: undefined,
         },
       ),
     ).toEqual([
@@ -325,8 +343,7 @@ describe("Renderer Composer DOM behavior", () => {
           hermes: undefined,
           muse: undefined,
           "kiro-cli": undefined,
-          codebuddy: undefined,
-          "cursor-cli": undefined,
+          qoder: undefined,
         },
       ),
     ).toEqual([]);
@@ -360,8 +377,7 @@ describe("Renderer Composer DOM behavior", () => {
           hermes: undefined,
           muse: undefined,
           "kiro-cli": undefined,
-          codebuddy: undefined,
-          "cursor-cli": undefined,
+          qoder: undefined,
         },
       ),
     ).toEqual(["deepseek-harness"]);

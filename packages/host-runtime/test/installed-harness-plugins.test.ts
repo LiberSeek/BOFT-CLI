@@ -23,6 +23,8 @@ const classes = {
   "kiro-cli": "KiroAdapter",
   codebuddy: "CodeBuddyAdapter",
   "cursor-cli": "CursorAdapter",
+  qoder: "QoderAdapter",
+  "qoder-cn": "QoderAdapter",
 };
 
 const unavailable: HarnessInspection = {
@@ -38,6 +40,7 @@ function load(environment: NodeJS.ProcessEnv = {}) {
       platform: process.platform,
       managedRemoteHost: false,
     },
+    loadTimeoutMs: 30_000,
     warmup: false,
   });
 }
@@ -65,8 +68,8 @@ describe("installed Harness composition", () => {
     },
   );
 
-  // Cold bundle imports can exceed Vitest's 5s default on CI; the loader retains its 10s budget.
-  it("loads all twelve preinstalled plugin factories without static registration or executable discovery", async () => {
+  // Cold bundle imports can exceed Vitest's 5s default on CI; the loader retains its 30s budget.
+  it("loads all preinstalled plugin factories without static registration or executable discovery", async () => {
     const registry = await load();
     try {
       expect(
@@ -88,7 +91,7 @@ describe("installed Harness composition", () => {
     } finally {
       await registry.close();
     }
-  }, 15_000);
+  }, 35_000);
 
   it("provides every built-in command catalog before inspection or Session creation", async () => {
     const expected = {
@@ -120,6 +123,8 @@ describe("installed Harness composition", () => {
         "/kiro-spec",
         "/kiro-vibe",
       ],
+      qoder: ["/compact"],
+      "qoder-cn": ["/compact"],
     };
     const registry = await load();
     try {
@@ -149,6 +154,8 @@ describe("installed Harness composition", () => {
     ["kiro-cli", "CODEXHOST_KIRO_COMMAND"],
     ["codebuddy", "CODEXHOST_CODEBUDDY_COMMAND"],
     ["cursor-cli", "CODEXHOST_CURSOR_COMMAND"],
+    ["qoder", "CODEXHOST_QODER_COMMAND"],
+    ["qoder-cn", "CODEXHOST_QODERCN_COMMAND"],
   ])(
     "preserves the explicit %s command rather than finding another local installation",
     async (id, commandVariable) => {
@@ -174,6 +181,7 @@ describe("installed Harness composition", () => {
         managedRemoteHost: true,
         brokerDescriptorPath: path.resolve(".missing-fixture", "broker.json"),
       },
+      loadTimeoutMs: 30_000,
       warmup: false,
     });
     try {
@@ -198,7 +206,7 @@ describe("installed Harness composition", () => {
     try {
       for (const [id, adapter] of first.adapters) expect(adapter).not.toBe(second.adapters.get(id));
       await first.close();
-      expect(second.list()).toHaveLength(12);
+      expect(second.list()).toHaveLength(Object.keys(classes).length);
     } finally {
       await Promise.all([first.close(), second.close()]);
     }

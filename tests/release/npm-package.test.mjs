@@ -401,6 +401,15 @@ describe("npm package release", () => {
           source: "scripts/release/licenses/opencode-ai-sdk-1.18.25-MIT.txt",
         }),
       ).toBe(path.join(root, "scripts/release/licenses/opencode-ai-sdk-1.18.25-MIT.txt"));
+      for (const name of ["Qoder", "QoderCN"]) {
+        const licensePath = `licenses/${name}-Agent-SDK-LICENSE.txt`;
+        expect(notice).toContain(licensePath);
+        expect(await readFile(path.join(output, licensePath), "utf8")).toContain(
+          "Qoder Product Service Terms",
+        );
+      }
+      expect(notice).toContain("@qoder-ai/qoder-agent-sdk");
+      expect(notice).toContain("@qodercn-ai/qodercn-agent-sdk");
       expect(notice).toContain("@opencode-ai/sdk");
       expect(notice).toContain("licenses/OpenCode-SDK-LICENSE.txt");
       expect(license).toContain("Copyright (c) 2025 opencode");

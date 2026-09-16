@@ -123,6 +123,12 @@ Context 包含环境变量快照、平台、是否为受管远程 Host，以及�
 
 图标只接受识别出的 PNG、JPEG、WebP 或受限 SVG，由 Host 转成数据 URL。SVG 拒绝脚本、事件属性及部分外部资源构造。消费者必须使用 `img`，不得把 SVG 或描述字段当作 HTML 注入。
 
+Qoder 以两个独立预装插件展示：`qoder`（海外版，保留原 ID）和 `qoder-cn`（中国版）。两者共用 `packages/adapters/qoder` 的 Adapter/Session 实现，中国版包只提供独立 Manifest 和工厂入口。插件固定选择各自的 SDK `1.0.39`：海外版 `@qoder-ai/qoder-agent-sdk`，中国版 `@qodercn-ai/qodercn-agent-sdk`；查询、认证、历史读取与 Fork 均使用同一版本对应的 SDK，不自动切换版本。海外版发现 `qodercli` / `qoder`，中国版发现 `qoderclicn` / `qodercn`，显式命令覆盖分别为 `CODEXHOST_QODER_COMMAND` / `CODEXHOST_QODERCN_COMMAND`。SDK 默认用户目录分别是 `~/.qoder` / `~/.qoder-cn`，PAT 环境变量分别是 `QODER_PERSONAL_ACCESS_TOKEN` / `QODERCN_PERSONAL_ACCESS_TOKEN`；凭据和历史由各自原生 SDK 管理。Native Ref 使用对应 Harness ID，拒绝跨版本 Resume/Fork/Rollback；Desktop 的模型、Thinking、权限和偏好按两个 Agent 分别保存。公共 Adapter 契约和路由格式不变。
+
+Qoder 的启动认证失败或消息流意外结束会终结活动 Turn、发布 `session.faulted` 并关闭 Session，后续请求返回 `invalidState`。取消回执只表示受理；收到原生 Turn 结果前仍保持忙碌，迟到输出归属原 Turn。无人值守创建策略 `unattended-full-access` 映射为原生 `bypassPermissions`，与显式非 bypass 权限冲突时拒绝创建。
+
+Qoder 沿用现有公共 Model Catalog 和工具投影契约，不增加专用分组、禁用状态或文件全文字段。模型目录保留 SDK 返回的模型及顺序，不因 `isEnabled` 字段过滤模型；模型选择是否成功由原生接口决定。两版 Adapter 均按工作目录缓存成功目录，不设时间有效期，显式 `refresh` 清除对应缓存，关闭 Adapter 时清空；失败结果不缓存。SDK 查询仍使用 `fetchStrategy: "cache"`，显式刷新仅绕过 Adapter 缓存，不强制原生联网更新。Write/Edit 沿用 Pi/OMP 已使用的公共工具投影兼容路径，不增加 namespace 开关或原生 patch 门槛，也不改变其他 Harness 的历史状态投影。
+
 ## 公共查询和路由
 
 目录请求在被请求的 Host 连接内处理，不接受客户端提供文件系统路径：
