@@ -7233,6 +7233,56 @@ describe("AppServerHost HarnessAdapter projection", () => {
     await stopFixture(fixture);
   });
 
+  it("maps a Desktop plan-review Approve label even when the JSON-RPC reply includes error: null", async () => {
+    const fixture = createFixture();
+    const threadId = await startPiThread(fixture);
+    const session = fixture.adapter.sessions[0];
+    if (!session) throw new Error("Fake Pi Session was not opened");
+    session.askQuestionOnNextTurn(
+      {
+        id: "plan-decision",
+        type: "choice",
+        prompt: "Review plan",
+        options: [
+          { value: "approve", label: "Approve plan and exit plan mode" },
+          { value: "stay", label: "Stay in plan mode" },
+        ],
+        multiple: false,
+        allowOther: false,
+        optional: false,
+      },
+      { title: "Review plan" },
+    );
+
+    await startPiTurn(fixture, threadId);
+    const request = await fixture.collector.waitFor((message) =>
+      method(message, "item/tool/requestUserInput"),
+    );
+    const requestIdValue = request.id;
+    if (typeof requestIdValue !== "number") throw new Error("Question request has no numeric ID");
+    writeRequest(fixture.desktopInput, {
+      id: requestIdValue,
+      result: {
+        answers: { "plan-decision": { answers: ["Approve plan and exit plan mode"] } },
+      },
+      error: null,
+    });
+    await fixture.collector.waitFor(
+      (message) =>
+        method(message, "item/completed") &&
+        ((message.params as JsonObject).item as JsonObject | undefined)?.id ===
+          (request.params as JsonObject).itemId,
+    );
+    expect(session.interactionResponses).toMatchObject([
+      {
+        response: { type: "question", answers: { "plan-decision": ["approve"] } },
+      },
+    ]);
+    session.succeedTurn();
+    await fixture.collector.waitFor((message) => method(message, "turn/completed"));
+    await stopFixture(fixture);
+  });
+
   it("fails a secret Question closed without rendering visible Desktop input", async () => {
     const fixture = createFixture();
     const threadId = await startPiThread(fixture);

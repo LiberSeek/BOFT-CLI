@@ -930,8 +930,8 @@ describe("Grok Adapter ACP projection", () => {
           multiple: false,
           allowOther: false,
           options: [
-            { value: "stay", label: "Stay in plan mode" },
             { value: "approve", label: "Approve plan and exit plan mode" },
+            { value: "stay", label: "Stay in plan mode" },
           ],
         },
       ],
@@ -946,7 +946,7 @@ describe("Grok Adapter ACP projection", () => {
         response: { type: "question", answers: { "plan-decision": ["approve"] } },
       }),
     ).resolves.toEqual({ ok: true, value: { accepted: true } });
-    await expect(native).resolves.toEqual({ approved: true, feedback: "" });
+    await expect(native).resolves.toEqual({ outcome: "approved" });
     expect(await nextEvent(iterator)).toMatchObject({
       type: "interaction.closed",
       reason: "responded",

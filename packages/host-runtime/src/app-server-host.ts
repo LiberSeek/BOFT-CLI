@@ -400,6 +400,10 @@ function isHostQuestionRequestId(value: unknown): value is HostQuestionRequestId
   );
 }
 
+function jsonRpcResponseFailed(value: Record<string, unknown>): boolean {
+  return value.error != null;
+}
+
 export function classifyCreateRequestRoute(
   request: JsonRpcRequest,
   defaultAgent: "codex" | "pi",
@@ -4209,7 +4213,7 @@ export class AppServerHost {
     let response: HostApprovalResponse;
     try {
       response =
-        "error" in value
+        jsonRpcResponseFailed(value)
           ? pending.projection.denyResponse
           : pending.projection.parseResponse(value.result);
     } catch (error) {
@@ -4350,7 +4354,7 @@ export class AppServerHost {
     let response;
     try {
       response =
-        "error" in value
+        jsonRpcResponseFailed(value)
           ? { type: "question" as const, answers: {}, cancelled: true as const }
           : pending.projection.parseResponse(value.result);
     } catch (error) {

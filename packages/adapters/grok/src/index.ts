@@ -36,7 +36,13 @@ export {
   parseGrokAskUserQuestionParams,
 } from "./grok-question.js";
 export {
+  GROK_PLAN_APPROVE_LABEL,
+  GROK_PLAN_APPROVE_VALUE,
   GROK_PLAN_DECISION_ID,
+  GROK_PLAN_OUTCOME_APPROVED,
+  GROK_PLAN_OUTCOME_CANCELLED,
+  GROK_PLAN_STAY_LABEL,
+  GROK_PLAN_STAY_VALUE,
   createGrokPlanReview,
   grokExitPlanModeResponse,
   grokPlanRejectedResponse,
