@@ -2679,7 +2679,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   #accountInspection: Promise<HarnessAccountSnapshot | null> | null = null;
 
   constructor(options: ClaudeCodeAdapterOptions = {}, dependencies?: ClaudeAdapterDependencies) {
-    this.#pendingSessions = new ClaudePendingSessions(options.environment ?? process.env);
+    const environment = options.environment ?? process.env;
+    this.#pendingSessions = new ClaudePendingSessions(environment);
     this.#closeTimeoutMs = options.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS;
     this.#cancelTimeoutMs = options.cancelTimeoutMs ?? DEFAULT_CANCEL_TIMEOUT_MS;
     if (!Number.isSafeInteger(this.#cancelTimeoutMs) || this.#cancelTimeoutMs <= 0) {

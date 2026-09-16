@@ -111,6 +111,7 @@ export interface RendererAgentPickerControl {
   menu: HTMLElement;
   agents: readonly RendererAgent[];
   options: Partial<Record<RendererAgent, AgentOptionControl>>;
+  updateAvailability(availability: AgentAvailability): void;
   close(): void;
   dispose(): void;
 }
@@ -600,6 +601,7 @@ export function mountRendererAgentPicker(
     bordered: true,
   });
 
+  let notInstalled = new Set<RendererAgent>();
   let mainAgents: RendererAgent[] = [...enabledAgents];
   let moreAgents: RendererAgent[] = [];
   const regroup = (): void => {
@@ -634,8 +636,12 @@ export function mountRendererAgentPicker(
       nextMain.push(agent);
     }
 
-    mainAgents = nextMain;
-    moreAgents = nextMore;
+    // Stable sorting preserves the default/custom order within each section.
+    // Only confirmed missing installations move back, not checking/error states.
+    const installationOrder = (a: RendererAgent, b: RendererAgent): number =>
+      Number(notInstalled.has(a)) - Number(notInstalled.has(b));
+    mainAgents = nextMain.sort(installationOrder);
+    moreAgents = nextMore.sort(installationOrder);
     const mainChildren: HTMLElement[] = [];
     for (const agent of mainAgents) {
       const row = rowsByAgent.get(agent);
@@ -726,6 +732,18 @@ export function mountRendererAgentPicker(
     menu,
     agents: [...enabledAgents],
     options,
+    updateAvailability(availability) {
+      const next = new Set(
+        enabledAgents.filter(
+          (agent) => agent !== "codex" && availability[agent] === "notInstalled",
+        ),
+      );
+      if (next.size === notInstalled.size && [...next].every((agent) => notInstalled.has(agent))) {
+        return;
+      }
+      notInstalled = next;
+      regroup();
+    },
     close,
     dispose() {
       close();
@@ -758,6 +776,7 @@ export function renderRendererAgentPicker(
     control.agents,
     availability,
   );
+  control.updateAvailability(availability);
   if (control.iconSlot.dataset.agent !== state.agent) {
     control.iconSlot.replaceChildren(createRendererAgentIcon(state.agent));
     control.iconSlot.dataset.agent = state.agent;

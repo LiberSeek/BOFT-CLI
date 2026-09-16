@@ -2,7 +2,7 @@
 
 ## 当前范围
 
-设置 → 会话导入可登记 **Claude Code Session**、**Pi 原生 v3 Session** 和 **DSH `0.1.2-rc.1` / `0.1.5-rc.1` Session**。导入只建立 Host Thread 与原生 Session 的映射，不复制 Transcript、不转换 Harness、不发送用户 Turn；打开后仍通过对应 Adapter 的 `open({ kind: "resume" })` 恢复历史并继续会话。
+设置 → 会话导入可登记 **Claude Code Session**、**Pi 原生 v3 Session**、**Hermes Session** 和 **DSH `0.1.2-rc.1` / `0.1.5-rc.1` Session**。导入只建立 Host Thread 与原生 Session 的映射，不复制 Transcript、不转换 Harness、不发送用户 Turn；打开后仍通过对应 Adapter 的 `open({ kind: "resume" })` 恢复历史并继续会话。
 
 - 设置页使用当前 Composer 选中的 Host；本地 Composer 扫描本机，远程 Composer 只扫描并登记远端 Host 上的原生会话。列表与导入锁定同一个 Host，切换 Host 不会把旧列表导入到另一个环境。
 - 可选 Harness 来自目标 Host 已加载、同时提供发现和解析能力的 Adapter，不使用 Renderer 内置 Harness 名单。
@@ -70,6 +70,8 @@ Host 不承诺在 resolver 与 resume 之间锁住外部客户端；当前没有
 - Adapter 能确认自己已打开的会话时返回 `running: true`；对其他 Claude 客户端没有可靠跨进程活动信号，因此返回 `running: null`，而不是错误声称空闲。导入前仍应关闭原生 Claude 客户端中的该会话。
 - Linux/普通 SSH Host 在目标 Host 进程内直接发现和解析；macOS 受管远程 Host 通过用户 Aqua 会话中的 owner-only Broker 转发同一能力。Broker 只传输有界元数据和原生引用，并对大列表分块，不转发凭据或 Transcript。
 - `remote install` 会受控重启打包 Broker。客户端和远端必须安装同一 codexhost 版本；升级后重新连接远程工作区，避免旧 Broker 进程保留旧协议实现。
+
+导入能力与 Claude CLI 的原生会话列表是两条边界：本页可以导入旧 `sdk-ts` 会话；codexhost 新建 SDK 会话另以 `codexhost-sdk` entrypoint 持久化，使当前 Claude CLI 版本的原生 picker 也能列出它们。
 
 ## Pi 原生规则
 

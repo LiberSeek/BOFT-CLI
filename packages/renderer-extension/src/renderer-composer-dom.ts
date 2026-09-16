@@ -790,7 +790,7 @@ export function renderComposerAgentControl(
     pickerView.nativeModelHidden,
     switching || state.agent !== "codex",
   );
-  renderRendererModelPicker(control.modelPicker, modelView, state.agent !== "codex");
+  renderRendererModelPicker(control.modelPicker, modelView, state.agent !== "codex", state.agent);
   const permissionModeVisible =
     state.agent !== "codex" &&
     permissionModeView.status !== "idle" &&

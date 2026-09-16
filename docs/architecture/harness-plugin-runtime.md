@@ -8,7 +8,7 @@
 
 十个既有 Adapter 通过同样的 `manifest.json` 和 `createHarnessAdapter` 工厂加载；`adapter-composition.ts` 已删除，Host 源码、包依赖和 TypeScript references 不再直接引用具体 Adapter 包。预装集合仅由发行清单 [`scripts/release/harness-plugins.json`](../../scripts/release/harness-plugins.json) 决定。原生构造参数、预取和 Claude Code 的直接/Broker 选择仍由相应插件负责。
 
-原生会话导入已使用公共 `sessionImport` 契约、Host 映射事务与动态设置页；Claude Code、Pi 和 DSH `0.1.2-rc.1` / `0.1.5-rc.1` 是实际实现。页面按当前 Composer Host 路由，Claude 的直连与 macOS Aqua Broker 承载都支持发现和解析。DSH 仅支持精确托管 Web 版本，Legacy 协议已移除。完整原生引用只在 Adapter、Broker 与 Host 间流转，详见[会话导入](harness-session-import.md)。这不代表普通 Agent Picker 已完成动态接入。
+原生会话导入已使用公共 `sessionImport` 契约、Host 映射事务与动态设置页；Claude Code、Pi、Hermes 和 DSH `0.1.2-rc.1` / `0.1.5-rc.1` 是实际实现。页面按当前 Composer Host 路由，Claude 的直连与 macOS Aqua Broker 承载都支持发现和解析。DSH 仅支持精确托管 Web 版本，Legacy 协议已移除。完整原生引用只在 Adapter、Broker 与 Host 间流转，详见[会话导入](harness-session-import.md)。这不代表普通 Agent Picker 已完成动态接入。
 
 尚未实现的目标包括：
 

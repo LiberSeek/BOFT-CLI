@@ -111,7 +111,7 @@ export class CursorAdapter implements HarnessAdapter {
   readonly #sessions = new Set<CursorSession>();
   readonly #inspections = new Map<
     string,
-    { expires: number; pending: boolean; result: Promise<HarnessInspection> }
+    { pending: boolean; result: Promise<HarnessInspection> }
   >();
   #closed = false;
   constructor(readonly options: CursorAdapterOptions = {}) {}
@@ -131,8 +131,7 @@ export class CursorAdapter implements HarnessAdapter {
       };
     const cwd = path.resolve(input.cwd ?? process.cwd());
     const cached = this.#inspections.get(cwd);
-    if (cached && (cached.pending || (!input.refresh && cached.expires > Date.now())))
-      return cached.result;
+    if (cached && (cached.pending || !input.refresh)) return cached.result;
     const result = (async (): Promise<HarnessInspection> => {
       const transport = new CursorTransport(this.transportOptions(cwd));
       try {
@@ -153,12 +152,11 @@ export class CursorAdapter implements HarnessAdapter {
         await transport.close();
       }
     })();
-    // Cache negative results as well; discovery never starts a polling/retry timer.
-    const entry = { expires: Number.POSITIVE_INFINITY, pending: true, result };
+    // Keep results, including failures, until explicit refresh or Adapter shutdown.
+    const entry = { pending: true, result };
     this.#inspections.set(cwd, entry);
     void result.finally(() => {
       entry.pending = false;
-      entry.expires = Date.now() + 5 * 60_000;
     });
     return result;
   }

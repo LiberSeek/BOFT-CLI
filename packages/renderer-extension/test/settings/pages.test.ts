@@ -1516,6 +1516,7 @@ describe("Renderer Session Import page", () => {
         ?.dispatch("submit", { preventDefault: vi.fn() });
     };
     await vi.waitFor(() => expect(visibleRows()).toHaveLength(20));
+    expect(visibleText(content)).not.toContain("Activity unknown");
     expect(action("previous").disabled).toBe(true);
     expect(action("page-summary").textContent).toBe("45 records / 1-20");
     action("next").dispatch("click");
@@ -1691,7 +1692,7 @@ describe("Renderer Session Import page", () => {
     await oldList.promise;
     await Promise.resolve();
     expect(visibleText(content)).toContain("Pi original");
-    expect(visibleText(content)).toContain("Activity unknown");
+    expect(visibleText(content)).not.toContain("Activity unknown");
     expect(visibleText(content)).toContain("close the session in its native client");
     const button = descendants(content).find(
       ({ dataset }) => dataset.sessionImportAction === "import",

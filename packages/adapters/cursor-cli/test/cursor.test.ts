@@ -83,7 +83,7 @@ afterEach(() => {
 });
 
 describe("Cursor native configuration", () => {
-  it("starts inspection cache expiry at completion, including slow native startup", async () => {
+  it("retains inspection without expiry and only refreshes explicitly, merging pending requests", async () => {
     const clock = vi.spyOn(Date, "now").mockReturnValue(0),
       gate = Promise.withResolvers<typeof info>();
     const open = vi.spyOn(CursorTransport.prototype, "open").mockImplementation(() => gate.promise);
@@ -91,16 +91,20 @@ describe("Cursor native configuration", () => {
     const adapter = new CursorAdapter();
     try {
       const first = adapter.inspect();
+      const concurrentRefresh = adapter.inspect({ refresh: true });
+      expect(open).toHaveBeenCalledTimes(1);
       clock.mockReturnValue(400_000);
       gate.resolve(info);
-      await first;
+      await Promise.all([first, concurrentRefresh]);
       await adapter.inspect();
       expect(open).toHaveBeenCalledTimes(1);
       clock.mockReturnValue(699_999);
       await adapter.inspect();
       expect(open).toHaveBeenCalledTimes(1);
-      clock.mockReturnValue(700_001);
+      clock.mockReturnValue(7 * 24 * 60 * 60_000);
       await adapter.inspect();
+      expect(open).toHaveBeenCalledTimes(1);
+      await adapter.inspect({ refresh: true });
       expect(open).toHaveBeenCalledTimes(2);
     } finally {
       await adapter.close();
@@ -151,7 +155,8 @@ describe("Cursor native configuration", () => {
     expect(() => cursorNativeModel(info, "unknown")).toThrow();
     expect(cursorCatalog(info).thinkingOptions).toEqual([]);
   });
-  it("caches failed inspection and retries only on explicit refresh or expiry", async () => {
+  it("caches failed inspection without expiry and retries only on explicit refresh", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(0);
     const open = vi
       .spyOn(CursorTransport.prototype, "open")
       .mockRejectedValue(new Error("not logged in"));
@@ -159,6 +164,7 @@ describe("Cursor native configuration", () => {
     const adapter = new CursorAdapter();
     const first = await adapter.inspect();
     expect(harnessInspectionSchema.safeParse(first).success).toBe(true);
+    clock.mockReturnValue(7 * 24 * 60 * 60_000);
     expect(await adapter.inspect()).toEqual(first);
     expect(open).toHaveBeenCalledTimes(1);
     await adapter.inspect({ refresh: true });

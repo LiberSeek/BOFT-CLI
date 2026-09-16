@@ -26,6 +26,41 @@ export interface RendererSettingsMessages {
   readonly generalSection: string;
   readonly otherSection: string;
   readonly appearanceDescription: string;
+  readonly appearanceGroup: string;
+  readonly loadedSessions: {
+    title: string;
+    description: string;
+    columns: readonly string[];
+    empty: string;
+    failed: string;
+    unavailable: string;
+    loading: string;
+    minutes: string;
+    states: Record<"idle" | "running" | "busy" | "closing" | "failed" | "blocked", string>;
+    reasons: Record<
+      | "none"
+      | "disabled"
+      | "timeout"
+      | "operation"
+      | "background"
+      | "identity"
+      | "persistence"
+      | "closeFailed",
+      string
+    >;
+  };
+  readonly idleReleaseSection: string;
+  readonly idleReleaseTitle: string;
+  readonly idleReleaseDescription: string;
+  readonly idleReleaseHelpLabel: string;
+  readonly idleReleaseHelp: readonly string[];
+  readonly idleReleaseTimeout: string;
+  readonly idleReleaseTimeoutDescription: string;
+  readonly idleReleaseMinutes: string;
+  readonly idleReleaseInvalid: string;
+  readonly idleReleasePending: string;
+  readonly idleReleaseUnavailable: string;
+  readonly idleReleaseFailed: string;
   readonly reasoningSoftWrapTitle: string;
   readonly reasoningSoftWrapDescription: string;
   readonly pageUnavailable: string;
@@ -53,7 +88,6 @@ export interface RendererSettingsMessages {
   readonly sessionImportUpdatedAt: string;
   readonly sessionImportSessionId: string;
   readonly sessionImportRunning: string;
-  readonly sessionImportRunningUnknown: string;
   readonly sessionImportRunningHint: string;
   readonly sessionImportAction: string;
   readonly sessionImportImporting: string;
@@ -218,10 +252,55 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionSection: "Connections",
   generalSection: "General",
   otherSection: "Other",
-  appearanceDescription: "Adjust how thinking text is displayed in the conversation.",
+  appearanceDescription: "Conversation display and local resource management.",
+  appearanceGroup: "Appearance",
+  loadedSessions: {
+    title: "Loaded sessions",
+    description:
+      "Local external Harnesses only. Refreshes every 10 seconds without waking sessions or resetting activity. Released sessions disappear from this list.",
+    columns: ["Session", "Harness", "State", "Since last activity", "Release constraint"],
+    empty: "No loaded external sessions.",
+    failed: "Could not load session status.",
+    unavailable: "Local Host does not support session status or is unavailable.",
+    loading: "Loading session status…",
+    minutes: "{minutes} min",
+    states: {
+      idle: "Idle",
+      running: "Running",
+      busy: "Busy",
+      closing: "Releasing",
+      failed: "Release failed",
+      blocked: "Blocked",
+    },
+    reasons: {
+      none: "—",
+      disabled: "Automatic release is off",
+      timeout: "Timeout not reached",
+      operation: "Turn or Host operation in progress",
+      background: "Subagent, steering, command or interaction pending",
+      identity: "Session identity unavailable or snapshot-only session",
+      persistence: "Persistence or output error",
+      closeFailed: "Restart Desktop before retrying",
+    },
+  },
+  idleReleaseSection: "Resource management",
+  idleReleaseTitle: "Release idle sessions",
+  idleReleaseDescription:
+    "Close background instances after the idle timeout; they resume on next use.",
+  idleReleaseHelpLabel: "About releasing idle sessions",
+  idleReleaseHelp: Object.freeze([
+    "After an Agent finishes replying, its background process may continue running and using memory. Keeping more sessions open may increase resource usage.",
+    "When enabled, codexhost periodically checks sessions and closes background instances once the idle timeout is reached and no tasks or interactions are pending, reducing resource usage. Chat history is not deleted. Opening the session again or sending a message restarts the process.",
+  ]),
+  idleReleaseTimeout: "Idle timeout",
+  idleReleaseTimeoutDescription: "5–1440 minutes.",
+  idleReleaseMinutes: "min",
+  idleReleaseInvalid: "Enter a whole number from 5 to 1440.",
+  idleReleasePending: "Syncing…",
+  idleReleaseUnavailable: "Not supported by this Host",
+  idleReleaseFailed: "Sync failed, try again",
   reasoningSoftWrapTitle: "Wrap thinking text",
-  reasoningSoftWrapDescription:
-    "Wrap long thinking lines in the transcript. Ordinary shell output is unaffected. Off by default.",
+  reasoningSoftWrapDescription: "Wrap long lines in thinking blocks. Shell output is unaffected.",
   pageUnavailable: "Page unavailable",
   inDevelopment: "In development",
   notAvailable: "Not available",
@@ -251,7 +330,6 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   sessionImportUpdatedAt: "Updated",
   sessionImportSessionId: "Session ID",
   sessionImportRunning: "Running",
-  sessionImportRunningUnknown: "Activity unknown",
   sessionImportRunningHint:
     "Close this session in its native client before importing, then refresh.",
   sessionImportAction: "Import and open",
@@ -450,9 +528,54 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionSection: "连接",
   generalSection: "通用",
   otherSection: "其他",
-  appearanceDescription: "调整会话中思考文本的显示方式。",
+  appearanceDescription: "会话显示与本地资源管理。",
+  appearanceGroup: "外观",
+  loadedSessions: {
+    title: "已加载会话",
+    description:
+      "仅显示本地外部 Harness。每 10 秒刷新，不唤醒会话、不重置活动时间。释放后的会话从列表移除。",
+    columns: ["会话", "Harness", "状态", "距最后活动", "暂不能释放的原因"],
+    empty: "暂无已加载的外部会话。",
+    failed: "无法加载会话状态。",
+    unavailable: "本地 Host 不支持会话状态查询或当前不可用。",
+    loading: "正在加载会话状态…",
+    minutes: "{minutes} 分钟",
+    states: {
+      idle: "空闲",
+      running: "执行中",
+      busy: "忙碌",
+      closing: "释放中",
+      failed: "释放失败",
+      blocked: "不可释放",
+    },
+    reasons: {
+      none: "—",
+      disabled: "自动释放已关闭",
+      timeout: "尚未达到超时",
+      operation: "任务或 Host 操作尚未结束",
+      background: "存在子任务、转向、命令或待处理交互",
+      identity: "缺少可恢复身份或仅有快照",
+      persistence: "持久化或输出异常",
+      closeFailed: "需重启 Desktop 后重试",
+    },
+  },
+  idleReleaseSection: "资源管理",
+  idleReleaseTitle: "自动释放空闲会话",
+  idleReleaseDescription: "空闲超时后关闭后台实例，再次使用时自动恢复。",
+  idleReleaseHelpLabel: "自动释放空闲会话说明",
+  idleReleaseHelp: Object.freeze([
+    "Agent 回复结束后，后台进程可能仍在运行并占用内存。打开的会话越多，资源占用可能越大。",
+    "开启后，codexhost 会定期检查，在会话空闲达到设定时间、且没有任务或待处理交互时，自动关闭后台实例，减少资源占用。聊天记录不会删除，再次打开或发送消息时会重新启动该进程。",
+  ]),
+  idleReleaseTimeout: "空闲超时",
+  idleReleaseTimeoutDescription: "5～1440 分钟。",
+  idleReleaseMinutes: "分钟",
+  idleReleaseInvalid: "请输入 5～1440 之间的整数。",
+  idleReleasePending: "同步中…",
+  idleReleaseUnavailable: "当前 Host 不支持",
+  idleReleaseFailed: "同步失败，请重试",
   reasoningSoftWrapTitle: "换行显示思考文本",
-  reasoningSoftWrapDescription: "让思考块中的长行自动换行。普通 Shell 输出不受影响。默认关闭。",
+  reasoningSoftWrapDescription: "思考块中的长行自动换行，不影响 Shell 输出。",
   pageUnavailable: "页面不可用",
   inDevelopment: "开发中",
   notAvailable: "暂不可用",
@@ -481,7 +604,6 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   sessionImportUpdatedAt: "更新时间",
   sessionImportSessionId: "会话 ID",
   sessionImportRunning: "运行中",
-  sessionImportRunningUnknown: "运行状态未知",
   sessionImportRunningHint: "请先在原生客户端关闭该会话，再刷新并导入。",
   sessionImportAction: "导入并打开",
   sessionImportImporting: "正在导入……",

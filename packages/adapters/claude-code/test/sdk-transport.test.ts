@@ -1018,6 +1018,19 @@ describe("ClaudeSdkTransport autonomous task continuation", () => {
 });
 
 describe("ClaudeSdkTransport process environment", () => {
+  it("attributes persisted sessions to the CodexHost SDK entrypoint", async () => {
+    const value = fixture("create", "default", harnessThinkingOptionIdSchema.parse("auto"), {
+      CLAUDE_CODE_ENTRYPOINT: "sdk-ts",
+    });
+
+    await value.transport.start();
+    expect(options(value).env).toMatchObject({
+      CLAUDE_CODE_ENTRYPOINT: "codexhost-sdk",
+      CLAUDE_AGENT_SDK_CLIENT_APP: "codexhost-claude-code-adapter/0.0.0",
+    });
+    await value.transport.close();
+  });
+
   it("adds the Host Node runtime to the Claude process PATH", async () => {
     const value = fixture("create", "default", harnessThinkingOptionIdSchema.parse("auto"), {
       PATH: "/usr/bin:/bin:/usr/sbin:/sbin",

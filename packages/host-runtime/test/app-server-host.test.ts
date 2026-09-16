@@ -480,6 +480,142 @@ async function answerOfficialParentCwd(
   );
 }
 
+describe("AppServerHost idle resource release", () => {
+  it("validates settings locally without forwarding them to the official server", async () => {
+    const fixture = createFixture();
+    try {
+      await fixture.ready;
+      writeRequest(fixture.desktopInput, {
+        id: 900,
+        method: "codexhost/settings/idle-release/set",
+        params: { enabled: true, timeoutMinutes: 4 },
+      });
+      expect(await fixture.collector.waitFor((message) => requestId(message, 900))).toMatchObject({
+        error: { code: -32602 },
+      });
+      writeRequest(fixture.desktopInput, {
+        id: 901,
+        method: "codexhost/settings/idle-release/set",
+        params: { enabled: false, timeoutMinutes: 30 },
+      });
+      expect(await fixture.collector.waitFor((message) => requestId(message, 901))).toMatchObject({
+        result: { enabled: false, timeoutMinutes: 30 },
+      });
+      expect(fixture.official.stdin.read()).toBeNull();
+    } finally {
+      await stopFixture(fixture);
+    }
+  });
+
+  it("silently releases an idle session and resumes its history for another Turn", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    const fixture = createFixture();
+    try {
+      const threadId = await startPiThread(fixture);
+      const turnId = await completePiTurn(fixture, threadId, 2);
+      const source = fixture.adapter.sessions[0];
+      if (!source) throw new Error("Missing source Session");
+      const snapshot = await source.readSnapshot();
+      if (!snapshot.ok) throw new Error(snapshot.error.message);
+      const close = vi.spyOn(source, "close");
+      const nativeOpen = fixture.adapter.open.bind(fixture.adapter);
+      let resumed: FakeHarnessSession | undefined;
+      const open = vi.spyOn(fixture.adapter, "open").mockImplementation(async (input) => {
+        if (input.kind !== "resume") return nativeOpen(input);
+        resumed = new FakeHarnessSession(
+          fixture.adapter.harnessId,
+          fixture.adapter.catalog,
+          undefined,
+          input.nativeRef,
+          snapshot.value,
+        );
+        return { ok: true, value: resumed };
+      });
+      writeRequest(fixture.desktopInput, {
+        id: 900,
+        method: "codexhost/settings/idle-release/set",
+        params: { enabled: true, timeoutMinutes: 10 },
+      });
+      await fixture.collector.waitFor((message) => requestId(message, 900));
+      await vi.advanceTimersByTimeAsync(9 * 60_000);
+      writeRequest(fixture.desktopInput, {
+        id: 910,
+        method: "codexhost/sessions/loaded/list",
+        params: {},
+      });
+      const listing = await fixture.collector.waitFor((message) => requestId(message, 910));
+      expect(listing).toMatchObject({
+        result: [{ threadId, state: "idle", reason: "timeout", inactiveMs: 9 * 60_000 }],
+      });
+      await vi.advanceTimersByTimeAsync(2 * 60_000);
+      expect(close).toHaveBeenCalledTimes(1);
+      writeRequest(fixture.desktopInput, {
+        id: 911,
+        method: "codexhost/sessions/loaded/list",
+        params: {},
+      });
+      expect(await fixture.collector.waitFor((message) => requestId(message, 911))).toMatchObject({
+        result: [],
+      });
+      expect(open).not.toHaveBeenCalled();
+      expect(fixture.collector.messages.some((message) => method(message, "thread/closed"))).toBe(
+        false,
+      );
+      writeRequest(fixture.desktopInput, {
+        id: 901,
+        method: "thread/read",
+        params: { threadId, includeTurns: false },
+      });
+      await fixture.collector.waitFor((message) => requestId(message, 901));
+      expect(open).not.toHaveBeenCalled();
+      writeRequest(fixture.desktopInput, {
+        id: 902,
+        method: "thread/read",
+        params: { threadId, includeTurns: true },
+      });
+      const history = await fixture.collector.waitFor((message) => requestId(message, 902));
+      expect(history).not.toHaveProperty("error");
+      expect(JSON.stringify(history)).toContain(turnId);
+      expect(open).toHaveBeenCalledTimes(1);
+      const nextTurn = await startPiTurn(fixture, threadId, 903);
+      await fixture.collector.waitFor((message) => turnEvent(message, "turn/started", nextTurn));
+      if (!resumed) throw new Error("Missing resumed Session");
+      resumed.appendText("after idle release");
+      resumed.succeedTurn();
+      await fixture.collector.waitFor((message) => turnEvent(message, "turn/completed", nextTurn));
+    } finally {
+      await stopFixture(fixture);
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps an active Turn loaded even beyond the configured timeout", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    const fixture = createFixture();
+    try {
+      const threadId = await startPiThread(fixture);
+      const turnId = await startPiTurn(fixture, threadId);
+      await fixture.collector.waitFor((message) => turnEvent(message, "turn/started", turnId));
+      const session = fixture.adapter.sessions[0];
+      if (!session) throw new Error("Missing Session");
+      const close = vi.spyOn(session, "close");
+      writeRequest(fixture.desktopInput, {
+        id: 900,
+        method: "codexhost/settings/idle-release/set",
+        params: { enabled: true, timeoutMinutes: 10 },
+      });
+      await fixture.collector.waitFor((message) => requestId(message, 900));
+      await vi.advanceTimersByTimeAsync(31 * 60_000);
+      expect(close).not.toHaveBeenCalled();
+      session.succeedTurn();
+      await fixture.collector.waitFor((message) => turnEvent(message, "turn/completed", turnId));
+    } finally {
+      await stopFixture(fixture);
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("AppServerHost official forwarding", () => {
   it.each([
     { method: "codexhost/unknown", params: {} },
@@ -1723,6 +1859,87 @@ describe("AppServerHost HarnessAdapter projection", () => {
     await expect(
       fixture.collector.waitFor((message) => threadStatus(message, threadId, "idle")),
     ).resolves.toBeTruthy();
+    await stopFixture(fixture);
+  });
+
+  it("keeps a Subagent Thread active when it is opened while its Subagent runs", async () => {
+    const base = new FakeHarnessAdapter(harnessIdSchema.parse("pi"));
+    const adapter = Object.assign(base, {
+      subagents: {
+        readSnapshot: vi.fn(async (input: { parent: { nativeSessionId: string } }) => ({
+          ok: true as const,
+          value: {
+            turns: [
+              {
+                nativeTurnRef: {
+                  harnessId: harnessIdSchema.parse("pi"),
+                  nativeSessionId: input.parent.nativeSessionId,
+                  nativeTurnKey: "open-while-running-turn",
+                  formatVersion: 1,
+                },
+                input: [{ type: "text", text: "Inspect files" }],
+                items: [],
+                outcome: { status: "unknown" as const, reason: "Background work" },
+              },
+            ],
+          },
+        })),
+      },
+    });
+    const fixture = createFixture({
+      externalAdapters: new Map([["pi", adapter]]) as ReadonlyMap<
+        ExternalHarnessId,
+        FakeHarnessAdapter
+      >,
+    });
+    const threadId = await startPiThread(fixture);
+    const turnId = await startPiTurn(fixture, threadId);
+    const session = adapter.sessions[0];
+    if (!session) throw new Error("Fake Session was not opened");
+    await fixture.collector.waitFor((message) => turnEvent(message, "turn/started", turnId));
+    const childStartedPromise = fixture.collector.waitFor(
+      (message) =>
+        method(message, "thread/started") &&
+        (messageParams(message).thread as JsonObject | undefined)?.parentThreadId === threadId,
+    );
+    session.startSubagentDelegation({
+      subagentId: "open-while-running-call",
+      nativeSubagentId: "native-open-while-running",
+      description: "Inspect files",
+      background: true,
+      status: "running",
+    });
+    const childStarted = await childStartedPromise;
+    const childThread = messageParams(childStarted).thread as JsonObject;
+    const childThreadId = childThread.id as string;
+    expect(childThread.status).toEqual({ type: "active", activeFlags: [] });
+
+    writeRequest(fixture.desktopInput, {
+      id: 96,
+      method: "thread/resume",
+      params: { threadId: childThreadId, excludeTurns: true },
+    });
+    const opened = await fixture.collector.waitFor((message) => requestId(message, 96));
+    expect((opened.result as JsonObject).thread).toEqual(
+      expect.objectContaining({ id: childThreadId, status: { type: "active", activeFlags: [] } }),
+    );
+    expect(
+      fixture.collector.messages.some((message) => threadStatus(message, childThreadId, "idle")),
+    ).toBe(false);
+
+    session.emitSubagentState("native-open-while-running", "completed", "Inspection complete");
+    await expect(
+      fixture.collector.waitFor((message) => threadStatus(message, childThreadId, "idle")),
+    ).resolves.toBeTruthy();
+    writeRequest(fixture.desktopInput, {
+      id: 97,
+      method: "thread/resume",
+      params: { threadId: childThreadId, excludeTurns: true },
+    });
+    const reopened = await fixture.collector.waitFor((message) => requestId(message, 97));
+    expect((reopened.result as JsonObject).thread).toEqual(
+      expect.objectContaining({ id: childThreadId, status: { type: "idle" } }),
+    );
     await stopFixture(fixture);
   });
 
@@ -7422,6 +7639,40 @@ describe("AppServerHost HarnessAdapter projection", () => {
     session.succeedTurn();
     await fixture.collector.waitFor((message) => method(message, "turn/completed"));
     await stopFixture(fixture);
+  });
+
+  it("cancels pending steering before draining operations after a Desktop input error", async () => {
+    const fixture = createFixture();
+    try {
+      const threadId = await startPiThread(fixture);
+      const oldTurnId = await startPiTurn(fixture, threadId);
+      const session = fixture.adapter.sessions[0];
+      if (!session) throw new Error("Fake Session was not opened");
+      const execute = vi.spyOn(session, "execute");
+      writeRequest(fixture.desktopInput, {
+        id: 100,
+        method: "turn/steer",
+        params: {
+          threadId,
+          expectedTurnId: oldTurnId,
+          input: [{ type: "text", text: "must not start during shutdown" }],
+        },
+      });
+      await vi.waitFor(() =>
+        expect(execute).toHaveBeenCalledWith({ type: "turn.cancel", turnId: oldTurnId }),
+      );
+      // No terminal event: only shutdown, not the 20-second steering timeout, can release this waiter.
+      fixture.desktopInput.destroy(new Error("Synthetic Desktop input failure"));
+      const response = await fixture.collector.waitFor((message) => requestId(message, 100));
+      expect(response).toMatchObject({ error: { code: -32074 } });
+      expect(JSON.stringify(response)).toContain("connection closed before replacement");
+      expect(execute).not.toHaveBeenCalledWith(expect.objectContaining({ type: "turn.start" }));
+      expect(await fixture.running).toBe(1);
+    } finally {
+      fixture.host.close();
+      await fixture.running;
+      rmSync(fixture.mappingStoreDirectory, { recursive: true, force: true });
+    }
   });
 
   it("steers an external Thread by cancelling, waiting for terminal projection, and starting once", async () => {
