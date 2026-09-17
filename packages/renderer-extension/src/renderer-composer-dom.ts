@@ -661,7 +661,6 @@ export function mountComposerAgentControl(
   sendButton: HTMLButtonElement,
   enabledAgents: readonly RendererAgent[],
   onSelect: (agent: RendererAgent) => void,
-  onDownload: (agent: ExternalRendererAgent) => void,
   onOpenProviderPicker: () => void,
   onSelectModel: (modelId: string) => void,
   onSelectThinking: (thinkingOptionId: string) => void,
@@ -682,7 +681,6 @@ export function mountComposerAgentControl(
     composerId,
     enabledAgents,
     onSelect,
-    onDownload,
     onOpenProviderPicker,
   );
   const modelPicker = mountRendererModelPicker(composerId, onSelectModel, onSelectThinking);

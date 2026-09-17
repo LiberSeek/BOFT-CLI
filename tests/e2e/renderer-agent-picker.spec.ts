@@ -17,9 +17,10 @@ const { outputFiles } = await build({
 
       globalThis.setupInstallationOrderPicker = () => {
         const preference = createAgentGroupPreferenceStore(null);
+        preference.moveAgent("omp", "main");
         const control = mountRendererAgentPicker(
           "installation-order", ["codex", "pi", "claude-code", "grok", "omp"],
-          () => {}, () => {}, undefined, preference,
+          () => {}, undefined, preference,
         );
         document.body.append(control.root);
         globalThis.updateInstallationOrderPicker = (availability) => {
@@ -74,7 +75,6 @@ const { outputFiles } = await build({
         const control = mountRendererAgentPicker(
           "test-composer",
           ["codex", "pi", "claude-code", "grok"],
-          () => {},
           () => {},
           undefined,
           groups,

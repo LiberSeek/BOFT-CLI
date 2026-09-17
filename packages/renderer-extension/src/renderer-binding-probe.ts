@@ -67,7 +67,6 @@ import { RendererMethodUnavailableError } from "./renderer-request-sender.js";
 import { thinkingOptionsForModel } from "./renderer-model-picker.js";
 import { installRendererApprovalStyle } from "./renderer-approval-style.js";
 import { installRendererSubagentRowMeta } from "./renderer-subagent-row-meta.js";
-import { RENDERER_AGENT_INSTALL_URLS } from "./renderer-agent-picker.js";
 import {
   readClaudePermissionModePreference,
   writeClaudePermissionModePreference,
@@ -2030,11 +2029,6 @@ export function installRendererBindingProbe(
     }
   };
 
-  const openInstallPage = (agent: ExternalRendererAgent): void => {
-    const url = RENDERER_AGENT_INSTALL_URLS[agent];
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
   function resetHarnessAvailabilityRetry(hostId: string): void {
     const state = hostHarnessAvailabilityState(hostId);
     if (state.retryTimer !== null) {
@@ -2346,7 +2340,6 @@ export function installRendererBindingProbe(
         if (!composer.isConnected || !mounted) return;
         void switchComposerAgent(mounted, agent);
       },
-      openInstallPage,
       () => {
         void loadCodexAccounts();
       },

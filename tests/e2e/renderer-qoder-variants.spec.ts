@@ -8,17 +8,27 @@ if (browserExecutable) test.use({ launchOptions: { executablePath: browserExecut
 const { outputFiles } = await build({
   stdin: {
     contents: `
+      import { createAgentGroupPreferenceStore } from "./packages/renderer-extension/src/agent-group-preference.ts";
       import { mountRendererAgentPicker, renderRendererAgentPicker } from "./packages/renderer-extension/src/renderer-agent-picker.ts";
       import { modelSelectionForAgent } from "./packages/renderer-extension/src/versioned-renderer-adapter.ts";
       import { decodeHarnessPluginRoute } from "@codexhost/shared-contracts";
       const state = { agent: "codex", phase: "draft" };
       const availability = { qoder: "ready", "qoder-cn": "ready" };
+      const groups = createAgentGroupPreferenceStore(null);
+      groups.moveAgent("qoder", "main");
+      groups.moveAgent("qoder-cn", "main");
+      globalThis.__codexhostSettingsShellV1 = {
+        openSettings(_opener, pageId) {
+          globalThis.openedSettingsPage = pageId;
+          return true;
+        },
+      };
       const control = mountRendererAgentPicker("qoder-variants", ["codex", "qoder", "qoder-cn"], (agent) => {
         state.agent = agent;
         const selection = modelSelectionForAgent(null, null, agent);
         globalThis.selectedHarness = decodeHarnessPluginRoute(selection.model).harnessId;
         render();
-      }, (agent) => { globalThis.installAgent = agent; });
+      }, undefined, groups);
       function render() { renderRendererAgentPicker(control, state, "ready", false, availability); }
       globalThis.setAvailability = (agent, status) => { availability[agent] = status; render(); };
       document.body.append(control.root);
@@ -61,5 +71,7 @@ test("Qoder and Qoder CN appear separately and select distinct Harness routes", 
   await expect(global).toBeEnabled();
   await expect(cn).toBeDisabled();
   await page.getByRole("button", { name: "Install Qoder CN", exact: true }).click();
-  expect(await page.evaluate(() => Reflect.get(globalThis, "installAgent"))).toBe("qoder-cn");
+  expect(await page.evaluate(() => Reflect.get(globalThis, "openedSettingsPage"))).toBe(
+    "connections",
+  );
 });

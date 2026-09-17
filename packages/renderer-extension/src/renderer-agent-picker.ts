@@ -1,4 +1,5 @@
 import {
+  defaultAgentGroupSection,
   getSharedAgentGroupPreferenceStore,
   type AgentGroupPreferenceStore,
 } from "./agent-group-preference.js";
@@ -98,9 +99,8 @@ interface AgentOptionControl {
   check: HTMLElement;
   // Overlays the trailing check slot as Install ("+") when not installed, or
   // a red error ("!") once it has failed — mutually exclusive with a selected
-  // ✓ since `RendererAgentAvailability` is a single enum value. Error mode
-  // has no inline details (picker only gets the coarse enum), so it links
-  // out to Settings → Connections instead.
+  // ✓ since `RendererAgentAvailability` is a single enum value. Both modes
+  // open Settings → Connections on the Agent's row (install guide or error).
   action: HTMLButtonElement | null;
 }
 
@@ -235,7 +235,6 @@ export function mountRendererAgentPicker(
   composerId: string,
   enabledAgents: readonly RendererAgent[],
   onSelect: (agent: RendererAgent) => void,
-  onDownload: (agent: ExternalRendererAgent) => void,
   onOpen?: () => void,
   groupPreference: AgentGroupPreferenceStore = getSharedAgentGroupPreferenceStore(),
 ): RendererAgentPickerControl {
@@ -437,17 +436,12 @@ export function mountRendererAgentPicker(
             });
             control.addEventListener("click", (event) => {
               event.stopPropagation();
-              // "error" mode has nothing more to show inline — the picker
-              // only knows the coarse availability enum, not the full
-              // `CodexhostError` — so it hands off to Settings, which does.
-              // `requestConnectionsPageFocus` makes sure Settings opens
-              // straight to *this* Agent's row, not just the page.
-              if (control.dataset.mode === "error") {
-                requestConnectionsPageFocus(agent);
-                openConnectionsSettings(trigger);
-              } else {
-                onDownload(agent);
-              }
+              // Install and error both hand off to Settings → Connections.
+              // The picker only knows the coarse availability enum; that
+              // page has the install command and error details.
+              // `requestConnectionsPageFocus` opens this Agent's row.
+              requestConnectionsPageFocus(agent);
+              openConnectionsSettings(trigger);
             });
             return control;
           })();
@@ -635,7 +629,8 @@ export function mountRendererAgentPicker(
     for (const agent of enabledAgents) {
       if (seen.has(agent)) continue;
       seen.add(agent);
-      nextMain.push(agent);
+      if (agent === "codex" || defaultAgentGroupSection(agent) === "main") nextMain.push(agent);
+      else nextMore.push(agent);
     }
 
     // Stable sorting preserves the default/custom order within each section.
