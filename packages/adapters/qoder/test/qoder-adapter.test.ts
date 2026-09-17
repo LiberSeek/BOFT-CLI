@@ -562,7 +562,8 @@ describe("QoderAdapter", () => {
         if (!turn) return;
         expect(turn.nativeTurnRef.nativeTurnKey).toBe("user-msg-1");
         expect(turn.checkpoint?.checkpointId).toBe("asst-msg-1");
-        expect(turn.input[0]?.text).toBe("Build a feature");
+        const firstInput = turn.input[0];
+        expect(firstInput?.type === "text" ? firstInput.text : undefined).toBe("Build a feature");
         expect(turn.items).toHaveLength(1);
         const item0 = turn.items[0];
         expect(item0).toBeDefined();
@@ -2241,7 +2242,8 @@ describe("QoderAdapter", () => {
       if (!turn) return;
       expect(turn.nativeTurnRef.nativeTurnKey).toBe("user-1");
       expect(turn.checkpoint?.checkpointId).toBe("asst-2");
-      expect(turn.input[0]?.text).toBe("Check git status");
+      const firstInput = turn.input[0];
+      expect(firstInput?.type === "text" ? firstInput.text : undefined).toBe("Check git status");
       expect(turn.items).toHaveLength(2);
 
       const cmdItem = turn.items[0];

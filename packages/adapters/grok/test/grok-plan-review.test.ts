@@ -70,7 +70,10 @@ describe("Grok exit_plan_mode ACP envelope", () => {
     expect(interaction.title).toBe("Review plan");
     expect(interaction.questions[0]?.prompt).toContain("# Implement");
     expect(interaction.questions[0]?.prompt).toContain("exit Grok plan mode");
-    expect(interaction.questions[0]?.options.map((option) => option.value)).toEqual([
+    const question = interaction.questions[0];
+    expect(question?.type).toBe("choice");
+    if (question?.type !== "choice") return;
+    expect(question.options.map((option) => option.value)).toEqual([
       GROK_PLAN_APPROVE_VALUE,
       GROK_PLAN_STAY_VALUE,
     ]);
