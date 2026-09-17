@@ -4286,10 +4286,9 @@ export class AppServerHost {
 
       let response: HostApprovalResponse;
       try {
-        response =
-          jsonRpcResponseFailed(value)
-            ? pending.projection.denyResponse
-            : pending.projection.parseResponse(value.result);
+        response = jsonRpcResponseFailed(value)
+          ? pending.projection.denyResponse
+          : pending.projection.parseResponse(value.result);
       } catch (error) {
         this.#diagnose(error);
         response = pending.projection.denyResponse;
@@ -4435,10 +4434,9 @@ export class AppServerHost {
 
       let response;
       try {
-        response =
-          jsonRpcResponseFailed(value)
-            ? { type: "question" as const, answers: {}, cancelled: true as const }
-            : pending.projection.parseResponse(value.result);
+        response = jsonRpcResponseFailed(value)
+          ? { type: "question" as const, answers: {}, cancelled: true as const }
+          : pending.projection.parseResponse(value.result);
       } catch (error) {
         this.#diagnose(error);
         response = { type: "question" as const, answers: {}, cancelled: true as const };
