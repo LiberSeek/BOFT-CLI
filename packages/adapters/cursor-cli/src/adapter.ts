@@ -348,7 +348,11 @@ export class CursorSession implements HarnessSession {
       void active.task.finally(() => clearTimeout(timer));
       return { ok: true, value: { cancellationRequested: true } };
     }
-    if (this.#active || this.#configuring) return rejected("sessionBusy", "Cursor session is busy");
+    if (
+      this.#configuring ||
+      (this.#active && command.type !== "model.select" && command.type !== "thinking.select")
+    )
+      return rejected("sessionBusy", "Cursor session is busy");
     if (command.type === "turn.start") {
       if (this.#submitted.has(command.turnId))
         return rejected("invalidState", "Cursor turn was already submitted");

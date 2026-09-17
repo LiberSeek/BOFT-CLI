@@ -83,6 +83,25 @@ afterEach(() => {
 });
 
 describe("Cursor native configuration", () => {
+  it("forwards model variants while a Turn is active", async () => {
+    const f = session();
+    const gate = Promise.withResolvers<{ stopReason: "end_turn" }>();
+    f.transport.action = () => gate.promise;
+    const configure = vi.spyOn(f.transport, "configure");
+    try {
+      await f.session.execute(start);
+      const model = cursorModelRef("model[effort=high]");
+      expect(await f.session.execute({ type: "model.select", model })).toMatchObject({ ok: true });
+      expect(configure).toHaveBeenCalledWith("model", "model[effort=high]");
+      expect(
+        await f.session.execute({ ...start, turnId: hostTurnIdSchema.parse("duplicate") }),
+      ).toMatchObject({ error: { code: "sessionBusy" } });
+    } finally {
+      gate.resolve({ stopReason: "end_turn" });
+      await f.session.close();
+      await f.done;
+    }
+  });
   it("retains inspection without expiry and only refreshes explicitly, merging pending requests", async () => {
     const clock = vi.spyOn(Date, "now").mockReturnValue(0),
       gate = Promise.withResolvers<typeof info>();

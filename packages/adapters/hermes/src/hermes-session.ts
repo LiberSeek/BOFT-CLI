@@ -936,9 +936,6 @@ export class HermesSession implements HarnessSession {
   }
 
   async #selectModel(command: ModelSelectCommand): Promise<HarnessResult<ModelSelectCompleted>> {
-    if (this.#activeTurn) {
-      return err("sessionBusy", "Model selection conflicts with an active Turn", true);
-    }
     const native = decodeHermesModelRefId(command.model.id);
     if (!native) {
       return err("invalidRequest", "Model Ref does not belong to Hermes");

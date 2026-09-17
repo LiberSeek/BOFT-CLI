@@ -808,16 +808,17 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
     if (force || changed) this.#emit({ type: "session.state.changed", state: next });
   }
 
-  #configurationBusy(area: string): HarnessError | undefined {
+  #configurationBusy(area: string, allowActiveTurn = false): HarnessError | undefined {
     if (
-      this.#active ||
-      this.#buffer ||
-      this.#pendingByRequestId.size > 0 ||
-      this.#activeCommand ||
-      this.#commandAdmission ||
-      this.#queuedDeliveries.size > 0 ||
       this.#configuring ||
-      this.#reading
+      this.#reading ||
+      (!allowActiveTurn &&
+        (this.#active ||
+          this.#buffer ||
+          this.#pendingByRequestId.size > 0 ||
+          this.#activeCommand ||
+          this.#commandAdmission ||
+          this.#queuedDeliveries.size > 0))
     ) {
       return busyError(`select ${area}`);
     }
@@ -825,7 +826,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
   }
 
   async #selectModel(command: ModelSelectCommand): Promise<HarnessResult<ModelSelectCompleted>> {
-    const busy = this.#configurationBusy("a Model");
+    const busy = this.#configurationBusy("a Model", true);
     if (busy) return { ok: false, error: busy };
     let requested;
     try {
@@ -849,7 +850,7 @@ export class ModernHarnessSession implements HarnessSession, ModernEventSink {
   async #selectThinking(
     command: ThinkingSelectCommand,
   ): Promise<HarnessResult<ThinkingSelectCompleted>> {
-    const busy = this.#configurationBusy("Thinking");
+    const busy = this.#configurationBusy("Thinking", true);
     if (busy) return { ok: false, error: busy };
     let requested;
     try {

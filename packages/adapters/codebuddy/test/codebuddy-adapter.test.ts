@@ -4,6 +4,7 @@ import {
   harnessIdSchema,
   harnessInspectionSchema,
   harnessPermissionModeIdSchema,
+  harnessThinkingOptionIdSchema,
   hostTurnIdSchema,
 } from "@codexhost/shared-contracts";
 import { CodeBuddyAdapter } from "../src/codebuddy-adapter.js";
@@ -188,7 +189,7 @@ describe("CodeBuddy native Adapter", () => {
     });
   });
 
-  it("rejects busy starts/config/snapshots, cancels only the matching Turn, and continues once", async () => {
+  it("allows active Model/Thinking selection but rejects busy starts/snapshots and cancels only the matching Turn", async () => {
     const { adapter } = setup();
     const session = await create(adapter);
     const events = collect(session);
@@ -197,8 +198,14 @@ describe("CodeBuddy native Adapter", () => {
       error: { code: "sessionBusy" },
     });
     expect(await session.execute({ type: "model.select", model: modelRef("other") })).toMatchObject(
-      { error: { code: "sessionBusy" } },
+      { ok: true },
     );
+    expect(
+      await session.execute({
+        type: "thinking.select",
+        thinkingOptionId: harnessThinkingOptionIdSchema.parse("high"),
+      }),
+    ).toMatchObject({ ok: true });
     expect(await session.readSnapshot()).toMatchObject({ error: { code: "sessionBusy" } });
     expect(
       await session.execute({ type: "turn.cancel", turnId: hostTurnIdSchema.parse("wrong") }),

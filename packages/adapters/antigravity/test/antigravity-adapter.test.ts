@@ -1353,6 +1353,26 @@ if (count === 0) {
           input: [{ type: "text", text: "hi gemini" }],
         });
 
+        // Configure the next invocation while the first native process is still running.
+        expect(
+          await session.execute({
+            type: "model.select",
+            model: harnessModelRefSchema.parse({ id: "gemini-3.7-flash" }),
+          }),
+        ).toMatchObject({ ok: true });
+        expect(
+          await session.execute({
+            type: "thinking.select",
+            thinkingOptionId: harnessThinkingOptionIdSchema.parse("high"),
+          }),
+        ).toMatchObject({ ok: true });
+        expect(
+          await session.execute({
+            type: "model.select",
+            model: harnessModelRefSchema.parse({ id: "claude-3-7-sonnet" }),
+          }),
+        ).toMatchObject({ ok: true });
+
         let turn1Usage: Record<string, unknown> | null = null;
         while (true) {
           const ev = await nextEvent(iterator);
@@ -1363,13 +1383,6 @@ if (count === 0) {
         expect(turn1Usage?.contextWindowTokens).toBe(1_048_576);
         expect(turn1Usage).not.toHaveProperty("cachedInputTokens");
         expect(turn1Usage).not.toHaveProperty("cacheHitRatePercent");
-
-        // Switch to Claude (200k window)
-        const selectClaude = await session.execute({
-          type: "model.select",
-          model: harnessModelRefSchema.parse({ id: "claude-3-7-sonnet" }),
-        });
-        expect(selectClaude.ok).toBe(true);
 
         // Turn 2: Claude
         const turn2Id = hostTurnIdSchema.parse("turn-switch-2");

@@ -25,7 +25,7 @@ import type {
   OmpTurnEvent,
   OmpTurnResult,
 } from "../src/omp-rpc-session.js";
-import type { OmpNativeModel } from "../src/omp-model-catalog.js";
+import { encodeOmpModelRef, type OmpNativeModel } from "../src/omp-model-catalog.js";
 
 class FakeOmpTransport implements OmpTurnTransport {
   state: OmpSessionState = {
@@ -875,6 +875,49 @@ describe("OMP Adapter Subagents", () => {
     expect(completed).toHaveLength(1);
     expect(completed[0]).toMatchObject({ outcome: { status: "failed" } });
     await opened.value.close();
+    await adapter.close();
+  });
+
+  it("forwards Model and Thinking selection during a Turn without admitting another Turn", async () => {
+    const transport = new FakeOmpTransport();
+    transport.autoCompleteTurn = false;
+    const selectModel = vi.spyOn(transport, "selectModel");
+    const selectThinking = vi.spyOn(transport, "selectThinkingOption");
+    vi.spyOn(transport, "getAvailableThinkingLevels").mockResolvedValue([
+      harnessThinkingOptionIdSchema.parse("off"),
+      harnessThinkingOptionIdSchema.parse("high"),
+    ]);
+    const adapter = new OmpAdapter({}, { createTransport: () => transport });
+    await adapter.inspect({ cwd: "/synthetic" });
+    const opened = await adapter.open({ kind: "create", cwd: "/synthetic" });
+    if (!opened.ok) throw new Error(opened.error.message);
+    const session = opened.value;
+    await session.execute({
+      type: "turn.start",
+      turnId: "active-config" as HostTurnId,
+      input: [{ type: "text", text: "go" }],
+    });
+    const model = encodeOmpModelRef({ provider: "synthetic", id: "model" });
+    await expect(session.execute({ type: "model.select", model })).resolves.toMatchObject({
+      ok: true,
+    });
+    await expect(
+      session.execute({
+        type: "thinking.select",
+        thinkingOptionId: harnessThinkingOptionIdSchema.parse("high"),
+      }),
+    ).resolves.toEqual({ ok: true, value: { completed: true } });
+    expect(selectModel).toHaveBeenCalled();
+    expect(selectThinking).toHaveBeenCalled();
+    await expect(
+      session.execute({
+        type: "turn.start",
+        turnId: "duplicate-config" as HostTurnId,
+        input: [{ type: "text", text: "go" }],
+      }),
+    ).resolves.toMatchObject({ ok: false, error: { code: "sessionBusy" } });
+    transport.succeed("done");
+    await session.close();
     await adapter.close();
   });
 
