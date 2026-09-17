@@ -25,7 +25,10 @@ vi.mock("../../src/assets/logo-animated.mp4", () => ({
 
 import { createAgentGroupPreferenceStore } from "../../src/agent-group-preference.js";
 import { RendererSettingsPageScope } from "../../src/settings/core.js";
-import { createConnectionsSettingsPage } from "../../src/settings/connections-page.js";
+import {
+  createConnectionsSettingsPage,
+  requestConnectionsPageFocus,
+} from "../../src/settings/connections-page.js";
 import { createHarnessAccounts } from "../../src/settings/harness-accounts.js";
 import { rendererSettingsMessages } from "../../src/settings/localization.js";
 import { createRendererModelClient } from "../../src/renderer-model-client.js";
@@ -848,6 +851,82 @@ describe("Renderer Connections page", () => {
 
     cleanup?.();
   });
+
+  it("expands the requested Agent row when another surface asks to focus it", () => {
+    const groupPreference = createAgentGroupPreferenceStore({
+      data: new Map<string, string>(),
+      getItem(key: string) {
+        return this.data.get(key) ?? null;
+      },
+      setItem(key: string, value: string) {
+        this.data.set(key, value);
+      },
+      removeItem(key: string) {
+        this.data.delete(key);
+      },
+      clear() {
+        this.data.clear();
+      },
+      key() {
+        return null;
+      },
+      get length() {
+        return this.data.size;
+      },
+    } satisfies Storage);
+    const diagnostics: RendererConnectionDiagnostics = {
+      snapshot: vi.fn((): RendererConnectionSnapshot => ({
+        adapter: {
+          state: "ready",
+          reason: "ready",
+          modelUpdates: 0,
+          hook: "request-bridge",
+        },
+        hosts: [
+          {
+            hostId: "local",
+            active: true,
+            agents: [
+              { agent: "pi", availability: "notInstalled", error: null },
+              { agent: "deepseek-harness", availability: "notInstalled", error: null },
+            ],
+          },
+        ],
+      })),
+      refresh: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    };
+    requestConnectionsPageFocus("deepseek-harness");
+    const page = createConnectionsSettingsPage(
+      rendererSettingsMessages("zh-CN"),
+      () => diagnostics,
+      groupPreference,
+    );
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    const focused = descendants(content).find(
+      (candidate) => candidate.dataset.connectionItem === "deepseek-harness",
+    );
+    const other = descendants(content).find(
+      (candidate) => candidate.dataset.connectionItem === "pi",
+    );
+    expect(focused?.dataset.connectionExpanded).toBe("true");
+    expect(other?.dataset.connectionExpanded).toBe("false");
+    expect(
+      descendants(content).some(
+        (candidate) => candidate.dataset.connectionDetail === "deepseek-harness",
+      ),
+    ).toBe(true);
+
+    cleanup?.();
+  });
 });
 
 describe("Renderer Plugin page", () => {
@@ -1516,6 +1595,7 @@ describe("Renderer Session Import page", () => {
         ?.dispatch("submit", { preventDefault: vi.fn() });
     };
     await vi.waitFor(() => expect(visibleRows()).toHaveLength(20));
+    expect(visibleText(content)).not.toContain("Activity unknown");
     expect(action("previous").disabled).toBe(true);
     expect(action("page-summary").textContent).toBe("45 records / 1-20");
     action("next").dispatch("click");
@@ -1691,7 +1771,7 @@ describe("Renderer Session Import page", () => {
     await oldList.promise;
     await Promise.resolve();
     expect(visibleText(content)).toContain("Pi original");
-    expect(visibleText(content)).toContain("Activity unknown");
+    expect(visibleText(content)).not.toContain("Activity unknown");
     expect(visibleText(content)).toContain("close the session in its native client");
     const button = descendants(content).find(
       ({ dataset }) => dataset.sessionImportAction === "import",

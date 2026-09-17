@@ -1,4 +1,4 @@
-import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -71,36 +71,41 @@ afterEach(async () => {
 });
 
 describe("Harness plugin discovery and loading", () => {
-  it("loads the relocated CodeBuddy bundle without workspace dependencies and isolates factories", async () => {
-    const directory = await root(["codebuddy"]);
-    await cp(
-      path.resolve("packages/host-runtime/dist/plugins/codebuddy"),
-      path.join(directory, "codebuddy"),
-      { recursive: true },
-    );
-    const options = {
-      roots: [directory],
-      context: {
-        ...context,
-        environment: { CODEXHOST_CODEBUDDY_COMMAND: path.join(directory, "missing-codebuddy") },
-      },
-      warmup: false,
-    };
-    const first = await loadHarnessPlugins(options),
-      second = await loadHarnessPlugins(options);
-    try {
-      expect(first.list()).toMatchObject([{ id: "codebuddy", name: "CodeBuddy" }]);
-      const adapter = [...first.adapters.values()][0],
-        independent = [...second.adapters.values()][0];
-      expect(adapter).not.toBe(independent);
-      expect(await adapter?.inspect()).toMatchObject({ status: "notInstalled" });
-      await first.close();
-      expect(await independent?.inspect()).toMatchObject({ status: "notInstalled" });
-    } finally {
-      await first.close();
-      await second.close();
-    }
-  });
+  it.each([
+    ["codebuddy", "CodeBuddy", "CODEXHOST_CODEBUDDY_COMMAND"],
+    ["qoder", "Qoder", "CODEXHOST_QODER_COMMAND"],
+    ["qoder-cn", "Qoder CN", "CODEXHOST_QODERCN_COMMAND"],
+  ])(
+    "loads the relocated %s bundle without workspace dependencies and isolates factories",
+    async (id, name, commandVariable) => {
+      const directory = await root([id]);
+      await cp(path.resolve("packages/host-runtime/dist/plugins", id), path.join(directory, id), {
+        recursive: true,
+      });
+      const options = {
+        roots: [directory],
+        context: {
+          ...context,
+          environment: { [commandVariable]: path.join(directory, `missing-${id}`) },
+        },
+        warmup: false,
+      };
+      const first = await loadHarnessPlugins(options),
+        second = await loadHarnessPlugins(options);
+      try {
+        expect(first.list()).toMatchObject([{ id, name }]);
+        const adapter = [...first.adapters.values()][0],
+          independent = [...second.adapters.values()][0];
+        expect(adapter).not.toBe(independent);
+        expect(await adapter?.inspect()).toMatchObject({ status: "notInstalled" });
+        await first.close();
+        expect(await independent?.inspect()).toMatchObject({ status: "notInstalled" });
+      } finally {
+        await first.close();
+        await second.close();
+      }
+    },
+  );
 
   it.each([
     "pi",
@@ -115,6 +120,8 @@ describe("Harness plugin discovery and loading", () => {
     "kiro-cli",
     "codebuddy",
     "cursor-cli",
+    "qoder",
+    "qoder-cn",
   ])("ships a valid %s manifest and resolvable compiled resources", async (id) => {
     const location = path.resolve("packages/adapters", id);
     const manifest = harnessPluginManifestSchema.parse(
@@ -402,6 +409,96 @@ describe("Harness plugin discovery and loading", () => {
       expect(await readFile(path.join(slow, "closed"), "utf8")).toBe("yes"),
     );
     await registry.close();
+  });
+
+  it("gives later plugins a full timeout after earlier plugins finish", async () => {
+    const ids = ["alpha-agent", "beta-agent", "gamma-agent", "delta-agent", "epsilon-agent"];
+    const directory = await root(ids);
+    for (const id of ids) {
+      await plugin(directory, id, {
+        code: `
+      import { FakeHarnessAdapter } from ${JSON.stringify(fakeModule)};
+      export async function createHarnessAdapter() {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        return new FakeHarnessAdapter(${JSON.stringify(id)});
+      }
+    `,
+      });
+    }
+    const diagnose = vi.fn();
+    const registry = await loadHarnessPlugins({
+      roots: [directory],
+      context,
+      // Leave room for CI imports; two worker waves still exceed a shared 1300ms budget.
+      loadTimeoutMs: 1_300,
+      diagnose,
+    });
+    try {
+      expect(diagnose).not.toHaveBeenCalled();
+      const inspections = await Promise.all(
+        [...registry.adapters.values()].map((adapter) => adapter.inspect()),
+      );
+      expect(inspections).toHaveLength(ids.length);
+      expect(inspections.every((inspection) => inspection.status === "ready")).toBe(true);
+    } finally {
+      await registry.close();
+    }
+  });
+
+  it("stops taking later plugins when the load is aborted", async () => {
+    const ids = ["a-agent", "b-agent", "c-agent", "d-agent", "e-agent"];
+    const directory = await root(ids);
+    const started = path.join(directory, "started");
+    const finished = path.join(directory, "finished");
+    await mkdir(started);
+    await mkdir(finished);
+    const release = path.join(directory, "release");
+    const controller = new AbortController();
+    for (const id of ids) {
+      await plugin(directory, id, {
+        code: `
+      import { access, writeFile } from "node:fs/promises";
+      import { FakeHarnessAdapter } from ${JSON.stringify(fakeModule)};
+      const started = ${JSON.stringify(pathToFileURL(path.join(started, id)).href)};
+      const finished = ${JSON.stringify(pathToFileURL(path.join(finished, id)).href)};
+      const release = ${JSON.stringify(pathToFileURL(release).href)};
+      export async function createHarnessAdapter() {
+        await writeFile(new URL(started), "yes");
+        try {
+          for (;;) {
+            try {
+              await access(new URL(release));
+              return new FakeHarnessAdapter(${JSON.stringify(id)});
+            } catch {
+              await new Promise((resolve) => setTimeout(resolve, 20));
+            }
+          }
+        } finally {
+          await writeFile(new URL(finished), "yes");
+        }
+      }
+    `,
+      });
+    }
+    const pending = loadHarnessPlugins({
+      roots: [directory],
+      context,
+      loadTimeoutMs: 5_000,
+      signal: controller.signal,
+    });
+    await vi.waitFor(async () => expect(await readdir(started)).toHaveLength(4));
+    controller.abort();
+    const registry = await pending;
+    try {
+      expect((await readdir(started)).sort()).toEqual(["a-agent", "b-agent", "c-agent", "d-agent"]);
+      expect(registry.list().map(({ id }) => id)).not.toContain("e-agent");
+    } finally {
+      await writeFile(release, "ok");
+      await vi.waitFor(async () =>
+        expect((await readdir(finished)).sort()).toEqual((await readdir(started)).sort()),
+      );
+      await registry.close();
+    }
   });
 });
 

@@ -62,6 +62,20 @@ describe("workflow and form contracts", () => {
     expect(workflow).not.toMatch(/github\.event\.(?:issue|pull_request)\.(?:body|title)/u);
   });
 
+  it("allows explicit installer-only recovery without bypassing release prerequisites", async () => {
+    const workflow = await read(".github/workflows/release-packages.yml");
+    expect(workflow).toContain("skip_npm:");
+    expect(workflow).toContain("if: github.event_name != 'workflow_dispatch' || !inputs.skip_npm");
+    const publishRelease = workflow.slice(workflow.indexOf("  publish-release:"));
+    expect(publishRelease).toContain("needs.prepare.result == 'success'");
+    expect(publishRelease).toContain("needs.package.result == 'success'");
+    expect(publishRelease).toContain("needs.publish-npm.result == 'success'");
+    expect(publishRelease).toContain(
+      "github.event_name == 'workflow_dispatch' && inputs.skip_npm && needs.publish-npm.result == 'skipped'",
+    );
+    expect(publishRelease).toContain("await verifyRelease(");
+  });
+
   it("pins external Actions and release build/publish checkouts to immutable SHAs", async () => {
     for (const file of [
       ".github/workflows/repository-maintenance.yml",

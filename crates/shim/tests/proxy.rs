@@ -307,6 +307,58 @@ fn preserves_arguments_and_removes_recursive_environment() {
 }
 
 #[test]
+fn routes_skysight_memory_app_server_to_the_stock_codex_cli() {
+    let fake_codex = fake_codex_path();
+    let fake_codex_text = fake_codex.to_string_lossy();
+    let output = run_shim(
+        b"",
+        &[
+            "app-server",
+            "--stdio",
+            "-c",
+            "model_provider=\"openai-memgen\"",
+        ],
+        &[
+            (HOST_NODE_PATH_ENV, fake_codex_text.as_ref()),
+            (HOST_RUNTIME_PATH_ENV, fake_codex_text.as_ref()),
+            ("FAKE_CODEX_PRINT_INVOCATION", "1"),
+        ],
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Even with a Host Runtime configured, the Skysight-specific provider must execute the stock
+    // CLI directly so its one-shot summary response reaches SkyComputerUseService.
+    assert!(output.status.success(), "{stderr}");
+    assert!(stderr.contains("args=app-server|--stdio|-c|model_provider=\"openai-memgen\""));
+    assert!(stderr.contains("codex_cli_path_present=false"));
+    assert!(output.stdout.is_empty());
+}
+
+#[test]
+fn routes_internal_codex_auxiliary_app_server_to_the_stock_cli() {
+    let fake_codex = fake_codex_path();
+    let fake_codex_text = fake_codex.to_string_lossy();
+    let output = run_shim(
+        b"",
+        &["app-server", "--stdio"],
+        &[
+            (HOST_NODE_PATH_ENV, fake_codex_text.as_ref()),
+            (HOST_RUNTIME_PATH_ENV, fake_codex_text.as_ref()),
+            ("CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "skysight"),
+            ("FAKE_CODEX_PRINT_INVOCATION", "1"),
+        ],
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // The internal originator marker is an official ownership boundary. It must override an
+    // otherwise valid Host Runtime route without removing the caller's marker from the stock CLI.
+    assert!(output.status.success(), "{stderr}");
+    assert!(stderr.contains("args=app-server|--stdio"));
+    assert!(stderr.contains("codex_cli_path_present=false"));
+    assert!(output.stdout.is_empty());
+}
+
+#[test]
 fn managed_remote_child_receives_inherited_proxy_environment() {
     let output = run_shim(
         b"",
@@ -460,6 +512,117 @@ fn macos_browser_helper_preserving_only_cli_override_reaches_official_cli() {
         "{stderr}"
     );
     assert!(stderr.contains("codex_cli_path_present=false"), "{stderr}");
+    fs::remove_dir_all(directory).unwrap();
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_browser_sandbox_without_cli_environment_reaches_official_cli() {
+    let directory = temporary_directory();
+    let bundle = macos_fixture_bundle(&directory);
+    let mut command = Command::new(shim_path());
+    for (key, _) in std::env::vars_os() {
+        if key.to_string_lossy().starts_with("CODEXHOST_") {
+            command.env_remove(key);
+        }
+    }
+    // node_repl resolves CODEX_CLI_PATH before clearing the kernel child's
+    // environment. Neither CLI override reaches this sandbox invocation.
+    let output = command
+        .args([
+            "sandbox",
+            "-c",
+            "shell_environment_policy.inherit=\"all\"",
+            "--",
+            "/official/node",
+            "--experimental-vm-modules",
+            "/official/kernel.js",
+        ])
+        .env_remove(CODEX_CLI_PATH_ENV)
+        .env(CUSTOM_INSTALL_ROOT_ENV, &bundle)
+        .env("FAKE_CODEX_PRINT_INVOCATION", "1")
+        .env("FAKE_CODEX_EXIT_CODE", "7")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(7), "{stderr}");
+    assert!(output.stdout.is_empty());
+    assert!(
+        stderr.contains(
+            "args=sandbox|-c|shell_environment_policy.inherit=\"all\"|--|/official/node|--experimental-vm-modules|/official/kernel.js"
+        ),
+        "{stderr}"
+    );
+    assert!(stderr.contains("codex_cli_path_present=false"), "{stderr}");
+    assert!(!directory.join("local-host-runtime-owner.lock").exists());
+    fs::remove_dir_all(directory).unwrap();
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_browser_sandbox_fallback_keeps_explicit_targets_authoritative() {
+    let directory = temporary_directory();
+    let bundle = macos_fixture_bundle(&directory);
+    for (key, target, error) in [
+        (
+            STOCK_CODEX_PATH_ENV,
+            directory.join("missing-codex"),
+            "does not exist",
+        ),
+        (STOCK_CODEX_PATH_ENV, shim_path(), "Shim itself"),
+        (
+            CODEX_CLI_PATH_ENV,
+            fake_codex_path(),
+            "does not identify the running Shim",
+        ),
+        (
+            CUSTOM_INSTALL_ROOT_ENV,
+            directory.join("missing-bundle"),
+            "Desktop-managed official Codex CLI could not be discovered",
+        ),
+    ] {
+        let output = Command::new(shim_path())
+            .args(["sandbox", "--", "/usr/bin/true"])
+            .env_remove(STOCK_CODEX_PATH_ENV)
+            .env_remove(CODEX_CLI_PATH_ENV)
+            .env(CUSTOM_INSTALL_ROOT_ENV, &bundle)
+            .env(key, target)
+            .env("PATH", fake_codex_path().parent().unwrap())
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(!output.status.success(), "{key}: {stderr}");
+        assert!(output.stdout.is_empty());
+        assert!(stderr.contains(error), "{key}: {stderr}");
+    }
+    fs::remove_dir_all(directory).unwrap();
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_browser_sandbox_fallback_rejects_unrelated_commands() {
+    let directory = temporary_directory();
+    let bundle = macos_fixture_bundle(&directory);
+    for arguments in [
+        vec!["app-server", "--listen", "stdio://"],
+        vec!["exec", "sandbox"],
+        vec!["--model", "sandbox"],
+    ] {
+        let output = Command::new(shim_path())
+            .args(arguments)
+            .env_remove(STOCK_CODEX_PATH_ENV)
+            .env_remove(CODEX_CLI_PATH_ENV)
+            .env(CUSTOM_INSTALL_ROOT_ENV, &bundle)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(!output.status.success(), "{stderr}");
+        assert!(output.stdout.is_empty());
+        assert!(stderr.contains("CODEXHOST_STOCK_CODEX_PATH is required"));
+    }
     fs::remove_dir_all(directory).unwrap();
 }
 

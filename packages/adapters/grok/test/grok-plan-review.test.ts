@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import { hostInteractionIdSchema, hostTurnIdSchema } from "@codexhost/shared-contracts";
 
 import {
+  GROK_PLAN_APPROVE_LABEL,
+  GROK_PLAN_APPROVE_VALUE,
   GROK_PLAN_DECISION_ID,
+  GROK_PLAN_OUTCOME_APPROVED,
+  GROK_PLAN_OUTCOME_CANCELLED,
+  GROK_PLAN_STAY_VALUE,
   createGrokPlanReview,
   grokExitPlanModeResponse,
   grokPlanRejectedResponse,
@@ -65,20 +70,30 @@ describe("Grok exit_plan_mode ACP envelope", () => {
     expect(interaction.title).toBe("Review plan");
     expect(interaction.questions[0]?.prompt).toContain("# Implement");
     expect(interaction.questions[0]?.prompt).toContain("exit Grok plan mode");
+    expect(interaction.questions[0]?.options.map((option) => option.value)).toEqual([
+      GROK_PLAN_APPROVE_VALUE,
+      GROK_PLAN_STAY_VALUE,
+    ]);
     expect(
       grokExitPlanModeResponse(request, {
         type: "question",
-        answers: { [GROK_PLAN_DECISION_ID]: ["approve"] },
+        answers: { [GROK_PLAN_DECISION_ID]: [GROK_PLAN_APPROVE_VALUE] },
       }),
-    ).toEqual({ approved: true, feedback: "" });
+    ).toEqual({ outcome: GROK_PLAN_OUTCOME_APPROVED });
     expect(
       grokExitPlanModeResponse(request, {
         type: "question",
-        answers: { [GROK_PLAN_DECISION_ID]: ["stay"] },
+        answers: { [GROK_PLAN_DECISION_ID]: [GROK_PLAN_APPROVE_LABEL] },
       }),
-    ).toEqual({ approved: false, feedback: "" });
+    ).toEqual({ outcome: GROK_PLAN_OUTCOME_APPROVED });
+    expect(
+      grokExitPlanModeResponse(request, {
+        type: "question",
+        answers: { [GROK_PLAN_DECISION_ID]: [GROK_PLAN_STAY_VALUE] },
+      }),
+    ).toEqual({ outcome: GROK_PLAN_OUTCOME_CANCELLED });
     expect(
       grokExitPlanModeResponse(request, { type: "question", answers: {}, cancelled: true }),
-    ).toEqual({ approved: false, feedback: "" });
+    ).toEqual({ outcome: GROK_PLAN_OUTCOME_CANCELLED });
   });
 });

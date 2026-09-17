@@ -779,7 +779,7 @@ class GrokHarnessSession implements HarnessSession {
     model: HarnessModelRef,
     thinkingOptionId?: HarnessThinkingOptionId,
   ): Promise<HarnessResult<ModelSelectCompleted | ThinkingSelectCompleted>> {
-    if (this.#active || this.#configuring) {
+    if (this.#configuring) {
       return {
         ok: false,
         error: {
@@ -1342,6 +1342,7 @@ class GrokHarnessSession implements HarnessSession {
     const fileItem: HostFileChangeItem = {
       type: "fileChange",
       itemId: hostItemIdSchema.parse(this.#randomUUID()),
+      sourceItemIds: [tool.item.itemId],
       changes,
     };
     this.#event({ type: "item.started", turnId: active.command.turnId, item: fileItem });

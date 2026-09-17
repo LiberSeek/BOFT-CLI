@@ -15,6 +15,23 @@ const { outputFiles } = await build({
         renderRendererAgentPicker,
       } from "./packages/renderer-extension/src/renderer-agent-picker.ts";
 
+      globalThis.setupInstallationOrderPicker = () => {
+        const preference = createAgentGroupPreferenceStore(null);
+        preference.moveAgent("omp", "main");
+        const control = mountRendererAgentPicker(
+          "installation-order", ["codex", "pi", "claude-code", "grok", "omp"],
+          () => {}, undefined, preference,
+        );
+        document.body.append(control.root);
+        globalThis.updateInstallationOrderPicker = (availability) => {
+          renderRendererAgentPicker(control, { agent: "codex", phase: "draft" }, "ready", false, availability);
+        };
+        globalThis.groupInstallationOrderPicker = () => {
+          preference.moveAgent("pi", "more");
+          preference.moveAgent("grok", "more");
+        };
+      };
+
       const mountShell = () => {
         document.documentElement.style.setProperty("--codex-window-zoom", "1.6");
 
@@ -58,7 +75,6 @@ const { outputFiles } = await build({
         const control = mountRendererAgentPicker(
           "test-composer",
           ["codex", "pi", "claude-code", "grok"],
-          () => {},
           () => {},
           undefined,
           groups,
@@ -173,4 +189,46 @@ test("expands More Agents upward with a trailing Settings icon", async ({ page }
   expect(arrowBox.width).toBeCloseTo(settingsBox.width, 0);
   expect(arrowBox.height).toBeCloseTo(settingsBox.height, 0);
   expect(arrowBox.y + arrowBox.height / 2).toBeCloseTo(settingsBox.y + settingsBox.height / 2, 0);
+});
+
+test("places only uninstalled Harnesses last and restores order after installation", async ({
+  page,
+}) => {
+  await page.setContent("<!doctype html><body></body>");
+  await page.addScriptTag({ content: browserBundle });
+  await page.evaluate(() => Reflect.get(globalThis, "setupInstallationOrderPicker")());
+  const rows = page.locator("#installation-order-agent-menu button[data-agent]");
+  const order = () =>
+    rows.evaluateAll((buttons) => buttons.map((button) => button.getAttribute("data-agent")));
+  const update = async (availability: Record<string, string>) => {
+    await page.evaluate(
+      (value) => Reflect.get(globalThis, "updateInstallationOrderPicker")(value),
+      availability,
+    );
+  };
+  const defaults = ["codex", "pi", "claude-code", "grok", "omp"];
+  await update({});
+  expect(await order()).toEqual(defaults);
+  await update({
+    pi: "notInstalled",
+    "claude-code": "error",
+    grok: "notInstalled",
+    omp: "checking",
+  });
+  expect(await order()).toEqual(["codex", "claude-code", "omp", "pi", "grok"]);
+  await update({ pi: "ready", "claude-code": "unavailable", grok: "ready", omp: "ready" });
+  expect(await order()).toEqual(defaults);
+  await update({
+    pi: "notInstalled",
+    "claude-code": "notInstalled",
+    grok: "notInstalled",
+    omp: "notInstalled",
+  });
+  expect(await order()).toEqual(defaults);
+  await update({ pi: "notInstalled", "claude-code": "notInstalled", grok: "ready", omp: "ready" });
+  await page.evaluate(() => Reflect.get(globalThis, "groupInstallationOrderPicker")());
+  // Main/More membership remains a user preference; sorting stays within each section.
+  expect(await order()).toEqual(["codex", "omp", "claude-code", "grok", "pi"]);
+  await update({ pi: "ready", "claude-code": "ready", grok: "ready", omp: "ready" });
+  expect(await order()).toEqual(["codex", "claude-code", "omp", "pi", "grok"]);
 });

@@ -661,7 +661,6 @@ export function mountComposerAgentControl(
   sendButton: HTMLButtonElement,
   enabledAgents: readonly RendererAgent[],
   onSelect: (agent: RendererAgent) => void,
-  onDownload: (agent: ExternalRendererAgent) => void,
   onOpenProviderPicker: () => void,
   onSelectModel: (modelId: string) => void,
   onSelectThinking: (thinkingOptionId: string) => void,
@@ -682,7 +681,6 @@ export function mountComposerAgentControl(
     composerId,
     enabledAgents,
     onSelect,
-    onDownload,
     onOpenProviderPicker,
   );
   const modelPicker = mountRendererModelPicker(composerId, onSelectModel, onSelectThinking);
@@ -790,7 +788,7 @@ export function renderComposerAgentControl(
     pickerView.nativeModelHidden,
     switching || state.agent !== "codex",
   );
-  renderRendererModelPicker(control.modelPicker, modelView, state.agent !== "codex");
+  renderRendererModelPicker(control.modelPicker, modelView, state.agent !== "codex", state.agent);
   const permissionModeVisible =
     state.agent !== "codex" &&
     permissionModeView.status !== "idle" &&

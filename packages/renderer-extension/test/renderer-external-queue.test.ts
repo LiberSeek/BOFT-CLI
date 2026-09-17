@@ -1,3 +1,7 @@
+import {
+  IDLE_RELEASE_SETTINGS_METHOD,
+  idleReleaseSettingsSchema,
+} from "@codexhost/shared-contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { installCurrentRendererAdapter } from "../src/versioned-renderer-adapter.js";
@@ -74,7 +78,20 @@ function fixture() {
   class Manager {
     readonly hostId = "local";
     readonly #conversations = conversations;
-    sendRequest = rpc;
+    async sendRequest(method: string, params: unknown) {
+      // Settings sync shares the connection but is not a queue operation.
+      if (method === IDLE_RELEASE_SETTINGS_METHOD) return idleReleaseSettingsSchema.parse(params);
+      if (
+        method.startsWith("thread/queue/") &&
+        params !== null &&
+        typeof params === "object" &&
+        "threadId" in params &&
+        typeof params.threadId === "string"
+      ) {
+        return rpc(method, { threadId: params.threadId });
+      }
+      throw new Error(`Unexpected RPC: ${method}`);
+    }
     prewarmThreadStart = vi.fn();
     enqueueRequest = vi.fn();
     getConversation(threadId: string) {

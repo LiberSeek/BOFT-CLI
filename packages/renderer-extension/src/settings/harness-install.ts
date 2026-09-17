@@ -89,6 +89,18 @@ const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInsta
       posix: "curl https://cursor.com/install -fsS | bash",
       windows: "irm https://cursor.com/install.ps1 | iex",
     },
+    qoder: {
+      url: "https://docs.qoder.com/",
+      binary: "qodercli",
+      posix: "npm install -g @qoder-ai/qodercli",
+      windows: "npm install -g @qoder-ai/qodercli",
+    },
+    "qoder-cn": {
+      url: "https://docs.qoder.cn/",
+      binary: "qoderclicn",
+      posix: "npm install -g @qodercn-ai/qoderclicn",
+      windows: "npm install -g @qodercn-ai/qoderclicn",
+    },
   });
 
 export function harnessInstallPlatform(window: Window | null | undefined): HarnessInstallPlatform {

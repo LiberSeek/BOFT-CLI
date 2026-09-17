@@ -2,7 +2,7 @@
 
 use std::env;
 use std::error::Error;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
@@ -35,6 +35,8 @@ const LAUNCHER_PID_ENV: &str = "CODEXHOST_LAUNCHER_PID";
 const NPM_NODE_PATH_ENV: &str = "CODEXHOST_NPM_NODE_PATH";
 const NPM_PACKAGE_ROOT_ENV: &str = "CODEXHOST_NPM_PACKAGE_ROOT";
 const REMOTE_LISTENER_CHILD_ENV: &str = "CODEXHOST_REMOTE_LISTENER_CHILD";
+const INTERNAL_ORIGINATOR_OVERRIDE_ENV: &str = "CODEX_INTERNAL_ORIGINATOR_OVERRIDE";
+const DESKTOP_ORIGINATOR: &str = "Codex Desktop";
 
 /// Optional lifecycle hooks for diagnostics around the byte-transparent proxy core.
 pub trait ProxyObserver {
@@ -336,6 +338,51 @@ pub fn app_server_subcommand_index(arguments: &[OsString]) -> Option<usize> {
     None
 }
 
+/// Returns whether the app-server invocation belongs to the Skysight memory summarizer.
+///
+/// Skysight starts a short-lived stock Codex app-server with the dedicated `openai-memgen`
+/// provider. That auxiliary server must not be replaced by the long-lived codexhost Host Runtime.
+#[must_use]
+fn is_skysight_memory_app_server(arguments: &[OsString]) -> bool {
+    const CONFIG_OPTIONS: &[&str] = &["-c", "--config"];
+
+    let mut index = 0;
+    while index < arguments.len() {
+        let Some(argument) = arguments.get(index).and_then(|value| value.to_str()) else {
+            return false;
+        };
+
+        // Read only real Codex config overrides. Codex accepts them on either side of the
+        // app-server subcommand, so scanning the complete invocation is required for Skysight.
+        // Exact key/value parsing avoids treating an unrelated mention as a memory invocation.
+        let config_value = if CONFIG_OPTIONS.contains(&argument) {
+            index += 1;
+            arguments.get(index).and_then(|value| value.to_str())
+        } else {
+            CONFIG_OPTIONS.iter().find_map(|option| {
+                argument
+                    .strip_prefix(option)
+                    .and_then(|remainder| remainder.strip_prefix('='))
+            })
+        };
+
+        if config_value.is_some_and(|value| {
+            let Some((key, configured_value)) = value.split_once('=') else {
+                return false;
+            };
+            key.trim() == "model_provider"
+                && configured_value
+                    .trim()
+                    .trim_matches(['\'', '"'])
+                    .eq("openai-memgen")
+        }) {
+            return true;
+        }
+        index += 1;
+    }
+    false
+}
+
 /// Returns whether this invocation starts an app-server instance owned by the Host Runtime.
 ///
 /// App-server management commands such as `proxy` and `daemon` must stay on the stock Codex CLI.
@@ -344,6 +391,21 @@ pub fn app_server_subcommand_index(arguments: &[OsString]) -> Option<usize> {
 /// would corrupt the WebSocket transport.
 #[must_use]
 pub fn should_start_host_runtime(arguments: &[OsString]) -> bool {
+    should_start_host_runtime_for_originator(
+        arguments,
+        env::var_os(INTERNAL_ORIGINATOR_OVERRIDE_ENV).as_deref(),
+    )
+}
+
+/// Applies the Host Runtime routing policy for an optional official Codex internal originator.
+///
+/// Official auxiliary services such as Skysight and Computer Use launch isolated app-servers with
+/// an internal originator override. Those one-shot servers must remain on the stock Codex CLI.
+#[must_use]
+fn should_start_host_runtime_for_originator(
+    arguments: &[OsString],
+    internal_originator: Option<&OsStr>,
+) -> bool {
     const VALUE_OPTIONS: &[&str] = &[
         "-c",
         "--config",
@@ -360,9 +422,18 @@ pub fn should_start_host_runtime(arguments: &[OsString]) -> bool {
     ];
     const FLAG_OPTIONS: &[&str] = &["--strict-config", "--stdio", "--analytics-default-enabled"];
 
-    let Some(mut index) = app_server_subcommand_index(arguments).map(|index| index + 1) else {
+    let Some(app_server_index) = app_server_subcommand_index(arguments) else {
         return false;
     };
+    // Internal Codex services own their auxiliary server lifecycle. Intercepting one of these
+    // processes causes the caller to lose its one-shot response, as seen in Skysight summaries.
+    if internal_originator.is_some_and(|originator| {
+        !originator.is_empty() && originator != OsStr::new(DESKTOP_ORIGINATOR)
+    }) || is_skysight_memory_app_server(arguments)
+    {
+        return false;
+    }
+    let mut index = app_server_index + 1;
     while let Some(argument) = arguments.get(index).and_then(|value| value.to_str()) {
         if VALUE_OPTIONS.contains(&argument) {
             if arguments.get(index + 1).is_none() {
@@ -723,10 +794,15 @@ fn child_command(
 /// Desktop helpers that persist only the standard `CODEX_CLI_PATH`
 /// override.
 ///
-/// The launcher-provided path remains authoritative. Installation discovery is
-/// deliberately restricted to a re-entry where `CODEX_CLI_PATH` identifies
-/// this exact Shim, so an unrelated or direct invocation still fails closed.
-fn resolve_stock_codex_path(current_executable: &Path) -> ShimResult<PathBuf> {
+/// The launcher-provided path remains authoritative. Discovery requires the
+/// exact self override, except for macOS node_repl's top-level `sandbox` call:
+/// it resolves the executable before clearing both CLI overrides from the child.
+fn resolve_stock_codex_path(
+    current_executable: &Path,
+    arguments: &[OsString],
+) -> ShimResult<PathBuf> {
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let _ = arguments;
     let stock_codex_path = match env::var_os(STOCK_CODEX_PATH_ENV) {
         Some(configured) => PathBuf::from(configured),
         None => {
@@ -735,16 +811,21 @@ fn resolve_stock_codex_path(current_executable: &Path) -> ShimResult<PathBuf> {
 
             #[cfg(any(target_os = "windows", target_os = "macos"))]
             {
-                let cli_override = env::var_os(CODEX_CLI_PATH_ENV)
-                    .map(PathBuf::from)
-                    .ok_or_else(|| format!("{STOCK_CODEX_PATH_ENV} is required"))?;
-                let cli_override = canonical_existing_file(&cli_override)?;
-                let current_executable = canonical_existing_file(current_executable)?;
-                if cli_override != current_executable {
-                    return Err(format!(
-                        "{STOCK_CODEX_PATH_ENV} is required when {CODEX_CLI_PATH_ENV} does not identify the running Shim"
-                    )
-                    .into());
+                if let Some(cli_override) = env::var_os(CODEX_CLI_PATH_ENV) {
+                    let cli_override = canonical_existing_file(&PathBuf::from(cli_override))?;
+                    let current_executable = canonical_existing_file(current_executable)?;
+                    if cli_override != current_executable {
+                        return Err(format!(
+                            "{STOCK_CODEX_PATH_ENV} is required when {CODEX_CLI_PATH_ENV} does not identify the running Shim"
+                        )
+                        .into());
+                    }
+                } else if !cfg!(target_os = "macos")
+                    || arguments
+                        .first()
+                        .is_none_or(|argument| argument != "sandbox")
+                {
+                    return Err(format!("{STOCK_CODEX_PATH_ENV} is required").into());
                 }
                 discover_desktop_managed_codex_cli().map_err(|error| {
                     format!(
@@ -766,7 +847,7 @@ pub fn run_proxy_with_observer(
     observer: &impl ProxyObserver,
 ) -> ShimResult<i32> {
     let current_executable = env::current_exe()?;
-    let stock_codex_path = resolve_stock_codex_path(&current_executable)?;
+    let stock_codex_path = resolve_stock_codex_path(&current_executable, arguments)?;
     observer.invocation(arguments, &stock_codex_path);
 
     let started = Instant::now();
@@ -896,7 +977,7 @@ mod tests {
     use super::{PROCESS_TREE_REFRESH_INTERVAL, ShutdownSignals, process_tree_refresh_due};
     use super::{
         app_server_subcommand_index, is_default_remote_unix_listener, select_host_paths,
-        should_start_host_runtime,
+        should_start_host_runtime, should_start_host_runtime_for_originator,
     };
 
     fn arguments(values: &[&str]) -> Vec<OsString> {
@@ -978,6 +1059,57 @@ mod tests {
             "app-server",
             "generate-json-schema",
         ])));
+    }
+
+    #[test]
+    fn keeps_skysight_memory_app_servers_on_the_stock_codex_cli() {
+        assert!(!should_start_host_runtime(&arguments(&[
+            "-c",
+            "model_provider=\"openai-memgen\"",
+            "-c",
+            "model_providers.openai-memgen.name=\"OpenAI\"",
+            "app-server",
+            "--stdio",
+        ])));
+        assert!(!should_start_host_runtime(&arguments(&[
+            "app-server",
+            "--analytics-default-enabled",
+            "--config=model_provider=openai-memgen",
+        ])));
+
+        // A provider definition alone does not select the Skysight memory provider and must not
+        // disable the normal Host Runtime route.
+        assert!(should_start_host_runtime(&arguments(&[
+            "-c",
+            "model_providers.openai-memgen.name=\"OpenAI\"",
+            "app-server",
+            "--stdio",
+        ])));
+        assert!(should_start_host_runtime(&arguments(&[
+            "-c",
+            "model_provider=\"openai\"",
+            "app-server",
+            "--stdio",
+        ])));
+    }
+
+    #[test]
+    fn keeps_internal_codex_auxiliary_app_servers_on_the_stock_cli() {
+        let arguments = arguments(&["app-server", "--stdio"]);
+
+        assert!(!should_start_host_runtime_for_originator(
+            &arguments,
+            Some(std::ffi::OsStr::new("skysight")),
+        ));
+        assert!(should_start_host_runtime_for_originator(&arguments, None));
+        assert!(should_start_host_runtime_for_originator(
+            &arguments,
+            Some(std::ffi::OsStr::new("")),
+        ));
+        assert!(should_start_host_runtime_for_originator(
+            &arguments,
+            Some(std::ffi::OsStr::new("Codex Desktop")),
+        ));
     }
 
     #[test]

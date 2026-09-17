@@ -119,6 +119,8 @@ export interface AntigravityAdapterOptions {
 
 interface ActiveTurn {
   command: TurnStartCommand;
+  /** Model passed to this CLI invocation, independent of later selections. */
+  model: HarnessModelRef | undefined;
   process: ChildProcessByStdio<Writable, Readable, Readable>;
   exited: Promise<void>;
   questions: AntigravityQuestionBridge;
@@ -712,6 +714,7 @@ class AntigravitySession implements HarnessSession {
     }
     const active: ActiveTurn = {
       command,
+      model: this.#model,
       process: child,
       exited: new Promise<void>((resolve) => child.once("close", () => resolve())),
       questions,
@@ -882,7 +885,7 @@ class AntigravitySession implements HarnessSession {
     if (event.event === "step_update") {
       if (event.step_update.conversation_id !== this.#nativeRef?.nativeSessionId) return;
       await this.#handleStep(active, event.step_update);
-      const usage = hostUsage(event.step_update.usage, this.#model?.id);
+      const usage = hostUsage(event.step_update.usage, active.model?.id);
       if (usage) this.#publishUsage(active, usage);
       this.#ensureContextUsage(active, event.step_update.conversation_id);
       return;
@@ -894,7 +897,7 @@ class AntigravitySession implements HarnessSession {
 
   async #handleResult(active: ActiveTurn, event: AntigravityResultEvent): Promise<void> {
     if (this.#active !== active) return;
-    const usage = hostUsage(event.result.usage, this.#model?.id);
+    const usage = hostUsage(event.result.usage, active.model?.id);
     if (usage) this.#publishUsage(active, usage);
     this.#ensureContextUsage(active, event.result.conversation_id);
     if (active.contextUsagePromise) {
@@ -991,7 +994,7 @@ class AntigravitySession implements HarnessSession {
     active.contextUsagePromise = pollAntigravityContextUsage(
       active.logPath,
       conversationId,
-      this.#model?.id,
+      active.model?.id,
       () =>
         active.receivedResult || active.cancellationRequested || active.process.exitCode !== null,
     );
@@ -1285,12 +1288,6 @@ class AntigravitySession implements HarnessSession {
   }
 
   #selectModel(command: ModelSelectCommand): HarnessResult<ModelSelectCompleted> {
-    if (this.isActive) {
-      return {
-        ok: false,
-        error: { code: "sessionBusy", message: "Turn is active", retryable: true },
-      };
-    }
     this.#model = harnessModelRefSchema.parse(command.model);
     // Efforts are per-Model, so a Model that does not accept the retained
     // option must drop it rather than pass a combination the CLI rejects.
@@ -1304,12 +1301,6 @@ class AntigravitySession implements HarnessSession {
   }
 
   #selectThinking(command: ThinkingSelectCommand): HarnessResult<ThinkingSelectCompleted> {
-    if (this.isActive) {
-      return {
-        ok: false,
-        error: { code: "sessionBusy", message: "Turn is active", retryable: true },
-      };
-    }
     const requested = harnessThinkingOptionIdSchema.safeParse(command.thinkingOptionId);
     if (!requested.success) {
       return {

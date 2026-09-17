@@ -70,6 +70,12 @@ describe("Codex Question wire projection", () => {
       type: "question",
       answers: { decision: ["continue-value"] },
     });
+    expect(
+      projected.parseResponse({ answers: { decision: { answers: ["continue-value"] } } }),
+    ).toEqual({
+      type: "question",
+      answers: { decision: ["continue-value"] },
+    });
   });
 
   it("projects multiline editor semantics as the honest free-text shape", () => {

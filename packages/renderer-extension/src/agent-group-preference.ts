@@ -61,6 +61,28 @@ export function partitionAgentsByInstallStatus<T extends { agent: ExternalRender
 
 export const AGENT_GROUP_PREFERENCE_STORAGE_KEY = "codexhost.agentGroupPreference.v1";
 
+/**
+ * First-run Main group. Everything else starts in More so a fresh install
+ * does not dump every uninstalled Harness into the picker. Saved
+ * preferences and explicit drags still win; this only fills in missing
+ * Agents and `resetToDefault()`.
+ */
+export const DEFAULT_MAIN_EXTERNAL_AGENTS = [
+  "claude-code",
+  "grok",
+  "pi",
+  "hermes",
+  "opencode",
+] as const satisfies readonly ExternalRendererAgent[];
+
+const DEFAULT_MAIN_EXTERNAL_AGENT_SET = new Set<ExternalRendererAgent>(
+  DEFAULT_MAIN_EXTERNAL_AGENTS,
+);
+
+export function defaultAgentGroupSection(agent: ExternalRendererAgent): AgentGroupSection {
+  return DEFAULT_MAIN_EXTERNAL_AGENT_SET.has(agent) ? "main" : "more";
+}
+
 const EXTERNAL_AGENTS: readonly ExternalRendererAgent[] = KNOWN_RENDERER_AGENTS.filter(
   (agent): agent is ExternalRendererAgent => agent !== "codex",
 );
@@ -126,7 +148,7 @@ export function createAgentGroupPreferenceStore(
 ): AgentGroupPreferenceStore {
   let order: ExternalRendererAgent[] = [...EXTERNAL_AGENTS];
   let sections = new Map<ExternalRendererAgent, AgentGroupSection>(
-    EXTERNAL_AGENTS.map((agent) => [agent, "main" as AgentGroupSection]),
+    EXTERNAL_AGENTS.map((agent) => [agent, defaultAgentGroupSection(agent)]),
   );
   const listeners = new Set<() => void>();
 
@@ -142,7 +164,7 @@ export function createAgentGroupPreferenceStore(
       sections.set(agent, entry.section);
     }
     // Agents that shipped after the user last saved a preference (new
-    // Harnesses) default to "main" and land at the end of the list.
+    // Harnesses) keep the first-run section and land at the end.
     for (const agent of EXTERNAL_AGENTS) {
       if (!seen.has(agent)) nextOrder.push(agent);
     }
@@ -152,7 +174,10 @@ export function createAgentGroupPreferenceStore(
   const persist = (): void => {
     writeStorage(
       storage,
-      order.map((agent) => ({ agent, section: sections.get(agent) ?? "main" })),
+      order.map((agent) => ({
+        agent,
+        section: sections.get(agent) ?? defaultAgentGroupSection(agent),
+      })),
     );
   };
   const notify = (): void => {
@@ -161,10 +186,13 @@ export function createAgentGroupPreferenceStore(
 
   return {
     list() {
-      return order.map((agent) => ({ agent, section: sections.get(agent) ?? "main" }));
+      return order.map((agent) => ({
+        agent,
+        section: sections.get(agent) ?? defaultAgentGroupSection(agent),
+      }));
     },
     sectionOf(agent) {
-      return sections.get(agent) ?? "main";
+      return sections.get(agent) ?? defaultAgentGroupSection(agent);
     },
     moveAgent(agent, section, beforeAgent = null) {
       if (!EXTERNAL_AGENTS.includes(agent)) return;
@@ -189,14 +217,15 @@ export function createAgentGroupPreferenceStore(
       for (const agent of EXTERNAL_AGENTS) {
         if (seen.has(agent)) continue;
         nextOrder.push(agent);
-        nextSections.set(agent, sections.get(agent) ?? "main");
+        nextSections.set(agent, sections.get(agent) ?? defaultAgentGroupSection(agent));
       }
       const unchanged =
         nextOrder.length === order.length &&
         nextOrder.every(
           (agent, index) =>
             agent === order[index] &&
-            (nextSections.get(agent) ?? "main") === (sections.get(agent) ?? "main"),
+            (nextSections.get(agent) ?? defaultAgentGroupSection(agent)) ===
+              (sections.get(agent) ?? defaultAgentGroupSection(agent)),
         );
       if (unchanged) return;
       order = nextOrder;
@@ -205,7 +234,7 @@ export function createAgentGroupPreferenceStore(
     },
     resetToDefault() {
       order = [...EXTERNAL_AGENTS];
-      sections = new Map(EXTERNAL_AGENTS.map((agent) => [agent, "main" as AgentGroupSection]));
+      sections = new Map(EXTERNAL_AGENTS.map((agent) => [agent, defaultAgentGroupSection(agent)]));
       persist();
       notify();
     },

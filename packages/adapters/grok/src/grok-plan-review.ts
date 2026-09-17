@@ -1,6 +1,12 @@
 import type { HostQuestionInteraction, HostQuestionResponse } from "@codexhost/harness-adapter";
 
 export const GROK_PLAN_DECISION_ID = "plan-decision";
+export const GROK_PLAN_APPROVE_VALUE = "approve";
+export const GROK_PLAN_APPROVE_LABEL = "Approve plan and exit plan mode";
+export const GROK_PLAN_STAY_VALUE = "stay";
+export const GROK_PLAN_STAY_LABEL = "Stay in plan mode";
+export const GROK_PLAN_OUTCOME_APPROVED = "approved";
+export const GROK_PLAN_OUTCOME_CANCELLED = "cancelled";
 
 export interface GrokPlanApprovalRequest {
   sessionId?: string;
@@ -58,22 +64,26 @@ export function createGrokPlanReview(
         prompt: request.plan
           ? `${warning}\n\n${request.plan}`
           : "Grok did not provide plan text. Stay in plan mode and ask Grok to present the plan before approving it.",
-        options: [
-          {
-            value: "stay",
-            label: "Stay in plan mode",
-            description: "Do not approve the plan or begin implementation.",
-          },
-          ...(request.plan
-            ? [
-                {
-                  value: "approve",
-                  label: "Approve plan and exit plan mode",
-                  description: "Leave plan mode and begin implementation.",
-                },
-              ]
-            : []),
-        ],
+        options: request.plan
+          ? [
+              {
+                value: GROK_PLAN_APPROVE_VALUE,
+                label: GROK_PLAN_APPROVE_LABEL,
+                description: "Leave plan mode and begin implementation.",
+              },
+              {
+                value: GROK_PLAN_STAY_VALUE,
+                label: GROK_PLAN_STAY_LABEL,
+                description: "Do not approve the plan or begin implementation.",
+              },
+            ]
+          : [
+              {
+                value: GROK_PLAN_STAY_VALUE,
+                label: GROK_PLAN_STAY_LABEL,
+                description: "Do not approve the plan or begin implementation.",
+              },
+            ],
         multiple: false,
         allowOther: false,
         optional: false,
@@ -83,18 +93,19 @@ export function createGrokPlanReview(
 }
 
 export function grokPlanRejectedResponse(): Record<string, unknown> {
-  return { approved: false, feedback: "" };
+  return { outcome: GROK_PLAN_OUTCOME_CANCELLED };
 }
 
 export function grokExitPlanModeResponse(
   request: GrokPlanApprovalRequest,
   response: HostQuestionResponse,
 ): Record<string, unknown> {
+  const decision = response.answers[GROK_PLAN_DECISION_ID]?.[0];
+  const approved =
+    !response.cancelled &&
+    request.plan !== null &&
+    (decision === GROK_PLAN_APPROVE_VALUE || decision === GROK_PLAN_APPROVE_LABEL);
   return {
-    approved:
-      !response.cancelled &&
-      request.plan !== null &&
-      response.answers[GROK_PLAN_DECISION_ID]?.[0] === "approve",
-    feedback: "",
+    outcome: approved ? GROK_PLAN_OUTCOME_APPROVED : GROK_PLAN_OUTCOME_CANCELLED,
   };
 }

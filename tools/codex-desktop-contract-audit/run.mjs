@@ -21,6 +21,8 @@ const productionRendererAgents = Object.freeze([
   "opencode",
   "grok",
   "omp",
+  "qoder",
+  "qoder-cn",
 ]);
 
 function usage() {

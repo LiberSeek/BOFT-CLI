@@ -67,7 +67,6 @@ import { RendererMethodUnavailableError } from "./renderer-request-sender.js";
 import { thinkingOptionsForModel } from "./renderer-model-picker.js";
 import { installRendererApprovalStyle } from "./renderer-approval-style.js";
 import { installRendererSubagentRowMeta } from "./renderer-subagent-row-meta.js";
-import { RENDERER_AGENT_INSTALL_URLS } from "./renderer-agent-picker.js";
 import {
   readClaudePermissionModePreference,
   writeClaudePermissionModePreference,
@@ -107,6 +106,8 @@ const externalHarnessIds = {
   "kiro-cli": harnessIdSchema.parse("kiro-cli"),
   codebuddy: harnessIdSchema.parse("codebuddy"),
   "cursor-cli": harnessIdSchema.parse("cursor-cli"),
+  qoder: harnessIdSchema.parse("qoder"),
+  "qoder-cn": harnessIdSchema.parse("qoder-cn"),
 } as const;
 
 const externalAgents: readonly ExternalRendererAgent[] = [
@@ -122,6 +123,8 @@ const externalAgents: readonly ExternalRendererAgent[] = [
   "kiro-cli",
   "codebuddy",
   "cursor-cli",
+  "qoder",
+  "qoder-cn",
 ];
 type HarnessAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
 type HarnessAvailabilityErrors = Partial<Record<ExternalRendererAgent, CodexhostError | undefined>>;
@@ -533,7 +536,9 @@ function restoredPluginRouteOwnership(inspection: ThreadInspection): RestoredThr
   }
   const model = inspection.effectiveModel ?? transportSelection?.model;
   const thinkingOptionId =
-    selectableThinkingOptionId(inspection) ?? transportSelection?.thinkingOptionId;
+    inspection.availableThinkingOptions !== undefined
+      ? selectableThinkingOptionId(inspection)
+      : (inspection.effectiveThinkingOptionId ?? transportSelection?.thinkingOptionId);
   const permissionModeId =
     inspection.effectivePermissionModeId ?? transportSelection?.permissionModeId;
   return {
@@ -709,21 +714,21 @@ export function installRendererBindingProbe(
     threadId: string | null;
     draftId: string | null;
   }): RendererAgent | null => {
-    const mountedHostId = modelControl?.currentHostId?.() ?? "local";
-    if (input.hostId !== mountedHostId) return null;
     for (const mounted of mountedByComposer.values()) {
       const target = mounted.modelTarget;
-      if (target?.[0] === "default" && input.draftId !== null && target[1] === input.draftId) {
-        return controller.get(mounted.composer).agent;
-      }
-      if (
+      const matchesDraft =
+        target?.[0] === "default" && input.draftId !== null && target[1] === input.draftId;
+      const matchesConversation =
         target?.[0] === "conversation" &&
         input.threadId !== null &&
         target[1] === input.threadId &&
-        mounted.ownershipStatus === "ready"
-      ) {
-        return controller.get(mounted.composer).agent;
-      }
+        mounted.ownershipStatus === "ready";
+      if (!matchesDraft && !matchesConversation) continue;
+      // Route validation walks the committed React tree. Only a row matching a
+      // mounted Composer needs it; unrelated sidebar rows cannot use local state.
+      const mountedHostId = modelControl?.currentHostId?.() ?? "local";
+      if (input.hostId !== mountedHostId) return null;
+      return controller.get(mounted.composer).agent;
     }
     return null;
   };
@@ -745,6 +750,7 @@ export function installRendererBindingProbe(
     getUpdateClient: () => modelControl,
     getAccountClient: () => modelControl,
     getConnectionDiagnostics: () => connectionDiagnostics,
+    getLoadedSessionsClient: () => modelClientForHost("local"),
     getSessionImportClient: () => {
       const hostId = activeModelHostId() ?? "local";
       const client = modelClientForHost(hostId);
@@ -789,6 +795,8 @@ export function installRendererBindingProbe(
       "kiro-cli": undefined,
       codebuddy: undefined,
       "cursor-cli": undefined,
+      qoder: undefined,
+      "qoder-cn": undefined,
     },
     webUi: Object.fromEntries(
       externalAgents.map((agent) => [agent, false]),
@@ -2021,11 +2029,6 @@ export function installRendererBindingProbe(
     }
   };
 
-  const openInstallPage = (agent: ExternalRendererAgent): void => {
-    const url = RENDERER_AGENT_INSTALL_URLS[agent];
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
   function resetHarnessAvailabilityRetry(hostId: string): void {
     const state = hostHarnessAvailabilityState(hostId);
     if (state.retryTimer !== null) {
@@ -2337,7 +2340,6 @@ export function installRendererBindingProbe(
         if (!composer.isConnected || !mounted) return;
         void switchComposerAgent(mounted, agent);
       },
-      openInstallPage,
       () => {
         void loadCodexAccounts();
       },

@@ -1,4 +1,5 @@
 import {
+  defaultAgentGroupSection,
   getSharedAgentGroupPreferenceStore,
   type AgentGroupPreferenceStore,
 } from "./agent-group-preference.js";
@@ -79,6 +80,8 @@ export const RENDERER_AGENT_INSTALL_URLS: Readonly<Record<ExternalRendererAgent,
   "cursor-cli": "https://cursor.com/docs/cli/installation",
   hermes: "https://hermes-agent.nousresearch.com/docs",
   muse: "https://www.meta.ai/",
+  qoder: "https://docs.qoder.com/",
+  "qoder-cn": "https://docs.qoder.cn/",
 };
 
 type AgentAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
@@ -96,9 +99,8 @@ interface AgentOptionControl {
   check: HTMLElement;
   // Overlays the trailing check slot as Install ("+") when not installed, or
   // a red error ("!") once it has failed — mutually exclusive with a selected
-  // ✓ since `RendererAgentAvailability` is a single enum value. Error mode
-  // has no inline details (picker only gets the coarse enum), so it links
-  // out to Settings → Connections instead.
+  // ✓ since `RendererAgentAvailability` is a single enum value. Both modes
+  // open Settings → Connections on the Agent's row (install guide or error).
   action: HTMLButtonElement | null;
 }
 
@@ -111,6 +113,7 @@ export interface RendererAgentPickerControl {
   menu: HTMLElement;
   agents: readonly RendererAgent[];
   options: Partial<Record<RendererAgent, AgentOptionControl>>;
+  updateAvailability(availability: AgentAvailability): void;
   close(): void;
   dispose(): void;
 }
@@ -232,7 +235,6 @@ export function mountRendererAgentPicker(
   composerId: string,
   enabledAgents: readonly RendererAgent[],
   onSelect: (agent: RendererAgent) => void,
-  onDownload: (agent: ExternalRendererAgent) => void,
   onOpen?: () => void,
   groupPreference: AgentGroupPreferenceStore = getSharedAgentGroupPreferenceStore(),
 ): RendererAgentPickerControl {
@@ -434,17 +436,12 @@ export function mountRendererAgentPicker(
             });
             control.addEventListener("click", (event) => {
               event.stopPropagation();
-              // "error" mode has nothing more to show inline — the picker
-              // only knows the coarse availability enum, not the full
-              // `CodexhostError` — so it hands off to Settings, which does.
-              // `requestConnectionsPageFocus` makes sure Settings opens
-              // straight to *this* Agent's row, not just the page.
-              if (control.dataset.mode === "error") {
-                requestConnectionsPageFocus(agent);
-                openConnectionsSettings(trigger);
-              } else {
-                onDownload(agent);
-              }
+              // Install and error both hand off to Settings → Connections.
+              // The picker only knows the coarse availability enum; that
+              // page has the install command and error details.
+              // `requestConnectionsPageFocus` opens this Agent's row.
+              requestConnectionsPageFocus(agent);
+              openConnectionsSettings(trigger);
             });
             return control;
           })();
@@ -600,6 +597,7 @@ export function mountRendererAgentPicker(
     bordered: true,
   });
 
+  let notInstalled = new Set<RendererAgent>();
   let mainAgents: RendererAgent[] = [...enabledAgents];
   let moreAgents: RendererAgent[] = [];
   const regroup = (): void => {
@@ -631,11 +629,16 @@ export function mountRendererAgentPicker(
     for (const agent of enabledAgents) {
       if (seen.has(agent)) continue;
       seen.add(agent);
-      nextMain.push(agent);
+      if (agent === "codex" || defaultAgentGroupSection(agent) === "main") nextMain.push(agent);
+      else nextMore.push(agent);
     }
 
-    mainAgents = nextMain;
-    moreAgents = nextMore;
+    // Stable sorting preserves the default/custom order within each section.
+    // Only confirmed missing installations move back, not checking/error states.
+    const installationOrder = (a: RendererAgent, b: RendererAgent): number =>
+      Number(notInstalled.has(a)) - Number(notInstalled.has(b));
+    mainAgents = nextMain.sort(installationOrder);
+    moreAgents = nextMore.sort(installationOrder);
     const mainChildren: HTMLElement[] = [];
     for (const agent of mainAgents) {
       const row = rowsByAgent.get(agent);
@@ -726,6 +729,18 @@ export function mountRendererAgentPicker(
     menu,
     agents: [...enabledAgents],
     options,
+    updateAvailability(availability) {
+      const next = new Set(
+        enabledAgents.filter(
+          (agent) => agent !== "codex" && availability[agent] === "notInstalled",
+        ),
+      );
+      if (next.size === notInstalled.size && [...next].every((agent) => notInstalled.has(agent))) {
+        return;
+      }
+      notInstalled = next;
+      regroup();
+    },
     close,
     dispose() {
       close();
@@ -758,6 +773,7 @@ export function renderRendererAgentPicker(
     control.agents,
     availability,
   );
+  control.updateAvailability(availability);
   if (control.iconSlot.dataset.agent !== state.agent) {
     control.iconSlot.replaceChildren(createRendererAgentIcon(state.agent));
     control.iconSlot.dataset.agent = state.agent;

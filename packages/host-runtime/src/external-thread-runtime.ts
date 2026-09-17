@@ -36,6 +36,8 @@ import {
 } from "./external-thread-repository.js";
 import { DELEGATION_THREAD_ID_ENV } from "./delegation-types.js";
 import { SessionStateObserver } from "./session-state-observer.js";
+import { DesktopRequestQueue } from "./desktop-request-queue.js";
+import { ExternalThreadIdleRelease } from "./external-thread-idle-release.js";
 
 export interface TurnProjectionGate {
   promise: Promise<void>;
@@ -186,12 +188,14 @@ function errorMessage(error: unknown): string {
 }
 
 export class ExternalThreadRuntime {
+  readonly idleRelease: ExternalThreadIdleRelease;
   readonly #adapters: Map<ExternalHarnessId, HarnessAdapter>;
   readonly #consumeOutputs: (thread: ExternalThread) => Promise<void>;
   readonly #diagnose: (error: unknown) => void;
   readonly #environment: NodeJS.ProcessEnv;
   readonly #repository: ExternalThreadRepository;
   readonly #restores = new Map<string, Promise<ExternalThread>>();
+  readonly #subagentRunning: (threadId: string) => boolean;
   readonly #threads = new Map<string, ExternalThread>();
 
   constructor(input: {
@@ -200,12 +204,28 @@ export class ExternalThreadRuntime {
     repository: ExternalThreadRepository;
     consumeOutputs(thread: ExternalThread): Promise<void>;
     diagnose(error: unknown): void;
+    subagentRunning?(threadId: string): boolean;
+    idleRelease?: {
+      queue: DesktopRequestQueue;
+      canRelease(thread: ExternalThread): boolean;
+      onClosed?(thread: ExternalThread): Promise<void>;
+    };
   }) {
     this.#adapters = input.adapters;
     this.#environment = input.environment ?? process.env;
     this.#repository = input.repository;
     this.#consumeOutputs = input.consumeOutputs;
     this.#diagnose = input.diagnose;
+    this.#subagentRunning = input.subagentRunning ?? (() => false);
+    this.idleRelease = new ExternalThreadIdleRelease({
+      threads: () => this.values(),
+      get: (id) => this.get(id),
+      remove: (id) => this.remove(id),
+      queue: input.idleRelease?.queue ?? new DesktopRequestQueue(),
+      canRelease: input.idleRelease?.canRelease ?? (() => false),
+      ...(input.idleRelease?.onClosed ? { onClosed: input.idleRelease.onClosed } : {}),
+      diagnose: input.diagnose,
+    });
   }
 
   get(threadId: string): ExternalThread | undefined {
@@ -253,6 +273,10 @@ export class ExternalThreadRuntime {
       ...(effectiveThinkingOptionId ? { effectiveThinkingOptionId } : {}),
       ...(effectivePermissionModeId ? { effectivePermissionModeId } : {}),
     };
+    // A Subagent Thread can be opened while its Subagent is still running. Its
+    // live status lives in the Host, not in the stored record, so seed it here
+    // instead of publishing a Thread that claims to be idle.
+    const running = this.#subagentRunning(input.record.hostThreadId);
     const externalThread: ExternalThread = {
       id: input.record.hostThreadId,
       cwd: input.record.cwd,
@@ -269,11 +293,13 @@ export class ExternalThreadRuntime {
       record: input.record,
       sessionId: input.sessionId,
       stateObserver: new SessionStateObserver(observerState),
-      thread: input.thread,
+      thread: running
+        ? { ...input.thread, status: { type: "active", activeFlags: [] } }
+        : input.thread,
       transportModelId: input.transportModelId ?? input.record.transportModelId,
       turns: input.turns,
       historyHydrated: true,
-      running: false,
+      running,
       activeTurnId: null,
       latestUsage: input.session.initialUsage,
       usageTurnId: null,
@@ -283,6 +309,7 @@ export class ExternalThreadRuntime {
       persistenceError: null,
       ignoredInteractionIds: new Set(),
     };
+    this.idleRelease.touch(externalThread);
     externalThread.outputTask = this.#consumeOutputs(externalThread);
     this.#threads.set(externalThread.id, externalThread);
     return externalThread;
@@ -354,8 +381,13 @@ export class ExternalThreadRuntime {
   }
 
   async locate(threadId: string): Promise<ExternalThreadLocation> {
+    await this.idleRelease.waitForClose(threadId);
     const loaded = this.#threads.get(threadId);
-    if (loaded) return { kind: "external", record: loaded.record, thread: loaded };
+    if (loaded) {
+      const failure = this.idleRelease.failure(loaded);
+      if (failure) return { kind: "error", error: { code: -32075, message: failure } };
+      return { kind: "external", record: loaded.record, thread: loaded };
+    }
     let record: StoredThreadRecordV1 | null;
     try {
       record = await this.#repository.find(threadId);
@@ -379,13 +411,17 @@ export class ExternalThreadRuntime {
     const location = await this.locate(threadId);
     if (location.kind !== "external") return location;
     if (location.thread) {
+      this.idleRelease.touch(location.thread);
       return { kind: "external", thread: location.thread, historyFresh: false };
     }
     const { record } = location;
     let restoring = this.#restores.get(threadId);
     if (!restoring) {
       const restored = this.#threads.get(threadId);
-      if (restored) return { kind: "external", thread: restored, historyFresh: false };
+      if (restored) {
+        this.idleRelease.touch(restored);
+        return { kind: "external", thread: restored, historyFresh: false };
+      }
       restoring = this.#restore(record).finally(() => {
         this.#restores.delete(threadId);
       });

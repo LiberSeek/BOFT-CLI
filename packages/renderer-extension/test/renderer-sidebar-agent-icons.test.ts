@@ -719,6 +719,13 @@ describe("Renderer sidebar Agent ownership", () => {
     ).toBe("muse");
     expect(
       rendererAgentForThreadOwnership({
+        threadId: "qoder-thread" as HostThreadId,
+        owner: "external",
+        harnessId: harnessIdSchema.parse("qoder"),
+      }),
+    ).toBe("qoder");
+    expect(
+      rendererAgentForThreadOwnership({
         threadId: "future-thread" as HostThreadId,
         owner: "external",
         harnessId: FUTURE_HARNESS_ID,

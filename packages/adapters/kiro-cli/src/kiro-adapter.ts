@@ -1118,12 +1118,12 @@ export class KiroSession implements HarnessSession {
   }
 
   async #selectModel(command: ModelSelectCommand): Promise<HarnessResult<ModelSelectCompleted>> {
-    if (this.#activeTurnId !== null || this.#configBusy) {
+    if (this.#configBusy) {
       return {
         ok: false,
         error: {
           code: "sessionBusy",
-          message: "Cannot change model while turn is active",
+          message: "Another configuration change is in progress",
           retryable: false,
         },
       };
@@ -1226,7 +1226,7 @@ export class KiroSession implements HarnessSession {
   async #selectThinking(
     command: ThinkingSelectCommand,
   ): Promise<HarnessResult<ThinkingSelectCompleted>> {
-    if (this.#activeTurnId !== null || this.#configBusy) {
+    if (this.#configBusy) {
       return {
         ok: false,
         error: { code: "sessionBusy", message: "Session is busy", retryable: true },

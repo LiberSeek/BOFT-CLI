@@ -1,6 +1,7 @@
 import type { CodexhostError } from "@codexhost/shared-contracts";
 
 import {
+  defaultAgentGroupSection,
   getSharedAgentGroupPreferenceStore,
   partitionAgentsByInstallStatus,
   type AgentGroupEntry,
@@ -553,12 +554,10 @@ function connectionItems(
   }));
 }
 
-// Lets another surface (currently: the Agent picker's error indicator, see
-// renderer-agent-picker.ts) ask the Connections page to focus a specific
-// Agent's row the next time it mounts, instead of falling back to "the
-// first Agent that needs attention". Consumed once, then cleared — if the
-// requested Agent isn't present under whichever Host tab is selected by
-// default, this silently falls through to the existing fallback below.
+// Lets another surface (the Agent picker's install "+" and error "!") ask
+// the Connections page to expand a specific Agent's row the next time it
+// mounts. Consumed once, then cleared — if the requested Agent isn't
+// present under the Host tab selected by default, this is a no-op.
 let pendingFocusAgent: string | null = null;
 
 export function requestConnectionsPageFocus(agentKey: string): void {
@@ -746,11 +745,7 @@ export function createConnectionsSettingsPage(
         }
         const requestedFocus = pendingFocusAgent;
         pendingFocusAgent = null;
-        if (
-          requestedFocus &&
-          items.some((item) => item.key === requestedFocus) &&
-          expandedItemKey === null
-        ) {
+        if (requestedFocus && items.some((item) => item.key === requestedFocus)) {
           expandedItemKey = requestedFocus;
         }
         const rowElements = new Map<string, HTMLElement>();
@@ -771,7 +766,10 @@ export function createConnectionsSettingsPage(
           .filter((entry) => agentByKey.has(entry.agent));
         for (const item of groupableItems) {
           if (!preferenceOrder.some((entry) => entry.agent === item.key)) {
-            preferenceOrder.push({ agent: item.key as ExternalRendererAgent, section: "main" });
+            preferenceOrder.push({
+              agent: item.key as ExternalRendererAgent,
+              section: defaultAgentGroupSection(item.key as ExternalRendererAgent),
+            });
           }
         }
         const mainEntries = partitionAgentsByInstallStatus(

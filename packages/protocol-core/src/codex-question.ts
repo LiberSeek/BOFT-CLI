@@ -119,6 +119,7 @@ export function projectCodexQuestionRequest(input: {
         answers[questionId] = values.map((value) => {
           const mapped = labels.get(value);
           if (mapped !== undefined) return mapped;
+          if (question.options.some((option) => option.value === value)) return value;
           if (question.allowOther) return value;
           throw responseError("contains an undeclared choice");
         });

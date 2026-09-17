@@ -57,7 +57,8 @@
 ## 命令、并发与错误
 
 - `turn.start` 成功仅表示接受，终态从 outputs 获取；拒绝时不能发 Turn 生命周期事件。
-- 活动 Turn 与第二个 Turn、Model/Thinking 写入、历史操作互斥；冲突返回可重试 `sessionBusy`，不隐式排队或抢占。
+- 活动 Turn 与第二个 Turn、历史操作互斥；冲突返回可重试 `sessionBusy`，不隐式排队或抢占。
+- 活动 Turn 期间的 Model/Thinking 选择遵循[运行时配置规则](../../../../docs/architecture/harness-plugin-runtime.md#运行中切换-model--thinking)，不把活动 Turn 本身作为拒绝条件；测试覆盖原生接受、拒绝和后续 Turn。
 - `interaction.respond` 必须可在所属 Turn 中执行。权限是否支持活动期修改取决于原生语义，仍需控制配置并发。
 - 校验空输入、Turn ID、Interaction ID、配置引用；取消只针对匹配的活动 Turn。
 - 关闭或 fault 后返回 `invalidState`；取消完成后仍可继续的 Session 不应被误当作 fault。
@@ -76,7 +77,7 @@
 | `adapter.sessionImport.listCandidates()` / `resolveCandidate(id)` | list 返回浏览器安全元数据；resolve 重新校验并返回 `{ candidate, nativeRef }`，完整 locator 由 Adapter 确认；不写 Host 映射库 | 本地 Host/RPC/设置页已通用化，Pi 与 DSH Modern 已接入；仅有 list 的旧插件不进入可导入目录。远程与 CC Broker 尚未扩展 |
 | `adapter.webUi.open()` | inspection 的 webUi 与动作一致；本地打开优先使用 Context 服务 | managed remote 无本地 opener，缺服务时明确不可用，不绕过 Native Launcher |
 
-相关 schema：`packages/shared-contracts/src/harness-commands.ts`、`harness-session-import.ts`、`thread-usage.ts`；Usage 解析用 `parseHostUsage()`。导入契约、未知运行状态与接入验收见 [`docs/harness-session-import.md`](../../../../docs/harness-session-import.md)。
+相关 schema：`packages/shared-contracts/src/harness-commands.ts`、`harness-session-import.ts`、`thread-usage.ts`；Usage 解析用 `parseHostUsage()`。导入契约、未知运行状态与接入验收见 [`docs/architecture/harness-session-import.md`](../../../../docs/architecture/harness-session-import.md)。
 
 **Credits 尚不是正式 Adapter 字段。**现有 Host 通过 `credits()` / `refreshCredits()` 结构检查处理，并有 Renderer 等特例。新 Harness 需要额度展示时，单独核对公共扩展和上层使用方；不要在 Manifest 虚构 capability 或承诺自动接入。
 

@@ -322,13 +322,10 @@ export function createSessionImportSettingsPage(
 
           const actionArea = document.createElement("div");
           actionArea.className = "settings-session-import-row__action";
-          if (candidate.running !== false) {
+          if (candidate.running === true) {
             const running = document.createElement("span");
             running.className = "settings-session-import-running";
-            running.textContent =
-              candidate.running === null
-                ? messages.sessionImportRunningUnknown
-                : messages.sessionImportRunning;
+            running.textContent = messages.sessionImportRunning;
             running.title = messages.sessionImportRunningHint;
             running.setAttribute("aria-hidden", "true");
             actionArea.append(
