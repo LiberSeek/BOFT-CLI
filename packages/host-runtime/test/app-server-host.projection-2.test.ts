@@ -1803,26 +1803,29 @@ describe("AppServerHost HarnessAdapter projection", () => {
     await stopFixture(fixture);
   });
 
-  it("fails External current and future metadata updates closed without official fallback", async () => {
+  it("persists External pin metadata and fails other metadata updates closed", async () => {
     const fixture = createFixture();
     const officialWrite = vi.fn();
     fixture.official.stdin.on("data", officialWrite);
     const threadId = await startPiThread(fixture);
-    for (const [id, patch] of [
-      [53, { isPinned: true }],
-      [54, { gitInfo: { branch: "main", sha: null } }],
-    ] as const) {
-      writeRequest(fixture.desktopInput, {
-        id,
-        method: "thread/metadata/update",
-        params: { threadId, ...patch },
-      });
-      await expect(
-        fixture.collector.waitFor((message) => requestId(message, id)),
-      ).resolves.toMatchObject({
-        error: { code: -32078, message: "External Thread metadata updates are unsupported" },
-      });
-    }
+    writeRequest(fixture.desktopInput, {
+      id: 53,
+      method: "thread/metadata/update",
+      params: { threadId, isPinned: true },
+    });
+    await expect(
+      fixture.collector.waitFor((message) => requestId(message, 53)),
+    ).resolves.toMatchObject({ result: { thread: { id: threadId, isPinned: true } } });
+    writeRequest(fixture.desktopInput, {
+      id: 54,
+      method: "thread/metadata/update",
+      params: { threadId, gitInfo: { branch: "main", sha: null } },
+    });
+    await expect(
+      fixture.collector.waitFor((message) => requestId(message, 54)),
+    ).resolves.toMatchObject({
+      error: { code: -32078, message: "External Thread metadata updates are unsupported" },
+    });
     writeRequest(fixture.desktopInput, {
       id: 58,
       method: "thread/future/manage",
@@ -1835,7 +1838,7 @@ describe("AppServerHost HarnessAdapter projection", () => {
     });
     expect(officialWrite).not.toHaveBeenCalled();
     const stored = await fixture.mappingStore.getThread(hostThreadIdSchema.parse(threadId));
-    expect(stored).not.toHaveProperty("isPinned");
+    expect(stored).toMatchObject({ isPinned: true });
     expect(stored).not.toHaveProperty("gitInfo");
     await stopFixture(fixture);
   });

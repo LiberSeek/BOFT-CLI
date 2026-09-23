@@ -368,7 +368,7 @@ try {
 }
 if (platformVersion !== version) {
   fail(
-    \`platform package version mismatch: '\${platformPackage}' at '\${packageRoot}' has \${JSON.stringify(platformVersion) ?? "no version"}; expected \${version}. Close Codex Desktop, then run: npm install -g @codexhost/cli@\${version} \${platformPackage}@\${version}\`,
+    \`platform package version mismatch: '\${platformPackage}' at '\${packageRoot}' has \${JSON.stringify(platformVersion) ?? "no version"}; expected \${version}. Close Codex Desktop, then run: npm install -g ${NPM_PACKAGE_NAME}@\${version} \${platformPackage}@\${version}\`,
   );
 }
 startupTrace("platform package resolved");

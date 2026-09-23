@@ -307,6 +307,8 @@ export function createFixture(
       : {}),
     environment: {
       CODEXHOST_DATA_DIR: mappingStoreDirectory,
+      // Keep Account projection off the developer Codex home.
+      CODEX_HOME: path.join(mappingStoreDirectory, "codex-home"),
       ...(options.environment ?? {}),
     },
     ...(options.pluginDirectory ? { pluginRoots: [options.pluginDirectory] } : {}),

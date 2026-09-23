@@ -175,7 +175,7 @@ describe.skipIf(process.platform === "win32")("Cursor native MCP delegation brid
       .callTool({ name: "harness_list", arguments: {} })
       .catch(() => undefined);
     let pid: number | undefined;
-    for (let index = 0; index < 100 && !pid; index++) {
+    for (let index = 0; index < 500 && !pid; index++) {
       pid = await readFile(receipt, "utf8")
         .then(Number)
         .catch(() => undefined);

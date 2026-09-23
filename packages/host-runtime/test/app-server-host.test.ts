@@ -1088,5 +1088,4 @@ describe("AppServerHost installed Harness plugins", () => {
     ).resolves.toMatchObject({ params: { turn: { status: "completed" } } });
     await stopFixture(fixture);
   });
-
 });

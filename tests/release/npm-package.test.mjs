@@ -240,7 +240,7 @@ async function runLauncherLifecycle(
       await createLauncherLifecycleFixture(root, platform);
     await writeFile(
       path.join(platformRoot, "package.json"),
-      JSON.stringify({ name: `@codexhost/cli-${platform}-x64`, version: platformVersion }),
+      JSON.stringify({ name: `@liberseek/boft-cli-${platform}-x64`, version: platformVersion }),
     );
     const environment = {
       ...process.env,
@@ -602,10 +602,10 @@ describe("npm package release", () => {
         const result = await runLauncherLifecycle(platform, { platformVersion });
         expect(result.status, result.stderr).toBe(1);
         expect(result.stderr).toContain("platform package version mismatch");
-        expect(result.stderr).toContain(`@codexhost/cli-${platform}-x64`);
+        expect(result.stderr).toContain(`@liberseek/boft-cli-${platform}-x64`);
         expect(result.stderr).toContain("expected 0.1.0");
         expect(result.stderr).toContain(
-          `npm install -g @codexhost/cli@0.1.0 @codexhost/cli-${platform}-x64@0.1.0`,
+          `npm install -g @liberseek/boft-cli@0.1.0 @liberseek/boft-cli-${platform}-x64@0.1.0`,
         );
         expect(result.stderr).not.toContain("received Launcher ready");
         expect(result.stdout).not.toContain("startup:");

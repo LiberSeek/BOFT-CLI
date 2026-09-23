@@ -45,10 +45,7 @@ export interface RendererConnectionDiagnostics {
   snapshot(): RendererConnectionSnapshot;
   refresh(): Promise<void>;
   openWebUi?(hostId: string, agent: ExternalRendererAgent): Promise<void>;
-  getLaunchSettings?(
-    hostId: string,
-    agent: ExternalRendererAgent,
-  ): Promise<HarnessLaunchSettings>;
+  getLaunchSettings?(hostId: string, agent: ExternalRendererAgent): Promise<HarnessLaunchSettings>;
   setLaunchSettings?(
     hostId: string,
     agent: ExternalRendererAgent,

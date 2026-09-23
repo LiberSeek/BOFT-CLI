@@ -973,7 +973,7 @@ describe("Renderer binding Host-scoped Claude catalogs", () => {
     expect(testState.prewarmClears).toBeGreaterThan(clearsBeforeSwitch);
   });
 
-  it("keeps a same-Host empty Claude catalog terminal across availability refreshes", async () => {
+  it("reloads a same-Host empty Claude catalog on an explicit availability refresh", async () => {
     installFakeBrowser();
     let claudeInspections = 0;
     const hostA = {
@@ -1040,7 +1040,9 @@ describe("Renderer binding Host-scoped Claude catalogs", () => {
     await new Promise((resolve) => setTimeout(resolve, 25));
 
     expect(claudeInspections).toBe(inspectionsAfterRefresh);
-    expect(testState.renderedModelViews.at(-1)).toMatchObject({ status: "empty" });
+    await vi.waitFor(() =>
+      expect(testState.renderedModelViews.at(-1)).toMatchObject({ status: "ready" }),
+    );
     expect(testState.renderedModelViews).not.toContainEqual(
       expect.objectContaining({ status: "error" }),
     );
