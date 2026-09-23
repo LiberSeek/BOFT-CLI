@@ -57,6 +57,7 @@ import {
 } from "@codexhost/harness-adapter";
 import {
   harnessCommandCatalogSchema,
+  type HarnessCommandCatalog,
   harnessIdSchema,
   harnessThinkingOptionIdSchema,
   hostInteractionIdSchema,
@@ -110,6 +111,11 @@ import {
   type PiNativeModel,
   type PiNativeModelRef,
 } from "./pi-model-catalog.js";
+import {
+  piDynamicCommandPrompt,
+  piLiveCommandCatalog,
+  type PiNativeCommand,
+} from "./pi-slash-commands.js";
 
 export interface PiAdapterOptions {
   command?: string;
@@ -130,6 +136,8 @@ export interface PiTurnTransport {
   getAvailableModels(): Promise<PiNativeModel[]>;
   getAvailableThinkingLevels(): Promise<HarnessThinkingOptionId[] | null>;
   getEntries(): Promise<PiSessionHistory>;
+  /** Live commands of the running Session; absent on transports without RPC listing. */
+  getCommands?(): Promise<PiNativeCommand[]>;
   getSessionUsage(): Promise<HostUsage | null>;
   fork(entryId: string): Promise<PiSessionState>;
   clone(): Promise<PiSessionState>;
@@ -589,6 +597,7 @@ class PiHarnessSession implements HarnessSession {
   #starting: Promise<PiTurnTransport> | null = null;
   #state: HarnessSessionState = {};
   #transport: PiTurnTransport | null = null;
+  #liveCommands: HarnessCommandCatalog = piCommandCatalog;
   #usage: HostUsage | null;
   #usageGeneration = 0;
   #usageRefreshSequence = 0;
@@ -627,7 +636,7 @@ class PiHarnessSession implements HarnessSession {
       subagents: { observe: true, readTranscript: true },
     };
     this.commands = {
-      list: async () => ({ ok: true, value: piCommandCatalog }),
+      list: async () => ({ ok: true, value: await this.#refreshLiveCommands() }),
       execute: (command) => this.#executeHarnessCommand(command),
     };
     this.#transport = options.startedTransport ?? null;
@@ -1098,9 +1107,40 @@ class PiHarnessSession implements HarnessSession {
     }
   }
 
+  /**
+   * Built-ins plus the running Session's commands. Never starts the process
+   * just to list commands; an unstarted Session reports the built-ins.
+   */
+  async #refreshLiveCommands(): Promise<HarnessCommandCatalog> {
+    const transport = this.#transport;
+    if (this.#phase === "open" && transport?.getCommands) {
+      try {
+        this.#liveCommands = piLiveCommandCatalog(piCommandCatalog, await transport.getCommands());
+      } catch {
+        // Keep the last known catalog.
+      }
+    }
+    return this.#liveCommands;
+  }
+
   async #executeHarnessCommand(
     command: HarnessCommandInvocation,
   ): Promise<HarnessResult<HarnessCommandAccepted>> {
+    const argumentText = command.arguments?.text;
+    const dynamicPrompt = piDynamicCommandPrompt(
+      this.#liveCommands,
+      command.commandId,
+      typeof argumentText === "string" ? argumentText : undefined,
+    );
+    if (dynamicPrompt !== null) {
+      // Pi expands extension commands, prompt templates and skills from prompt text.
+      const started = await this.execute({
+        type: "turn.start",
+        turnId: command.turnId,
+        input: [{ type: "text", text: dynamicPrompt }],
+      });
+      return started.ok ? { ok: true, value: { turnId: command.turnId } } : started;
+    }
     if (command.commandId !== "pi.compact") {
       return {
         ok: false,
@@ -1942,6 +1982,7 @@ class PiHarnessSession implements HarnessSession {
 export class PiAdapter implements HarnessAdapter {
   readonly credentialImports: HarnessCredentialImports;
   readonly commandCatalog = piCommandCatalog;
+  readonly liveCommandCatalog = true;
   readonly harnessId: HarnessId = piHarnessId;
   readonly subagents: HarnessSubagentCapability = {
     readSnapshot: async ({ parent, nativeSubagentId, cwd }) => {

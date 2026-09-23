@@ -190,6 +190,7 @@ export interface RendererSettingsMessages {
   readonly launchPathSaveError: string;
   readonly connectionOpenInstallation: string;
   readonly connectionOpenHarnessWeb: string;
+  readonly connectionDeepSeekTestedVersions: string;
   readonly connectionInstall: string;
   readonly connectionInstallDescription: string;
   readonly connectionInstallCommand: string;
@@ -234,6 +235,7 @@ export interface RendererSettingsMessages {
   readonly updateInstalling: string;
   readonly updateInstallingNpm: string;
   readonly updateRequestTimeout: string;
+  readonly updateServiceUnavailable: string;
   readonly updateRestarting: string;
   readonly updateSucceeded: string;
   readonly updateFailed: string;
@@ -451,6 +453,8 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
     "Could not save. Enter an existing absolute installation folder on this Host and check configuration permissions.",
   connectionOpenInstallation: "Open official installation page",
   connectionOpenHarnessWeb: "Open DeepSeek Harness Web",
+  connectionDeepSeekTestedVersions:
+    "Tested with DSH 0.1.2-rc.1, 0.1.5-rc.1 and 0.1.5-rc.2. Other versions may connect, but have not been verified.",
   connectionInstall: "Install",
   connectionInstallDescription:
     "This Harness was not detected. Copy the official install command, copy an install prompt for another Agent, or open the official installation page. After installing, return here and run the check again.",
@@ -499,7 +503,10 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   updateWaitingForExit: "Waiting for the application to close...",
   updateInstalling: "Installing update...",
   updateInstallingNpm: "Installing update through npm...",
-  updateRequestTimeout: "The update service did not respond. Try again.",
+  updateRequestTimeout:
+    "The update service did not respond. Download the latest version from GitHub Releases below.",
+  updateServiceUnavailable:
+    "Automatic updates are unavailable right now. Download the latest version from GitHub Releases below.",
   updateRestarting: "Restarting to finish the update...",
   updateSucceeded: "Update installed successfully.",
   updateFailed: "Update failed.",
@@ -733,6 +740,8 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   launchPathSaveError: "保存失败。请填写此 Host 上实际存在的安装目录绝对路径，并确认配置目录可写。",
   connectionOpenInstallation: "前往官方安装页面",
   connectionOpenHarnessWeb: "打开 DeepSeek Harness Web",
+  connectionDeepSeekTestedVersions:
+    "已在 DSH 0.1.2-rc.1、0.1.5-rc.1 和 0.1.5-rc.2 上测试。其他版本可以尝试连接，但尚未验证。",
   connectionInstall: "安装",
   connectionInstallDescription:
     "尚未检测到该 Harness。可以复制官方安装命令、复制安装 Prompt 交给其他 Agent 执行，或前往官方安装页面。安装完成后请返回此页面重新检查。",
@@ -778,7 +787,8 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   updateWaitingForExit: "正在等待应用退出...",
   updateInstalling: "正在安装更新...",
   updateInstallingNpm: "正在通过 npm 安装...",
-  updateRequestTimeout: "更新服务未响应，请重试。",
+  updateRequestTimeout: "更新服务未响应，请通过下方 GitHub Releases 手动下载最新版本。",
+  updateServiceUnavailable: "暂时无法自动更新，请通过下方 GitHub Releases 手动下载最新版本。",
   updateRestarting: "正在重启以完成更新...",
   updateSucceeded: "更新安装成功。",
   updateFailed: "更新失败。",

@@ -2,6 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import type { HarnessResult, HarnessSession, OpenSessionInput } from "@codexhost/harness-adapter";
 import { FakeHarnessAdapter } from "@codexhost/harness-adapter/testing";
 import { MappingStore } from "@codexhost/mapping-store";
 import {
@@ -1101,6 +1102,45 @@ describe("AppServerHost HarnessAdapter projection", () => {
     await stopFixture(fixture);
   });
 
+  it("keeps the source Permission Mode when a Fork opens on the Harness default", async () => {
+    const permissionModes = harnessPermissionModeCatalogSchema.parse({
+      modes: [
+        { id: "default", label: "Default" },
+        { id: "auto", label: "Auto" },
+      ],
+      defaultModeId: "default",
+    });
+    const adapter = new DefaultOnForkAdapter(
+      harnessIdSchema.parse("pi"),
+      undefined,
+      true,
+      true,
+      null,
+      permissionModes,
+    );
+    const fixture = createFixture({ externalAdapters: new Map([["pi", adapter]]) });
+    const sourceThreadId = await startPiThread(fixture);
+    const auto = harnessPermissionModeIdSchema.parse("auto");
+    writeRequest(fixture.desktopInput, {
+      id: 20,
+      method: "codexhost/thread/permission-mode/select",
+      params: { threadId: sourceThreadId, permissionModeId: auto },
+    });
+    await fixture.collector.waitFor((message) => requestId(message, 20));
+    await completePiTurn(fixture, sourceThreadId, 21);
+
+    writeRequest(fixture.desktopInput, {
+      id: 22,
+      method: "thread/fork",
+      params: { threadId: sourceThreadId },
+    });
+    const forkResponse = await fixture.collector.waitFor((message) => requestId(message, 22));
+    expect(forkResponse.error).toBeUndefined();
+    expect(adapter.forkedWithDefault).toBe(true);
+    expect(adapter.sessions.at(-1)?.state.effectivePermissionModeId).toBe(auto);
+    await stopFixture(fixture);
+  });
+
   it("forks external inclusive, exclusive, and tail boundaries without reusing Host Turn IDs", async () => {
     const fixture = createFixture();
     const officialWrite = vi.fn();
@@ -1992,3 +2032,20 @@ describe("AppServerHost HarnessAdapter projection", () => {
     await stopFixture(fixture);
   });
 });
+
+/** Mirrors Claude Code: a forked Native Session starts on the Harness default Permission Mode. */
+class DefaultOnForkAdapter extends FakeHarnessAdapter {
+  forkedWithDefault = false;
+
+  override async open(input: OpenSessionInput): Promise<HarnessResult<HarnessSession>> {
+    const opened = await super.open(input);
+    if (opened.ok && input.kind === "fork" && this.permissionModes) {
+      const reset = await opened.value.execute({
+        type: "permissionMode.select",
+        permissionModeId: this.permissionModes.defaultModeId,
+      });
+      this.forkedWithDefault = reset.ok;
+    }
+    return opened;
+  }
+}

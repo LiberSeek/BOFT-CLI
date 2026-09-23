@@ -262,6 +262,13 @@ function createInlineErrorDetail(
   body.className = "settings-connection-inline-detail";
   body.dataset.connectionDetail = item.key;
 
+  if (item.agentSnapshot?.agent === "deepseek-harness") {
+    const compatibility = document.createElement("p");
+    compatibility.className = "settings-connection-compatibility";
+    compatibility.textContent = messages.connectionDeepSeekTestedVersions;
+    body.append(compatibility);
+  }
+
   if (item.agentSnapshot?.availability === "notInstalled") {
     const guide = harnessInstallGuide(
       item.agentSnapshot.agent,

@@ -180,16 +180,14 @@ test("a new conversation shows Harness commands but disables compact before a Th
   );
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
+  await expect(trigger).toHaveAttribute("title", "Type # for commands, skills and agents");
+  // The button types `#` into the Composer, which opens the # menu.
   await trigger.click();
-  const menu = page.locator("[data-codexhost-harness-command-menu]");
+  const menu = page.locator("[data-codexhost-delegation-mention-menu]");
   await expect(menu).toBeVisible();
-  const compact = menu.locator('[data-command-id="pi.compact"]');
-  await expect(compact).toBeDisabled();
-  await expect(compact).toHaveAttribute(
-    "title",
-    "Start a conversation before running this command",
-  );
-  await expect(page.locator("[data-codex-composer]")).toBeEmpty();
+  await expect(page.locator("[data-codex-composer]")).toHaveText("#");
+  await expect(menu.locator('[aria-disabled="true"] [data-command-id="pi.compact"]')).toBeVisible();
+  await expect(menu).toContainText("Start a conversation before running this command");
   expect(await page.evaluate(() => Reflect.get(globalThis, "threadCommandRequests"))).toEqual([]);
 });
 
@@ -205,15 +203,21 @@ test("a DSH draft offers goal and plan but explains why compact cannot run", asy
   });
   await page.addScriptTag({ content: browserBundle });
   const trigger = page.locator("[data-codexhost-harness-command-control] > button");
-  const menu = page.locator("[data-codexhost-harness-command-menu]");
+  const menu = page.locator("[data-codexhost-delegation-mention-menu]");
   await trigger.click();
-  await expect(menu.locator('[role="menuitem"]')).toHaveCount(3);
-  await expect(menu.locator('[data-command-id="dsh.compact"]')).toBeDisabled();
+  await expect(menu.locator("[data-command-id]")).toHaveCount(3);
+  await expect(
+    menu.locator('[aria-disabled="true"] [data-command-id="dsh.compact"]'),
+  ).toBeVisible();
   await expect(menu).toContainText("Start a conversation before running this command");
+  await page.keyboard.press("Escape");
   for (const [id, invocation] of [
     ["dsh.goal", "/dsh-goal"],
     ["dsh.plan", "/plan"],
   ] as const) {
+    await page.locator("[data-codex-composer]").evaluate((editor) => {
+      editor.textContent = "";
+    });
     await trigger.click();
     await menu.locator(`[data-command-id="${id}"]`).click();
     await expect(page.locator("[data-codex-composer]")).toContainText(invocation);

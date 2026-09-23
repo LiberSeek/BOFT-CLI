@@ -1258,11 +1258,13 @@
 .settings-connection-install-callout p,
 .settings-connection-error-summary p,
 .settings-connection-state-summary p,
-.settings-connection-issue-note {
+.settings-connection-issue-note,
+.settings-connection-compatibility {
   margin: 0;
   color: var(--settings-muted);
   font-size: 11px;
   line-height: 16px;
+  overflow-wrap: anywhere;
 }
 
 .settings-connection-install-command {
@@ -1692,7 +1694,7 @@
 }
 
 /* The only emphasis on this screen: a latest version newer than the installed one. */
-.settings-update-metadata__value--newer {
+.settings-update-metadata__item strong.settings-update-metadata__value--newer {
   color: var(--settings-focus);
 }
 
@@ -1833,7 +1835,7 @@
   display: grid;
   min-width: 0;
   gap: 12px;
-  color: var(--settings-muted);
+  color: var(--settings-text);
   font-size: 14px;
   line-height: 22px;
   overflow-wrap: anywhere;
@@ -1859,13 +1861,13 @@
 }
 
 .settings-update-notes h1 {
-  font-size: 18px;
-  line-height: 26px;
+  font-size: 16px;
+  line-height: 24px;
 }
 
 .settings-update-notes h2 {
-  font-size: 17px;
-  line-height: 24px;
+  font-size: 15px;
+  line-height: 22px;
 }
 
 .settings-update-notes h3,
@@ -1899,7 +1901,7 @@
 }
 
 .settings-update-notes li + li {
-  margin-top: 14px;
+  margin-top: 6px;
 }
 
 .settings-update-notes .release-note-translation {
@@ -1971,6 +1973,27 @@
   min-width: 0;
   gap: 10px;
   margin-top: 24px;
+}
+
+.settings-update-controls.is-quiet {
+  margin-top: 10px;
+}
+
+.settings-update-controls.is-quiet .settings-update-manual-title {
+  display: none;
+}
+
+.settings-update-controls.is-quiet .settings-update-link {
+  min-height: 0;
+  padding: 0;
+  color: var(--settings-muted);
+  background: transparent;
+  border: 0;
+}
+
+.settings-update-controls.is-quiet .settings-update-link:hover {
+  color: var(--settings-text);
+  background: transparent;
 }
 
 .settings-update-manual-title {

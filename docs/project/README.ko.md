@@ -109,7 +109,16 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <img src="imgs/grok-usage-limits.png" alt="5시간 및 7일 기간의 남은 한도와 초기화 시간">
+      <p><strong>#으로 위임할 Agent 선택</strong></p>
+      <div align="center">
+        <img width="90%" src="../imgs/composer-hash-delegation-menu.png" alt="채팅 입력창에 #을 입력하면 작업을 위임할 Agent 목록이 표시됩니다">
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <p><strong>남은 사용량 표시</strong></p>
+      <img src="../imgs/grok-usage-limits.png" alt="5시간 및 7일 기간의 남은 한도와 초기화 시간">
       <p>macOS 메뉴 막대 아이콘 및 Windows 작업 표시줄 아이콘에는 남은 한도 비율이 표시되며, 5시간 창을 우선 사용하고 없으면 7일 창으로 대체합니다.</p>
     </td>
   </tr>
@@ -156,6 +165,8 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
 > CodeBuddy의 — 표시는 Host에 아직 연동되지 않았다는 뜻이며, CLI 자체에 기능이 없다는 뜻은 아닙니다. 이미지 입력과 Teams 전용 UI도 아직 연동되지 않았습니다. 버전, 원격 실행 요건 및 검증 범위는 [CodeBuddy 연동 설명](codebuddy-harness-integration.md)을 참고하세요. Cursor CLI는 실험적이며 [Cursor CLI 실험 메모](cursor-cli-experimental.md)를 참고하세요.
 
 ## Agent 간 협업
+
+채팅 입력창에 `#`을 입력하면 작업을 위임할 Agent를 선택하거나 현재 선택한 Harness에서 사용할 수 있는 명령과 스킬을 찾을 수 있습니다.
 
 현재 Agent에게 독립 작업을 다른 Harness로 넘기도록 요청할 수 있습니다. 예를 들면 다음과 같습니다.
 
@@ -224,6 +235,27 @@ BOFT CLI는 다른 방식을 사용합니다.
 목표는 단순히 대화가 가능하게 만드는 것이 아니라 충실도를 유지하는 것입니다. 스트리밍, 도구 상태, 안정적인 Patch, 기본 승인과 질문은 가능한 한 Host가 추측하거나 만들어 내지 않고 Harness 자체에서 제공됩니다.
 
 </details>
+
+## 교류 그룹 참여
+
+<table align="center">
+  <tr>
+    <td>
+      <strong>교류 그룹 참여</strong><br />
+      <sub>BOFT CLI 사용법과 기능에 관심 있는 개발자는 QR 코드를 스캔해 위챗 그룹에 참여할 수 있습니다.</sub>
+      <ul>
+        <li><sub>설치 문제는 그룹에서 질문할 수 있습니다</sub></li>
+        <li><sub>기능 제안과 피드백</sub></li>
+        <li><sub>개발 관련 논의</sub></li>
+        <li><sub>버그는 <strong>issue</strong>로 제출해 주세요</sub></li>
+      </ul>
+      <sub><strong>함께 기여해 주세요.</strong></sub>
+    </td>
+    <td align="center">
+      <img width="230" alt="위챗 그룹 QR 코드" src="../imgs/wechat-qrcode.jpg" />
+    </td>
+  </tr>
+</table>
 
 ## 개발
 

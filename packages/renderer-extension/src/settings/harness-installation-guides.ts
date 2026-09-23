@@ -172,6 +172,15 @@ const guides: Readonly<Record<ExternalRendererAgent, InstallationGuide>> = {
     ),
     after: start("qoderclicn"),
   },
+  "kimi-code": {
+    url: "https://moonshotai.github.io/kimi-code/en/guides/getting-started.html",
+    commands: shells(
+      "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
+      "irm https://code.kimi.com/kimi-code/install.ps1 | iex",
+    ),
+    before: ["On Windows, install Git for Windows first.", "Windows 请先安装 Git for Windows。"],
+    after: start("kimi"),
+  },
 };
 
 export function harnessInstallationGuide(

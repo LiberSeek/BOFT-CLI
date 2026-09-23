@@ -259,6 +259,7 @@ export async function runDesktopController(
           "cursor-cli",
           "qoder",
           "qoder-cn",
+          "kimi-code",
         ],
         timeoutMs: PRODUCTION_INSTALL_TIMEOUT_MS,
       },

@@ -11,6 +11,7 @@ import {
   type JsonValue,
 } from "@codexhost/shared-contracts";
 
+import { parsePiNativeCommands, type PiNativeCommand } from "./pi-slash-commands.js";
 import type { PiEmptySessionConfiguration } from "./pi-empty-session.js";
 import { resolvePiExecutable, withNodeRuntimeOnPath } from "./command.js";
 import type { PiSessionHistory } from "./pi-history.js";
@@ -610,6 +611,11 @@ export class PiRpcSession {
       throw fault;
     }
     return this;
+  }
+
+  /** Live slash commands, prompt templates and skills of the running Pi Session. */
+  async getCommands(): Promise<PiNativeCommand[]> {
+    return parsePiNativeCommands(await this.#send("get_commands", {}));
   }
 
   async getEntries(): Promise<PiSessionHistory> {

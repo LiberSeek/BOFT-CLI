@@ -25,7 +25,7 @@
 
 ## Harness 专项
 
-[能力表边界](harnesses/capability-boundaries.md)记录各 Harness 的接入条件、Cursor 的单向委派，以及 Pi 权限模式、Antigravity 审批与压缩等剩余缺口。
+[能力表边界](harnesses/capability-boundaries.md)记录各 Harness 的接入条件、Kimi 动态 Thinking、Cursor 的单向委派，以及 Pi 权限模式、Antigravity 审批与压缩等剩余缺口。
 
 ### Antigravity
 
@@ -88,7 +88,7 @@
 
 | 文档 | 内容与阅读时机 |
 | --- | --- |
-| [`product/codex-accounts.md`](product/codex-accounts.md) | 设置页中的原生账号与额度、手动导入 Pi 及导入记录管理；修改账号 UI、查询或凭证导入链路时阅读。 |
+| [`product/codex-accounts.md`](product/codex-accounts.md) | 设置页中的原生账号与额度、外部 Harness 不受 Codex 额度门限制、手动导入 Pi 及导入记录管理；修改账号 UI、发送额度门、查询或凭证导入链路时阅读。 |
 | [`product/codex-native-account-switching-design.md`](product/codex-native-account-switching-design.md) | 移除 Codex 多账号切换后的只读边界；修改 Codex 认证或账号路由时阅读。 |
 | [`architecture/renderer-settings-styling.md`](architecture/renderer-settings-styling.md) | 设置页 Tailwind CSS 使用边界、构建方式与编写规则；新增或改版设置页界面时阅读。 |
 | [`operations/codex-desktop-upgrade-diagnosis-playbook.md`](operations/codex-desktop-upgrade-diagnosis-playbook.md) | Desktop 更新后 Renderer、Bridge、Agent 和 Model 异常的诊断流程；升级兼容性回归时阅读。 |

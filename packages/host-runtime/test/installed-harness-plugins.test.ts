@@ -20,6 +20,7 @@ const classes = {
   antigravity: "AntigravityAdapter",
   hermes: "HermesAdapter",
   muse: "MuseAdapter",
+  "kimi-code": "KimiAdapter",
   "kiro-cli": "KiroAdapter",
   codebuddy: "CodeBuddyAdapter",
   workbuddy: "WorkBuddyAdapter",
@@ -125,6 +126,7 @@ describe("installed Harness composition", () => {
         "/kiro-spec",
         "/kiro-vibe",
       ],
+      "kimi-code": ["/compact", "/status", "/usage", "/mcp", "/tasks", "/help"],
       qoder: ["/compact"],
       "qoder-cn": ["/compact"],
     };

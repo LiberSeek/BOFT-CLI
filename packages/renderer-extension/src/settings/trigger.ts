@@ -251,6 +251,7 @@ export function mountRendererSettingsTrigger(
   updateButton.style.display = "inline-flex";
   updateButton.style.alignItems = "center";
   updateButton.style.justifyContent = "center";
+  updateButton.style.width = "28px";
   updateButton.style.height = "28px";
   updateButton.style.maxWidth = "0";
   updateButton.style.padding = "0";

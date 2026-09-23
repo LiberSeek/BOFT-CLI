@@ -43,6 +43,7 @@ import {
   isNativeContextUsageControlCandidate,
   nativeContextUsageControlForComposer,
   reconcileComposerNativeControls,
+  refreshSendButton,
   trailingActionAnchor,
   type ComposerAgentControl,
 } from "../src/renderer-composer-dom.js";
@@ -525,6 +526,137 @@ describe("Renderer Composer DOM behavior", () => {
     vi.unstubAllGlobals();
   });
 
+  describe("stale send button after Codex re-renders the trailing actions", () => {
+    const button = (connected: boolean, disabled = false) =>
+      ({
+        type: "submit",
+        disabled,
+        isConnected: connected,
+        parentElement: null,
+      }) as unknown as HTMLButtonElement;
+    const fakeControl = (sendButton: HTMLButtonElement, liveButtons: HTMLButtonElement[]) => {
+      const composer = {
+        contains: (node: unknown) =>
+          node === composer ||
+          liveButtons.includes(node as HTMLButtonElement) ||
+          node === liveParent,
+        querySelectorAll: (selector: string) => (selector === "button" ? liveButtons : []),
+      } as unknown as Element;
+      const liveParent = {
+        isConnected: true,
+        insertBefore: vi.fn(),
+        children: [] as unknown[],
+        parentElement: null,
+      };
+      const detachedParent = {
+        isConnected: false,
+        insertBefore: vi.fn(),
+        children: [] as unknown[],
+        parentElement: null,
+      };
+      for (const live of liveButtons) {
+        Object.assign(live, { parentElement: liveParent });
+        liveParent.children.push(live);
+      }
+      if (!liveButtons.includes(sendButton)) {
+        Object.assign(sendButton, { parentElement: detachedParent });
+        detachedParent.children.push(sendButton);
+      }
+      const modelRoot = { parentElement: null, nextElementSibling: null };
+      const agentRoot = { parentElement: null, nextElementSibling: null };
+      const control = {
+        composer,
+        composerId: "test-composer",
+        sendButton,
+        sendDisabledBeforeSwitch: null,
+        root: agentRoot,
+        modelPicker: { root: modelRoot },
+        nativeModelControl: null,
+        nativePermissionModeControl: null,
+        nativeContextUsageControl: null,
+        credits: { anchor: null, place: vi.fn(), root: { remove: vi.fn() } },
+        usage: null,
+      } as unknown as ComposerAgentControl;
+      return { control, liveParent, detachedParent, modelRoot, agentRoot };
+    };
+
+    it("follows the live send button and carries the switch lock over", () => {
+      const stale = button(false);
+      const live = button(true, false);
+      const { control } = fakeControl(stale, [live]);
+      control.sendDisabledBeforeSwitch = false;
+
+      expect(refreshSendButton(control)).toBe(live);
+      expect(control.sendButton).toBe(live);
+      expect(live.disabled).toBe(true);
+      expect(control.sendDisabledBeforeSwitch).toBe(false);
+    });
+
+    it("keeps the mount-time last-button fallback for unlabelled action buttons", () => {
+      const stale = { ...button(false), type: "button" } as unknown as HTMLButtonElement;
+      const owned = {
+        type: "button",
+        disabled: false,
+        isConnected: true,
+        hasAttribute: (name: string) => name === "data-codexhost-agent-control",
+        parentElement: null,
+      } as unknown as HTMLButtonElement;
+      const action = {
+        type: "button",
+        disabled: false,
+        isConnected: true,
+        hasAttribute: () => false,
+        getAttribute: () => null,
+        textContent: "",
+        parentElement: null,
+      } as unknown as HTMLButtonElement;
+      const { control } = fakeControl(stale, [action, owned]);
+
+      expect(refreshSendButton(control)).toBe(action);
+    });
+
+    it("does not mistake a Stop button for send once a labelled send button is replaced", () => {
+      const stale = button(false);
+      const stop = {
+        type: "button",
+        disabled: false,
+        isConnected: true,
+        hasAttribute: () => false,
+        getAttribute: (name: string) => (name === "aria-label" ? "Stop" : null),
+        textContent: "",
+        parentElement: null,
+      } as unknown as HTMLButtonElement;
+      const { control } = fakeControl(stale, [stop]);
+
+      expect(refreshSendButton(control)).toBeNull();
+      expect(control.sendButton).toBe(stale);
+    });
+
+    it("never moves owned controls into the detached trailing cluster", () => {
+      const stale = button(false);
+      const { control, detachedParent } = fakeControl(stale, []);
+
+      reconcileComposerNativeControls(control, false, false);
+
+      expect(detachedParent.insertBefore).not.toHaveBeenCalled();
+      expect(control.sendButton).toBe(stale);
+    });
+
+    it("places the Agent and Model controls beside the replacement send button", () => {
+      const stale = button(false);
+      const live = button(true);
+      const { control, liveParent, detachedParent, modelRoot, agentRoot } = fakeControl(stale, [
+        live,
+      ]);
+
+      reconcileComposerNativeControls(control, false, false);
+
+      expect(detachedParent.insertBefore).not.toHaveBeenCalled();
+      expect(liveParent.insertBefore).toHaveBeenNthCalledWith(1, modelRoot, live);
+      expect(liveParent.insertBefore).toHaveBeenNthCalledWith(2, agentRoot, live);
+    });
+  });
+
   it("resolves an inner contenteditable paragraph to its editor", () => {
     const editor = {} as Element;
     const paragraph = {
@@ -897,6 +1029,7 @@ describe("Renderer Composer DOM behavior", () => {
     };
     const send = {
       type: "submit",
+      isConnected: true,
       hasAttribute: () => false,
       getAttribute: (name: string) => (name === "aria-label" ? "Send" : null),
       contains: () => false,
@@ -907,13 +1040,14 @@ describe("Renderer Composer DOM behavior", () => {
       children: [voice, send],
       querySelectorAll: () => [voice, send],
       insertBefore,
+      isConnected: true,
     };
     Object.assign(voice, { parentElement: toolbar });
     Object.assign(send, { parentElement: toolbar });
     const modelRoot = { parentElement: toolbar, nextElementSibling: send, style: {} };
     const agentRoot = { parentElement: toolbar, nextElementSibling: send, style: {} };
     const control = {
-      composer: { querySelectorAll: () => [] },
+      composer: { querySelectorAll: () => [], contains: () => true },
       sendButton: send,
       root: agentRoot,
       picker: { root: agentRoot },
@@ -949,6 +1083,7 @@ describe("Renderer Composer DOM behavior", () => {
     };
     const send = {
       type: "submit",
+      isConnected: true,
       hasAttribute: () => false,
       getAttribute: (name: string) => (name === "aria-label" ? "Send" : null),
       contains: () => false,
@@ -957,13 +1092,14 @@ describe("Renderer Composer DOM behavior", () => {
     const toolbar = {
       children: [pause, send],
       insertBefore,
+      isConnected: true,
     };
     Object.assign(pause, { parentElement: toolbar });
     Object.assign(send, { parentElement: toolbar });
     const modelRoot = { parentElement: toolbar, nextElementSibling: send, style: {} };
     const agentRoot = { parentElement: toolbar, nextElementSibling: send, style: {} };
     const control = {
-      composer: { querySelectorAll: () => [] },
+      composer: { querySelectorAll: () => [], contains: () => true },
       sendButton: send,
       root: agentRoot,
       picker: { root: agentRoot },

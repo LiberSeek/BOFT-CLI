@@ -109,6 +109,12 @@ const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInsta
       posix: "npm install -g @qodercn-ai/qoderclicn",
       windows: "npm install -g @qodercn-ai/qoderclicn",
     },
+    "kimi-code": {
+      url: "https://moonshotai.github.io/kimi-code/en/guides/getting-started.html",
+      binary: "kimi",
+      posix: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
+      windows: "irm https://code.kimi.com/kimi-code/install.ps1 | iex",
+    },
   });
 
 export function harnessInstallPlatform(window: Window | null | undefined): HarnessInstallPlatform {
