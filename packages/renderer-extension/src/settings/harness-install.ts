@@ -83,6 +83,14 @@ const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInsta
       posix: "npm install -g @tencent-ai/codebuddy-code",
       windows: "npm install -g @tencent-ai/codebuddy-code",
     },
+    workbuddy: {
+      url: "https://www.workbuddy.ai/docs/workbuddy/Quickstart",
+      binary: "workbuddy",
+      posix:
+        "Install the WorkBuddy desktop app. BOFT uses its bundled CLI, not the standalone CodeBuddy CLI.",
+      windows:
+        "Install the WorkBuddy desktop app. BOFT uses its bundled CLI, not the standalone CodeBuddy CLI.",
+    },
     "cursor-cli": {
       url: "https://cursor.com/docs/cli/installation",
       binary: "cursor-agent",

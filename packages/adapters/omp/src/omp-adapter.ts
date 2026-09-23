@@ -1715,7 +1715,13 @@ class OmpHarnessSession implements HarnessSession {
               id: "answer",
               type: "choice" as const,
               prompt: request.title,
-              options: request.options.map((option) => ({ value: option, label: option })),
+              options: request.options.map((option, index) => ({
+                value: option,
+                label: option,
+                ...(request.optionDetails?.[index]?.description
+                  ? { description: request.optionDetails[index].description }
+                  : {}),
+              })),
               multiple: false,
               allowOther: false,
               optional: false,

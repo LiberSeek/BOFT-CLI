@@ -575,7 +575,6 @@ mod tests {
 
         assert_eq!(status.code(), Some(7));
     }
-
     #[test]
     fn armed_activation_guard_terminates_its_process() {
         let child = Command::new("cmd.exe")

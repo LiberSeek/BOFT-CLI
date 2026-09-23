@@ -46,9 +46,6 @@ function parseRemoteCliArguments(arguments_: readonly string[]): {
       case "--stock-codex":
         options.stockCodexPath = value;
         break;
-      case "--claude-command":
-        options.claudeCommand = value;
-        break;
       case "--node":
         resources.nodePath = value;
         break;
@@ -81,7 +78,7 @@ export async function runRemoteHostCli(input: {
       output.write(
         [
           "usage:",
-          "  boft remote install [--stock-codex PATH] [--claude-command PATH]",
+          "  boft remote install [--stock-codex PATH]",
           "  boft remote start",
           "  boft remote stop",
           "  boft remote status",

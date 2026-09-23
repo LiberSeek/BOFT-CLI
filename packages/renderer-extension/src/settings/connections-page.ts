@@ -1,4 +1,4 @@
-import type { CodexhostError } from "@codexhost/shared-contracts";
+import type { CodexhostError, HarnessLaunchSettings } from "@codexhost/shared-contracts";
 
 import {
   defaultAgentGroupSection,
@@ -17,6 +17,7 @@ import {
   harnessInstallGuide,
   harnessInstallPlatform,
 } from "./harness-install.js";
+import { createHarnessLaunchControls } from "./harness-launch-controls.js";
 import { createRendererSettingsIcon, type RendererSettingsIconName } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
 
@@ -44,6 +45,15 @@ export interface RendererConnectionDiagnostics {
   snapshot(): RendererConnectionSnapshot;
   refresh(): Promise<void>;
   openWebUi?(hostId: string, agent: ExternalRendererAgent): Promise<void>;
+  getLaunchSettings?(
+    hostId: string,
+    agent: ExternalRendererAgent,
+  ): Promise<HarnessLaunchSettings>;
+  setLaunchSettings?(
+    hostId: string,
+    agent: ExternalRendererAgent,
+    path: string | null,
+  ): Promise<HarnessLaunchSettings>;
   subscribe(listener: () => void): () => void;
 }
 
@@ -439,6 +449,7 @@ function createConnectionBlock(
   expanded: boolean,
   toggleExpand: () => void,
   group: ConnectionRowGroupController | null = null,
+  launchControls: HTMLElement | null = null,
 ): { block: HTMLElement; row: HTMLElement } {
   const block = document.createElement("div");
   block.className = "settings-connection-block";
@@ -478,7 +489,8 @@ function createConnectionBlock(
   const canExpand =
     item.error !== null ||
     item.agentSnapshot?.availability === "notInstalled" ||
-    item.openWebUi !== undefined;
+    item.openWebUi !== undefined ||
+    launchControls !== null;
   if (item.agentSnapshot?.availability === "notInstalled") {
     const install = document.createElement("button");
     install.type = "button";
@@ -524,7 +536,9 @@ function createConnectionBlock(
   row.append(identity, status, action);
   block.append(row);
   if (expanded && canExpand) {
-    block.append(createInlineErrorDetail(document, item, hostId, messages));
+    const detail = createInlineErrorDetail(document, item, hostId, messages);
+    if (launchControls) detail.append(launchControls);
+    block.append(detail);
   }
   // Expand from the connectionItem container; ignore nested action controls.
   block.addEventListener("click", (event) => {
@@ -636,6 +650,29 @@ export function createConnectionsSettingsPage(
       let selectedHostId: string | null = null;
       let expandedItemKey: string | null = null;
       let latestSnapshot: RendererConnectionSnapshot | null = null;
+      let launchControls: { hostId: string; itemKey: string; element: HTMLElement } | null = null;
+
+      const launchControlsFor = (hostId: string, item: ConnectionListItem): HTMLElement | null => {
+        const getLaunchSettings = diagnostics?.getLaunchSettings;
+        const setLaunchSettings = diagnostics?.setLaunchSettings;
+        if (
+          hostId !== "local" ||
+          item.agentSnapshot?.agent !== "workbuddy" ||
+          !getLaunchSettings ||
+          !setLaunchSettings
+        ) {
+          return null;
+        }
+        if (launchControls?.hostId === hostId && launchControls.itemKey === item.key) {
+          return launchControls.element;
+        }
+        const element = createHarnessLaunchControls(document, messages, "workbuddy", {
+          get: () => getLaunchSettings(hostId, "workbuddy"),
+          set: (path) => setLaunchSettings(hostId, "workbuddy", path),
+        });
+        launchControls = { hostId, itemKey: item.key, element };
+        return element;
+      };
 
       const diagnostics = getDiagnostics();
       const runRefresh = (): void => {
@@ -917,6 +954,7 @@ export function createConnectionsSettingsPage(
             item.key === expandedItemKey,
             () => toggleExpand(item),
             createGroupController(agent, section),
+            launchControlsFor(selectedHost.hostId, item),
           );
           rowElements.set(item.key, row);
           rows.append(block);
@@ -991,6 +1029,7 @@ export function createConnectionsSettingsPage(
                 item.key === expandedItemKey,
                 () => toggleExpand(item),
                 createGroupController(entry.agent, "more"),
+                launchControlsFor(selectedHost.hostId, item),
               );
               rowElements.set(item.key, row);
               zone.append(block);

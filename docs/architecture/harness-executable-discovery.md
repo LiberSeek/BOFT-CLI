@@ -122,6 +122,21 @@ DeepSeek 的 endpoint 校验、Host 启动、就绪等待和 HTTP/WebSocket 生�
 
 但它的 `dsh`/`npx` 可执行文件发现以及 Windows `.cmd` 调用属于通用机制，后续可以接入 `@codexhost/harness-discovery`。
 
+## 连接页的手动安装指引
+
+未安装的 Harness 行及下载图标均打开右侧安装指引，不再直接跳转官网。Renderer 的 `settings/harness-installation-guides.ts` 保存每个 Harness 的官方来源、命令、前置条件与安装后步骤；`harness-installation-panel.ts` 只负责展示、复制及触发现有连接诊断，不执行安装、登录或 Shell 命令。
+
+- 命令明确区分 macOS/Linux 终端与 Windows PowerShell；npm 安装提示 Node.js 前置依赖。页面列出系统选项，不根据本机系统推断远程 Host 的系统。
+- 远程 Host 必须在目标机器操作；Windows 原生 Host 不会自动使用 WSL 中的安装。
+- DeepSeek 固定安装当前 Adapter 推荐的 `@deepseek-ai/dsh@0.1.5-rc.1`，不追随 npm latest。修改 Adapter 支持范围时应同步维护安装指引；通常无需手动运行 `dsh web`。
+- WorkBuddy 提供 macOS/Windows 官方下载与安装指南，不冒充 CLI npm 包、不提供未经确认的 Linux 安装命令。桌面登录态与内置 CLI 认证不能混为一谈。
+- Qoder 与 Qoder CN 使用各自安装源和启动命令。
+- 完成安装及原生认证/配置后，用户手动重新检测。复制失败显示反馈；诊断失败仍沿用现有连接错误详情。自定义 WorkBuddy 路径和环境变量变更可能需要重启 codexhost。
+
+面板文案仅保留安装命令、必要依赖、安装后操作与远程 Host 提醒；系统限制和 PATH/WSL 等排障说明不在安装面板展开，用户可查阅官方安装说明。
+
+命令来源以数据项中的官方链接为准；Grok 使用官网公开的 `@xai-official/grok` 包名及 npm 包元数据，DeepSeek 的全局安装形式根据官方发布包的 `dsh` 入口和 Host 发现约束选择。安装成功不承诺任意新版本与 Adapter 兼容，最终以连接诊断为准。
+
 ## 已解决的问题
 
 当前实现主要解决：

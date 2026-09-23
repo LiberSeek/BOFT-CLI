@@ -8,6 +8,15 @@ const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const browserExecutable = process.env.CODEXHOST_PLAYWRIGHT_EXECUTABLE_PATH;
 if (browserExecutable) test.use({ launchOptions: { executablePath: browserExecutable } });
 
+test.beforeEach(async ({ page }) => {
+  // The production binding reads preferences from localStorage; about:blank's
+  // opaque origin rejects that before any Composer can mount.
+  await page.route("https://codexhost.test/**", (route) =>
+    route.fulfill({ contentType: "text/html", body: "<!doctype html><body></body>" }),
+  );
+  await page.goto("https://codexhost.test/");
+});
+
 const { outputFiles } = await build({
   stdin: {
     contents: `
@@ -95,7 +104,12 @@ const { outputFiles } = await build({
           return true;
         },
         {
-          inspectHarness: async () => inspection,
+          inspectHarness: async (_input, options) => {
+            if (globalThis.holdBackgroundInspections && options?.priority === "background") {
+              await new Promise(() => {});
+            }
+            return inspection;
+          },
           inspectHarnessCommands: async (input) => {
             globalThis.commandCatalogRequests.push(input);
             if (kiro) return KIRO_COMMAND_CATALOG;
@@ -128,12 +142,13 @@ const { outputFiles } = await build({
       );
 
       setTimeout(() => {
-        window.__codexhostDraftPrewarmPolicyV1 = {
+        const policy = {
           state: "ready",
           hostId: "local",
           select: async () => undefined,
           clear: async () => undefined,
         };
+        window.__codexhostHostRoutingV1 = { forComposer: () => ({ hostId: "local", policy }) };
       }, 100);
     `,
     resolveDir: repositoryRoot,
@@ -227,6 +242,36 @@ test("a draft waits for the Desktop prewarm policy before applying its Model", a
   await expect(trigger).toContainText("Startup Model");
   await expect(trigger).toBeEnabled();
   await expect(trigger).toHaveAttribute("title", "Startup Model");
+});
+
+test("the selected Model loads while its background Harness discovery remains queued", async ({
+  page,
+}, testInfo) => {
+  await page.evaluate(() => Reflect.set(globalThis, "holdBackgroundInspections", true));
+  await page.addScriptTag({ content: browserBundle });
+
+  const trigger = page.locator('[data-codexhost-model-control] > button[aria-haspopup="menu"]');
+  await expect(trigger).toContainText("Startup Model");
+  await expect(trigger).toBeEnabled();
+  await trigger.click();
+  await expect(page.getByRole("menu", { name: "Model", exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("foreground-model-ready.png") });
+});
+
+test("restores the visible draft selection after a same-Host connection policy changes", async ({
+  page,
+}) => {
+  await page.addScriptTag({ content: browserBundle });
+  await expect(
+    page.locator('[data-codexhost-model-control] > button[aria-haspopup="menu"]'),
+  ).toContainText("Startup Model");
+  await page.evaluate(() => {
+    Reflect.set(globalThis, "appliedConfiguration", null);
+    window.dispatchEvent(new Event("codexhost:draft-prewarm-policy-changed"));
+  });
+  await expect
+    .poll(() => page.evaluate(() => Reflect.get(globalThis, "appliedConfiguration")))
+    .toMatchObject({ agent: "pi", model: { id: "pi-model-v1.startup" } });
 });
 
 test("Kiro selects Thinking inside the Model picker before a Thread exists", async ({

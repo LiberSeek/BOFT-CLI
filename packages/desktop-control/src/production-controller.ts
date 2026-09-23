@@ -255,6 +255,7 @@ export async function runDesktopController(
           "muse",
           "kiro-cli",
           "codebuddy",
+          "workbuddy",
           "cursor-cli",
           "qoder",
           "qoder-cn",

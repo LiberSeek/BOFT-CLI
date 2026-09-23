@@ -980,6 +980,72 @@ describe("OMP Adapter Subagents", () => {
     await adapter.close();
   });
 
+  it("projects native questions with descriptions and validates answers before responding", async () => {
+    const transport = new FakeOmpTransport();
+    transport.autoCompleteTurn = false;
+    const adapter = new OmpAdapter({}, { createTransport: () => transport });
+    const opened = await adapter.open({ kind: "create", cwd: "/synthetic" });
+    if (!opened.ok) throw new Error(opened.error.message);
+    const session = opened.value;
+    const iterator = session.outputs[Symbol.asyncIterator]();
+    await session.execute({
+      type: "turn.start",
+      turnId: "question" as HostTurnId,
+      input: [{ type: "text", text: "choose" }],
+    });
+    const started = await nextEvent(iterator);
+    if (started.type === "session.state.changed") await nextEvent(iterator);
+    await nextEvent(iterator);
+    transport.event({
+      type: "interaction.requested",
+      request: {
+        requestId: "question-1",
+        method: "select",
+        title: "Storage?",
+        options: ["JSON", "SQLite"],
+        optionDetails: [{ description: "Portable file" }, {}],
+      },
+    });
+    const output = await nextOutput(iterator);
+    if (output.kind !== "interaction") throw new Error("Missing question");
+    expect(output.interaction).toMatchObject({
+      type: "question",
+      questions: [
+        {
+          type: "choice",
+          prompt: "Storage?",
+          options: [
+            { value: "JSON", label: "JSON", description: "Portable file" },
+            { value: "SQLite", label: "SQLite" },
+          ],
+        },
+      ],
+    });
+    const respond = (answers: string[]) =>
+      session.execute({
+        type: "interaction.respond",
+        interactionId: output.interaction.interactionId,
+        response: { type: "question", answers: { answer: answers } },
+      });
+    expect(await respond(["unsupported"])).toMatchObject({
+      ok: false,
+      error: { code: "invalidRequest" },
+    });
+    expect(transport.respondToInteraction).not.toHaveBeenCalled();
+    expect(await respond(["SQLite"])).toMatchObject({ ok: true });
+    expect(transport.respondToInteraction).toHaveBeenCalledWith({
+      requestId: "question-1",
+      value: "SQLite",
+    });
+    expect(await nextEvent(iterator)).toMatchObject({
+      type: "interaction.closed",
+      reason: "responded",
+    });
+    expect(await respond(["JSON"])).toMatchObject({ ok: false, error: { code: "invalidState" } });
+    transport.succeed("chosen");
+    await adapter.close();
+  });
+
   it("projects a native Edit File Change from numbered details.diff without faulting the Session", async () => {
     const transport = new FakeOmpTransport();
     transport.autoCompleteTurn = false;

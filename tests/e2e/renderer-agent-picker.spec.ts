@@ -227,8 +227,8 @@ test("places only uninstalled Harnesses last and restores order after installati
   expect(await order()).toEqual(defaults);
   await update({ pi: "notInstalled", "claude-code": "notInstalled", grok: "ready", omp: "ready" });
   await page.evaluate(() => Reflect.get(globalThis, "groupInstallationOrderPicker")());
-  // Main/More membership remains a user preference; sorting stays within each section.
-  expect(await order()).toEqual(["codex", "omp", "claude-code", "grok", "pi"]);
+  // Explicit groups win; untouched missing Harnesses still default to More.
+  expect(await order()).toEqual(["codex", "omp", "grok", "claude-code", "pi"]);
   await update({ pi: "ready", "claude-code": "ready", grok: "ready", omp: "ready" });
   expect(await order()).toEqual(["codex", "claude-code", "omp", "pi", "grok"]);
 });

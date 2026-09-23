@@ -1,3 +1,8 @@
+import {
+  credentialImportEnglish,
+  credentialImportChinese,
+  type CredentialImportMessages,
+} from "./credential-import-messages.js";
 import type { DefaultRendererSettingsPageId } from "./pages.js";
 
 export const RENDERER_SETTINGS_LOCALES = ["en", "zh-CN"] as const;
@@ -18,6 +23,7 @@ export interface RendererSettingsLanguageControl {
 }
 
 export interface RendererSettingsMessages {
+  readonly credentialImports: CredentialImportMessages;
   readonly locale: RendererSettingsLocale;
   readonly title: string;
   readonly close: string;
@@ -111,9 +117,7 @@ export interface RendererSettingsMessages {
   readonly accountSearch: string;
   readonly accountEmpty: string;
   readonly accountNoMatches: string;
-  readonly accountNativeManaged: string;
   readonly accountNativeManagementHint: string;
-  readonly accountDetailsClose: string;
   readonly accountDefaultHint: string;
   readonly accountCreditsRemaining: string;
   readonly accountCreditsLoading: string;
@@ -172,6 +176,18 @@ export interface RendererSettingsMessages {
   readonly connectionAction: string;
   readonly connectionHostsScrollLeft: string;
   readonly connectionHostsScrollRight: string;
+  readonly launchPathLabel: string;
+  readonly launchPathPlaceholder: string;
+  readonly launchPathWorkbuddyHelp: string;
+  readonly launchPathSave: string;
+  readonly launchPathReset: string;
+  readonly launchPathRestart: string;
+  readonly launchPathSaved: string;
+  readonly launchPathAutomatic: string;
+  readonly launchPathSaving: string;
+  readonly launchPathLoading: string;
+  readonly launchPathLoadError: string;
+  readonly launchPathSaveError: string;
   readonly connectionOpenInstallation: string;
   readonly connectionOpenHarnessWeb: string;
   readonly connectionInstall: string;
@@ -245,6 +261,7 @@ export interface RendererSettingsMessages {
 }
 
 const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
+  credentialImports: credentialImportEnglish,
   locale: "en",
   title: "Settings",
   close: "Close settings",
@@ -357,10 +374,8 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountEmpty:
     "No current identities found. Sign in through Codex Desktop or your Harness's native client.",
   accountNoMatches: "No matching accounts.",
-  accountNativeManaged: "Native management",
   accountNativeManagementHint:
     "This account comes from {harness}'s native authentication. This page only displays identity and limits; manage sign-in, sign-out and switching in the native client.",
-  accountDetailsClose: "Close account details",
   accountDefaultHint: "This is the current identity for all Codex Threads.",
   accountCreditsRemaining: "Remaining",
   accountCreditsLoading: "Loading limits…",
@@ -419,6 +434,21 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionAction: "Actions",
   connectionHostsScrollLeft: "Show previous Hosts",
   connectionHostsScrollRight: "Show more Hosts",
+  launchPathLabel: "Installed application path",
+  launchPathPlaceholder: "Installation folder, e.g. D:\\program\\WorkBuddy",
+  launchPathWorkbuddyHelp:
+    "This integration requires the WorkBuddy app. If it is not detected automatically, enter its installation folder. codexhost locates the required files inside it. Restart codexhost after saving to apply.",
+  launchPathSave: "Save path",
+  launchPathReset: "Clear override",
+  launchPathRestart: "Saved. Restart codexhost to apply; running sessions are unchanged.",
+  launchPathSaved: "This Host is using the saved override. Availability is checked separately.",
+  launchPathAutomatic:
+    "No saved override. Uses environment configuration, then automatic discovery.",
+  launchPathSaving: "Saving…",
+  launchPathLoading: "Loading launch settings…",
+  launchPathLoadError: "Could not load launch settings. Reopen this detail panel to retry.",
+  launchPathSaveError:
+    "Could not save. Enter an existing absolute installation folder on this Host and check configuration permissions.",
   connectionOpenInstallation: "Open official installation page",
   connectionOpenHarnessWeb: "Open DeepSeek Harness Web",
   connectionInstall: "Install",
@@ -521,6 +551,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
 });
 
 const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
+  credentialImports: credentialImportChinese,
   locale: "zh-CN",
   title: "设置",
   close: "关闭设置",
@@ -627,10 +658,8 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountSearch: "搜索账号或 Agent…",
   accountEmpty: "尚未识别到当前身份，请在 Codex Desktop 或对应 Harness 的原生客户端登录。",
   accountNoMatches: "没有匹配的账号。",
-  accountNativeManaged: "原生管理",
   accountNativeManagementHint:
     "此账号来自 {harness} 的原生登录。这里只读展示身份与额度；登录、退出和切换请在其原生客户端中完成。",
-  accountDetailsClose: "关闭账号详情",
   accountDefaultHint: "所有 Codex 会话当前使用此身份。",
   accountCreditsRemaining: "剩余",
   accountCreditsLoading: "正在读取额度…",
@@ -689,6 +718,19 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionAction: "操作",
   connectionHostsScrollLeft: "查看前面的 Host",
   connectionHostsScrollRight: "查看更多 Host",
+  launchPathLabel: "应用安装路径",
+  launchPathPlaceholder: "填写安装目录，例如 D:\\program\\WorkBuddy",
+  launchPathWorkbuddyHelp:
+    "此接入依赖 WorkBuddy 应用。若未自动识别，请填写应用安装目录，codexhost 会自动定位所需文件。保存后重启 codexhost 生效。",
+  launchPathSave: "保存路径",
+  launchPathReset: "清除自定义路径",
+  launchPathRestart: "已保存，重启 codexhost 后生效；当前运行中的会话不受影响。",
+  launchPathSaved: "此 Host 正在使用已保存的路径；是否可用仍以连接检测结果为准。",
+  launchPathAutomatic: "未设置自定义路径，使用环境变量配置或自动发现。",
+  launchPathSaving: "正在保存…",
+  launchPathLoading: "正在读取启动设置…",
+  launchPathLoadError: "无法读取启动设置，请重新打开此详情面板重试。",
+  launchPathSaveError: "保存失败。请填写此 Host 上实际存在的安装目录绝对路径，并确认配置目录可写。",
   connectionOpenInstallation: "前往官方安装页面",
   connectionOpenHarnessWeb: "打开 DeepSeek Harness Web",
   connectionInstall: "安装",

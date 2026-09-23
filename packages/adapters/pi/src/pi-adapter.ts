@@ -1,3 +1,4 @@
+import { createPiCredentialImports } from "./pi-credential-imports.js";
 import { persistEmptyPiSession, readPiEmptySessionConfiguration } from "./pi-empty-session.js";
 import { createTwoFilesPatch, parsePatch } from "diff";
 import { randomUUID } from "node:crypto";
@@ -7,6 +8,7 @@ import {
   HarnessOutputChannel,
   validateHostQuestionResponse,
   type HarnessAdapter,
+  type HarnessCredentialImports,
   type HarnessCommandAccepted,
   type HarnessCommandCapability,
   type HarnessCommandInvocation,
@@ -18,6 +20,7 @@ import {
   type HarnessSession,
   type HarnessSessionCapabilities,
   type HarnessSessionImportCapability,
+  type HarnessSubagentCapability,
   type HarnessSessionImportSource,
   type HarnessSessionState,
   type HarnessThinkingOptionId,
@@ -73,6 +76,16 @@ import {
 } from "@codexhost/shared-contracts";
 
 import { mapPiSnapshot, resolvePiForkBoundary, type PiSessionHistory } from "./pi-history.js";
+import {
+  PiSubagents,
+  parsePiSubagentId,
+  piSubagentSnapshot,
+  type PiSubagentInspection,
+  type PiSubagentNode,
+} from "./pi-subagents.js";
+import { parsePiWorkflowSubagentId } from "./pi-subagent-workflow.js";
+import { readPiWorkflowChild } from "./pi-workflow-child-history.js";
+import { restorePiSubagents } from "./pi-subagent-history.js";
 import { rollbackPiLastTurn } from "./pi-last-turn-rollback.js";
 import { PiSessionImportIndex } from "./pi-session-import.js";
 import {
@@ -110,6 +123,8 @@ export interface PiAdapterOptions {
 export interface PiTurnTransport {
   readonly state: PiSessionState;
   readonly stderrTail?: string;
+  setSubagentStatusHandler?(handler: (runs: PiSubagentNode[]) => void): void;
+  inspectSubagent?(id: string): Promise<PiSubagentInspection>;
   setAutonomousTurnHandler(handler: (turn: PiAutonomousTurn) => void): void;
   start(): Promise<unknown>;
   getAvailableModels(): Promise<PiNativeModel[]>;
@@ -556,6 +571,8 @@ class PiHarnessSession implements HarnessSession {
   readonly initialUsage: HostUsage | null;
   readonly outputs: AsyncIterable<HarnessOutput>;
   readonly #channel = new HarnessOutputChannel<HarnessOutput>();
+  readonly #subagents = new PiSubagents((event) => this.#event(event));
+  #pendingSubagentStatus: PiSubagentNode[] | null = null;
   readonly #closeTimeoutMs: number;
   readonly #createTransport: PiAdapterDependencies["createTransport"];
   readonly #cwd: string;
@@ -607,6 +624,7 @@ class PiHarnessSession implements HarnessSession {
       },
       history: { fork: true, forkAcrossCwd: true, rollbackLastTurn: true },
       autonomousTurns: { observe: true },
+      subagents: { observe: true, readTranscript: true },
     };
     this.commands = {
       list: async () => ({ ok: true, value: piCommandCatalog }),
@@ -621,6 +639,27 @@ class PiHarnessSession implements HarnessSession {
     this.#state = this.initialState;
     this.outputs = this.#channel.outputs;
     if (this.#transport) this.#bindAutonomousTurnHandler(this.#transport);
+  }
+
+  ownsNativeSession(id: string): boolean {
+    return this.#transport?.state.sessionId === id;
+  }
+
+  async readSubagentHistory(cwd: string): Promise<PiSessionHistory> {
+    if (this.#phase !== "open" || path.resolve(cwd) !== path.resolve(this.#cwd)) {
+      throw new Error("Pi Subagent parent workspace or Session is unavailable");
+    }
+    return (await this.#ensureTransport()).getEntries();
+  }
+
+  async inspectSubagent(id: string, cwd: string): Promise<PiSubagentInspection> {
+    if (this.#phase !== "open" || path.resolve(cwd) !== path.resolve(this.#cwd)) {
+      throw new Error("Pi Subagent parent workspace or Session is unavailable");
+    }
+    const transport = await this.#ensureTransport();
+    if (!transport.inspectSubagent)
+      throw new Error("Pi transport does not support Subagent inspection");
+    return transport.inspectSubagent(id);
   }
 
   handleTransportFault(error: PiRpcFaultError): void {
@@ -644,13 +683,18 @@ class PiHarnessSession implements HarnessSession {
     try {
       const transport = await this.#ensureTransport();
       const history = await transport.getEntries();
+      await restorePiSubagents(history, transport.state.sessionId, this.#subagents);
       return {
         ok: true,
         value: {
-          ...mapPiSnapshot(history, {
-            sessionId: transport.state.sessionId,
-            model: nativeModelForHistory(transport.state),
-          }),
+          ...mapPiSnapshot(
+            history,
+            {
+              sessionId: transport.state.sessionId,
+              model: nativeModelForHistory(transport.state),
+            },
+            this.#subagents,
+          ),
           state: this.#state,
         },
       };
@@ -1223,6 +1267,11 @@ class PiHarnessSession implements HarnessSession {
   }
 
   #bindAutonomousTurnHandler(transport: PiTurnTransport): void {
+    transport.setSubagentStatusHandler?.((runs) => {
+      if (this.#phase !== "open") return;
+      if (this.#transport !== transport) this.#pendingSubagentStatus = runs;
+      else this.#subagents.observe(runs);
+    });
     transport.setAutonomousTurnHandler((turn) => {
       if (this.#phase !== "open") return;
       if (this.#transport !== transport) {
@@ -1234,6 +1283,10 @@ class PiHarnessSession implements HarnessSession {
   }
 
   #drainPendingAutonomousTurns(transport: PiTurnTransport): void {
+    if (this.#pendingSubagentStatus) {
+      this.#subagents.observe(this.#pendingSubagentStatus);
+      this.#pendingSubagentStatus = null;
+    }
     const pending = this.#pendingAutonomousTurns.filter(
       (candidate) => candidate.transport === transport,
     );
@@ -1649,6 +1702,13 @@ class PiHarnessSession implements HarnessSession {
   #updateTool(active: ActiveTurn, event: Extract<PiTurnEvent, { type: "tool.updated" }>): void {
     const tool = active.tools.get(event.callId);
     if (!tool) throw new Error("Pi Tool update references an unknown Tool Call");
+    this.#subagents.start(
+      active.command.turnId,
+      tool.nativeName,
+      event.output,
+      this.#newItemId(),
+      event.callId,
+    );
     const output = boundedOutput(event.output, this.#toolOutputLimit);
     if (!output) return;
     if (tool.item.type === "commandExecution") {
@@ -1711,6 +1771,13 @@ class PiHarnessSession implements HarnessSession {
         ? { status: "failed", error: toolFailure(event.toolName) }
         : { status: "succeeded" };
     this.#completeItem(active, tool.item, outcome);
+    this.#subagents.start(
+      active.command.turnId,
+      event.toolName,
+      event.result,
+      this.#newItemId(),
+      event.callId,
+    );
 
     if (!event.isError) {
       try {
@@ -1807,6 +1874,7 @@ class PiHarnessSession implements HarnessSession {
     }
     for (const tool of active.tools.values()) this.#completeItem(active, tool.item, itemOutcome);
     active.tools.clear();
+    this.#subagents.finish(active.command.turnId);
     if (!active.sawAssistantMessage && finalText !== undefined && active.agentItem) {
       active.agentItem = { ...active.agentItem, text: finalText };
     }
@@ -1872,8 +1940,76 @@ class PiHarnessSession implements HarnessSession {
 }
 
 export class PiAdapter implements HarnessAdapter {
+  readonly credentialImports: HarnessCredentialImports;
   readonly commandCatalog = piCommandCatalog;
   readonly harnessId: HarnessId = piHarnessId;
+  readonly subagents: HarnessSubagentCapability = {
+    readSnapshot: async ({ parent, nativeSubagentId, cwd }) => {
+      let transport: PiTurnTransport | undefined;
+      try {
+        if (this.#closePromise || parent.harnessId !== this.harnessId) {
+          return { ok: false, error: invalidState("Pi Subagent parent is unavailable") };
+        }
+        const workflow = parsePiWorkflowSubagentId(nativeSubagentId);
+        if (!workflow) parsePiSubagentId(nativeSubagentId);
+        const live = [...this.#sessions].find((session) =>
+          session.ownsNativeSession(parent.nativeSessionId),
+        );
+        let reply: PiSubagentInspection;
+        if (live) {
+          if (workflow)
+            return await readPiWorkflowChild(
+              await live.readSubagentHistory(cwd),
+              parent.nativeSessionId,
+              workflow,
+            );
+          reply = await live.inspectSubagent(nativeSubagentId, cwd);
+        } else {
+          const sessionFile = sessionFileFromRef(parent);
+          transport = this.#createTransport({ cwd, sessionFile });
+          this.#inspections.add(transport);
+          await transport.start();
+          if (transport.state.sessionId !== parent.nativeSessionId)
+            throw new Error("Pi Subagent parent identity mismatch");
+          await transport.verifySessionCwd(cwd);
+          if (workflow)
+            return await readPiWorkflowChild(
+              await transport.getEntries(),
+              parent.nativeSessionId,
+              workflow,
+            );
+          if (!transport.inspectSubagent)
+            throw new Error("Pi transport does not support Subagent inspection");
+          reply = await transport.inspectSubagent(nativeSubagentId);
+        }
+        if (reply.error)
+          return {
+            ok: false,
+            error: {
+              code:
+                reply.error.code === "foreign_session"
+                  ? "invalidRequest"
+                  : ["not_found", "stale"].includes(reply.error.code)
+                    ? "sessionNotFound"
+                    : "unavailable",
+              message: reply.error.message,
+              retryable: false,
+            },
+          };
+        return {
+          ok: true,
+          value: piSubagentSnapshot(parent.nativeSessionId, nativeSubagentId, reply),
+        };
+      } catch (error) {
+        return { ok: false, error: normalizedError(error, "unavailable") };
+      } finally {
+        if (transport) {
+          this.#inspections.delete(transport);
+          await transport.close();
+        }
+      }
+    },
+  };
   readonly sessionImport = Object.freeze({
     listCandidates: async () => {
       const result = await this.#readImport((signal) => this.#importIndex.list(signal));
@@ -1920,6 +2056,19 @@ export class PiAdapter implements HarnessAdapter {
       createTransport: (sessionOptions) => new PiRpcSession({ ...options, ...sessionOptions }),
     },
   ) {
+    const imports = createPiCredentialImports(options);
+    const updateCatalog = async (operation: Promise<void>): Promise<void> => {
+      await operation;
+      this.#inspectionCache.clear();
+    };
+    this.credentialImports = {
+      providers: imports.providers,
+      list: () => imports.list(),
+      listOthers: () => imports.listOthers?.() ?? Promise.resolve([]),
+      add: (name, credential) => updateCatalog(imports.add(name, credential)),
+      reimport: (name, credential) => updateCatalog(imports.reimport(name, credential)),
+      remove: (name) => updateCatalog(imports.remove(name)),
+    };
     this.#createTransport = dependencies.createTransport;
     this.#importIndex = new PiSessionImportIndex({ ...process.env, ...options.environment });
     this.#closeTimeoutMs = options.closeTimeoutMs ?? 2_000;
@@ -2008,6 +2157,7 @@ export class PiAdapter implements HarnessAdapter {
           },
           history: { fork: true, forkAcrossCwd: true, rollbackLastTurn: true },
           autonomousTurns: { observe: true },
+          subagents: { observe: true, readTranscript: true },
         },
       };
     } catch (error) {

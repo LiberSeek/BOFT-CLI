@@ -23,6 +23,8 @@ import {
 } from "./pi-usage.js";
 import type { PiNativeModel, PiNativeModelRef } from "./pi-model-catalog.js";
 import { verifyPiSessionCwd } from "./pi-session-file.js";
+import { PiSubagentRpc } from "./pi-subagent-rpc.js";
+import type { PiSubagentInspection, PiSubagentNode } from "./pi-subagents.js";
 
 export interface PiSessionState {
   sessionId: string;
@@ -494,6 +496,7 @@ export class PiRpcSession {
   #latestCacheHitRatePercent: number | null | undefined;
   #manualCompaction: ManualCompaction | null = null;
   #stderrTail = "";
+  readonly #subagents: PiSubagentRpc;
 
   constructor(
     options: PiRpcSessionOptions,
@@ -512,6 +515,10 @@ export class PiRpcSession {
       ...options,
     };
     this.#processAdapter = processAdapter;
+    this.#subagents = new PiSubagentRpc(
+      (type, payload) => this.#send(type, payload),
+      this.#options.commandTimeoutMs,
+    );
   }
 
   get state(): PiSessionState {
@@ -521,6 +528,14 @@ export class PiRpcSession {
 
   get stderrTail(): string {
     return this.#stderrTail;
+  }
+
+  setSubagentStatusHandler(handler: (runs: PiSubagentNode[]) => void): void {
+    this.#subagents.setHandler(handler);
+  }
+
+  inspectSubagent(id: string): Promise<PiSubagentInspection> {
+    return this.#subagents.inspect(id);
   }
 
   setAutonomousTurnHandler(handler: (turn: PiAutonomousTurn) => void): void {
@@ -918,6 +933,7 @@ export class PiRpcSession {
       this.#handleResponse(value);
       return;
     }
+    if (this.#subagents.handle(value)) return;
     if (value.type === "compaction_start") {
       this.#compactionActive = true;
       this.#compactionTurn = this.#activeTurn;
@@ -1576,6 +1592,7 @@ export class PiRpcSession {
   }
 
   #rejectAll(error: Error): void {
+    this.#subagents.close(error);
     for (const pending of this.#pending.values()) {
       if (pending.timeout) clearTimeout(pending.timeout);
       pending.reject(error);

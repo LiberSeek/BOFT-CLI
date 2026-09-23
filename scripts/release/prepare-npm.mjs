@@ -235,7 +235,6 @@ export function expectedNpmPackagePaths(target) {
     "licenses/OpenCode-SDK-LICENSE.txt",
     "licenses/Qoder-Agent-SDK-LICENSE.txt",
     "licenses/QoderCN-Agent-SDK-LICENSE.txt",
-    "licenses/opencodex-LICENSE.txt",
     "licenses/diff-LICENSE.txt",
     "licenses/lucide-LICENSE.txt",
     "licenses/tailwindcss-LICENSE.txt",
@@ -282,7 +281,7 @@ export function createNpmPackageManifest({ version, target }) {
 export function createNpmBinLauncherSource({ version }) {
   return `#!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -290,6 +289,7 @@ import { fileURLToPath } from "node:url";
 
 const version = ${JSON.stringify(version)};
 const userArguments = process.argv.slice(2);
+const repositoryUrl = "https://github.com/BytePioneer-AI/codex-host";
 const startupTraceStartedAt = Date.now();
 function startupTrace(stage) {
   if (process.env.CODEXHOST_STARTUP_TRACE !== "1") return;
@@ -297,12 +297,34 @@ function startupTrace(stage) {
     "[codexhost startup +" + (Date.now() - startupTraceStartedAt) + "ms] npm: " + stage,
   );
 }
+function printStarPrompt() {
+  const locale =
+    process.env.LC_ALL ??
+    process.env.LC_MESSAGES ??
+    process.env.LANG ??
+    Intl.DateTimeFormat().resolvedOptions().locale;
+  const prompt = /^zh(?:[_-]|$)/iu.test(locale)
+    ? "⭐ 如果这个项目对你有帮助，请给我们一个 Star ⭐"
+    : "⭐ If this project helps you, please give us a Star ⭐";
+  const useColor =
+    process.stdout.isTTY && process.env.NO_COLOR === undefined && process.env.TERM !== "dumb";
+  if (useColor) {
+    console.log(
+      "\\u001B[33m" + prompt + "\\u001B[0m\\n\\u001B[36m" + repositoryUrl + "\\u001B[0m",
+    );
+    return;
+  }
+  console.log(prompt + "\\n" + repositoryUrl);
+}
 if (
   userArguments.length === 1 &&
   (userArguments[0] === "--version" || userArguments[0] === "-v")
 ) {
   console.log(version);
   process.exit(0);
+}
+if (userArguments.length === 0 || userArguments[0] === "launch") {
+  printStarPrompt();
 }
 startupTrace("entry");
 
@@ -338,6 +360,17 @@ try {
   }
 }
 
+let platformVersion;
+try {
+  platformVersion = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8"))?.version;
+} catch {
+  fail(\`cannot read platform package metadata: \${packageRoot}\`);
+}
+if (platformVersion !== version) {
+  fail(
+    \`platform package version mismatch: '\${platformPackage}' at '\${packageRoot}' has \${JSON.stringify(platformVersion) ?? "no version"}; expected \${version}. Close Codex Desktop, then run: npm install -g @codexhost/cli@\${version} \${platformPackage}@\${version}\`,
+  );
+}
 startupTrace("platform package resolved");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
 const launcher = path.join(packageRoot, "bin", \`boft\${executableSuffix}\`);
@@ -798,17 +831,6 @@ export async function writeThirdPartyNotices(root, packageRoot) {
       "",
     );
   }
-  await copyReleaseFile(
-    path.join(root, "third-party", "opencodex.LICENSE"),
-    path.join(licensesDirectory, "opencodex-LICENSE.txt"),
-    "opencodex native profile license",
-  );
-  notices.push(
-    "opencodex native profiles (2d4d7a22381a2e497c2442902104619e25f937c7)",
-    "License: MIT",
-    "License text: licenses/opencodex-LICENSE.txt",
-    "",
-  );
   await writeFile(
     path.join(packageRoot, "THIRD_PARTY_NOTICES.txt"),
     `${notices.join("\n").trimEnd()}\n`,

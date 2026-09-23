@@ -4,14 +4,13 @@
 page footer. It is bundled as a data URL because Codex Desktop CSP allows
 `media-src data:` but blocks remote `https:` media hosts.
 
-`codexhost-logo.png` is the 3:4 codexhost product logo used by the installer and
-application branding. `codexhost-icon.png` is its square crop used for the
-in-product brand mark.
+`codexhost-logo.png`, `codexhost-icon.png`, and `codexhost-logo-transparent.png`
+are the BOFT product marks. `codexhost-brand-icon.png` is the 256px crop used
+as the Renderer settings brand icon (settings header mark and the
+application-header settings trigger button). `codexhost-app-icon.svg` is the
+upstream vector master and is not the settings brand icon in this fork.
 
-`codexhost-logo-transparent.png` is the circular, alpha-masked square logo.
-`codexhost-brand-icon.png` is its 256px UI crop used as the Renderer settings
-brand icon (settings header mark and the application-header settings trigger
-button). `codex-logo.png` is the Codex X mark source and
+`codex-logo.png` is the Codex X mark source and
 `codex-logo-transparent.png` is its white-background-free square variant.
 `codex-logo-bright.png` recolors that mark in the official bright Codex blue
 so it stays visible on dark surfaces.
@@ -38,15 +37,19 @@ mark, 40×40 viewBox and rounded clipping are preserved without modification.
 It matches `packages/adapters/codebuddy/assets/icon.svg` byte for byte; both
 copies are bundled locally so no network request is needed.
 
+`workbuddy-agent.svg` is the WorkBuddy mark provided as `10001.svg` from a
+capture of `https://www.workbuddy.ai/`. The original green gradient, yellow
+glow, white mark, 130×130 viewBox and rounded clipping are preserved without
+modification. It matches `packages/adapters/workbuddy/assets/icon.svg` byte
+for byte, which is also used by the README capability table; both copies are
+bundled locally so no installed application path or network request is needed.
+
 `cursor-agent.svg` is the unmodified official Cursor Cube favicon from
 `https://cursor.com/favicon.svg`, with its original 512×512 viewBox, dark rounded
 plate and light mark. It matches `packages/adapters/cursor-cli/assets/icon.svg`
 byte for byte; both are bundled locally without runtime network requests.
 The README badge uses the matching standalone 2D Cube from the official brand
 kit; source details are in `docs/harnesses/cursor/cursor-cli-experimental.md`.
-`hermes-agent.png` is a cropped and resized copy of the Hermes Agent mark from
-the official Hermes Agent website favicon. It is bundled locally so the
-Renderer does not depend on the Hermes installation or a network request.
 
 The Agent picker uses the official Pi mark from `https://pi.dev/logo-auto.svg`
 and the Claude mark distributed in Anthropic's official `anthropic.claude-code`
@@ -58,10 +61,5 @@ resized copy of the Grok mark served by `grok.com`, provided from a captured
 first-party page asset so the Renderer does not make a network request. The
 square source is stored with transparent rounded corners so the black plate
 does not render as a hard square.
-
-`codexhost-readme.svg` embeds `codex-agent.png`, `claude-agent.svg`, and
-`pi-agent.svg` in a responsive vector composition. Its background is `#F2EDE7`.
-The README references this SVG through HTML because GitHub strips inline CSS
-background and border-radius declarations from Markdown HTML.
 
 These product names and marks remain trademarks of their respective owners.

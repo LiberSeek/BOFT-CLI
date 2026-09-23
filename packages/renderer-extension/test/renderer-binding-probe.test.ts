@@ -28,7 +28,6 @@ import {
   resolveCurrentCodexAccountId,
   shouldRefreshCodexAccountsForAdapterState,
   rendererUsageRefreshDelay,
-  shouldApplyDraftAgentCarrier,
   shouldPersistNewThreadConfigurationSelection,
   shouldReloadExternalCatalogAfterAvailabilityRefresh,
   shouldRetryExternalThreadUsage,
@@ -56,7 +55,7 @@ import {
 import { modelSelectionForAgent } from "../src/versioned-renderer-adapter.js";
 
 describe("Renderer connection diagnostics", () => {
-  it.each(["kiro-cli", "codebuddy"] as const)(
+  it.each(["kiro-cli", "codebuddy", "workbuddy"] as const)(
     "round trips %s effort without reviving a choice cleared by the native model",
     (agent) => {
       const model = harnessModelRefSchema.parse({ id: "adjustable" });
@@ -393,6 +392,15 @@ describe("Renderer Composer DOM behavior", () => {
   });
 
   it("keeps a ready external Model catalog stable during repeated availability checks", () => {
+    expect(shouldReloadExternalCatalogAfterAvailabilityRefresh("checking", "ready", true)).toBe(
+      false,
+    );
+    expect(shouldReloadExternalCatalogAfterAvailabilityRefresh("checking", "ready", false)).toBe(
+      true,
+    );
+    expect(
+      shouldReloadExternalCatalogAfterAvailabilityRefresh("checking", "ready", true, true),
+    ).toBe(true);
     expect(shouldReloadExternalCatalogAfterAvailabilityRefresh("ready", "ready", true)).toBe(false);
     expect(shouldReloadExternalCatalogAfterAvailabilityRefresh("ready", "ready", false)).toBe(true);
     expect(shouldReloadExternalCatalogAfterAvailabilityRefresh("error", "ready", true)).toBe(true);
@@ -560,7 +568,7 @@ describe("Renderer Composer DOM behavior", () => {
     expect(formatRendererTokenCount(87000)).toBe("87k");
     expect(formatRendererTokenCount(6700)).toBe("6.7k");
     expect(formatRendererTokenCount(375000)).toBe("375k");
-    expect(rendererUsageTriggerMaxWidth()).toBe("min(180px, 30vw)");
+    expect(rendererUsageTriggerMaxWidth()).toBe("min(140px, 22vw)");
   });
 
   it("places Usage beside the native context wrapper when it is present", () => {
@@ -1378,6 +1386,19 @@ describe("Renderer Composer DOM behavior", () => {
     const otherConversationTarget = ["conversation", "opaque-2"];
 
     expect(shouldTransferComposerState(defaultTarget, defaultTarget, "draft")).toBe(true);
+    expect(
+      shouldTransferComposerState(["default", "draft-a"], ["default", "draft-a"], "draft"),
+    ).toBe(true);
+    expect(
+      shouldTransferComposerState(["default", "draft-a"], ["default", "draft-b"], "draft"),
+    ).toBe(false);
+    expect(
+      shouldTransferComposerState(
+        ["conversation", "opaque-1"],
+        ["conversation", "opaque-1"],
+        "locked",
+      ),
+    ).toBe(true);
     expect(shouldTransferComposerState(defaultTarget, firstConversationTarget, "draft")).toBe(
       false,
     );
@@ -1399,14 +1420,6 @@ describe("Renderer Composer DOM behavior", () => {
     expect(isComposerModelWriteAllowed(["conversation", "pi-thread"])).toBe(false);
     expect(isComposerModelWriteAllowed(["conversation", "codex-thread"])).toBe(false);
     expect(isComposerModelWriteAllowed(null)).toBe(false);
-  });
-
-  it("does not emit a base external carrier before its concrete configuration loads", () => {
-    expect(shouldApplyDraftAgentCarrier("codex", undefined)).toBe(true);
-    expect(shouldApplyDraftAgentCarrier("grok", undefined)).toBe(false);
-    expect(
-      shouldApplyDraftAgentCarrier("grok", harnessModelRefSchema.parse({ id: "grok-4.6" })),
-    ).toBe(true);
   });
 
   it("never writes the native Model while repeatedly switching existing conversations", () => {

@@ -17,6 +17,7 @@ export const KNOWN_RENDERER_AGENTS = [
   "muse",
   "kiro-cli",
   "codebuddy",
+  "workbuddy",
   "cursor-cli",
   "qoder",
   "qoder-cn",
@@ -52,6 +53,8 @@ export interface DraftComposerState {
   kiroCliThinkingOptionId?: HarnessThinkingOptionId;
   codeBuddyModel?: HarnessModelRef;
   codeBuddyThinkingOptionId?: HarnessThinkingOptionId;
+  workBuddyModel?: HarnessModelRef;
+  workBuddyThinkingOptionId?: HarnessThinkingOptionId;
   cursorCliModel?: HarnessModelRef;
   qoderModel?: HarnessModelRef;
   qoderThinkingOptionId?: HarnessThinkingOptionId;
@@ -236,6 +239,8 @@ export class DraftAgentController<Composer extends object> {
     else if (agent === "kiro-cli") delete state.kiroCliModel;
     if (agent === "codebuddy" && model) state.codeBuddyModel = model;
     else if (agent === "codebuddy") delete state.codeBuddyModel;
+    if (agent === "workbuddy" && model) state.workBuddyModel = model;
+    else if (agent === "workbuddy") delete state.workBuddyModel;
     if (agent === "cursor-cli" && model) state.cursorCliModel = model;
     else if (agent === "cursor-cli") delete state.cursorCliModel;
     if (agent === "qoder" && model) state.qoderModel = model;
@@ -266,6 +271,9 @@ export class DraftAgentController<Composer extends object> {
     if (agent === "codebuddy" && thinkingOptionId) {
       state.codeBuddyThinkingOptionId = thinkingOptionId;
     } else if (agent === "codebuddy") delete state.codeBuddyThinkingOptionId;
+    if (agent === "workbuddy" && thinkingOptionId) {
+      state.workBuddyThinkingOptionId = thinkingOptionId;
+    } else if (agent === "workbuddy") delete state.workBuddyThinkingOptionId;
     if (agent === "qoder" && thinkingOptionId) {
       state.qoderThinkingOptionId = thinkingOptionId;
     } else if (agent === "qoder") delete state.qoderThinkingOptionId;
@@ -286,6 +294,7 @@ export class DraftAgentController<Composer extends object> {
         "muse",
         "kiro-cli",
         "codebuddy",
+        "workbuddy",
         "cursor-cli",
         "qoder",
         "qoder-cn",
@@ -316,6 +325,7 @@ export class DraftAgentController<Composer extends object> {
     if (agent === "muse") return state.museModel;
     if (agent === "kiro-cli") return state.kiroCliModel;
     if (agent === "codebuddy") return state.codeBuddyModel;
+    if (agent === "workbuddy") return state.workBuddyModel;
     if (agent === "cursor-cli") return state.cursorCliModel;
     if (agent === "qoder") return state.qoderModel;
     if (agent === "qoder-cn") return state.qoderCnModel;
@@ -336,6 +346,7 @@ export class DraftAgentController<Composer extends object> {
     if (agent === "muse") return state.museThinkingOptionId;
     if (agent === "kiro-cli") return state.kiroCliThinkingOptionId;
     if (agent === "codebuddy") return state.codeBuddyThinkingOptionId;
+    if (agent === "workbuddy") return state.workBuddyThinkingOptionId;
     if (agent === "qoder") return state.qoderThinkingOptionId;
     if (agent === "qoder-cn") return state.qoderCnThinkingOptionId;
     return undefined;
@@ -378,6 +389,7 @@ export class DraftAgentController<Composer extends object> {
     else if (agent === "muse") state.museModel = model;
     else if (agent === "kiro-cli") state.kiroCliModel = model;
     else if (agent === "codebuddy") state.codeBuddyModel = model;
+    else if (agent === "workbuddy") state.workBuddyModel = model;
     else if (agent === "cursor-cli") state.cursorCliModel = model;
     else if (agent === "qoder") state.qoderModel = model;
     else if (agent === "qoder-cn") state.qoderCnModel = model;
@@ -441,6 +453,10 @@ export class DraftAgentController<Composer extends object> {
       state.codeBuddyThinkingOptionId = thinkingOptionId;
     } else if (agent === "codebuddy") {
       delete state.codeBuddyThinkingOptionId;
+    } else if (agent === "workbuddy" && thinkingOptionId) {
+      state.workBuddyThinkingOptionId = thinkingOptionId;
+    } else if (agent === "workbuddy") {
+      delete state.workBuddyThinkingOptionId;
     } else if (agent === "qoder" && thinkingOptionId) {
       state.qoderThinkingOptionId = thinkingOptionId;
     } else if (agent === "qoder") {

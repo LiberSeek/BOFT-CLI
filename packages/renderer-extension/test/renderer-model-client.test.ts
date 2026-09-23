@@ -1,4 +1,6 @@
 import {
+  HARNESS_LAUNCH_SETTINGS_GET_METHOD,
+  HARNESS_LAUNCH_SETTINGS_SET_METHOD,
   harnessIdSchema,
   harnessModelRefSchema,
   harnessPermissionModeIdSchema,
@@ -71,6 +73,32 @@ const inspection = {
 };
 
 describe("Renderer fixed Model request client", () => {
+  it("validates launch setting requests and responses on the selected request client", async () => {
+    const harnessId = harnessIdSchema.parse("workbuddy");
+    const result = { path: "D:\\Apps\\WorkBuddy", restartRequired: true };
+    const sendRequest = vi.fn().mockResolvedValue(result);
+    const client = createRendererModelClient([{ sendRequest }]);
+    if (!client) throw new Error("Expected a model client");
+    expect(await client.getHarnessLaunchSettings?.({ harnessId })).toEqual(result);
+    expect(sendRequest).toHaveBeenLastCalledWith(HARNESS_LAUNCH_SETTINGS_GET_METHOD, { harnessId });
+    expect(await client.setHarnessLaunchSettings?.({ harnessId, path: result.path })).toEqual(
+      result,
+    );
+    expect(sendRequest).toHaveBeenLastCalledWith(HARNESS_LAUNCH_SETTINGS_SET_METHOD, {
+      harnessId,
+      path: result.path,
+    });
+    await client.setHarnessLaunchSettings?.({ harnessId, path: null });
+    expect(sendRequest).toHaveBeenLastCalledWith(HARNESS_LAUNCH_SETTINGS_SET_METHOD, {
+      harnessId,
+      path: null,
+    });
+    await expect(
+      client.setHarnessLaunchSettings?.({ harnessId, path: "bad\npath" }),
+    ).rejects.toThrow();
+    sendRequest.mockResolvedValueOnce({ path: 42 });
+    await expect(client.getHarnessLaunchSettings?.({ harnessId })).rejects.toThrow();
+  });
   it("reads draft quota for the selected Account without activating it", async () => {
     const result = {
       accountId: "account-b",
@@ -298,8 +326,10 @@ describe("Renderer fixed Model request client", () => {
     if (!client) throw new Error("Synthetic Model client was not created");
     expect(Object.keys(client).sort()).toEqual([
       "checkUpdate",
+      "credentialImports",
       "executeThreadCommand",
       "forkThread",
+      "getHarnessLaunchSettings",
       "importHarnessSession",
       "inspectCodexAccountUsage",
       "inspectHarness",
@@ -322,6 +352,7 @@ describe("Renderer fixed Model request client", () => {
       "selectThreadModel",
       "selectThreadPermissionMode",
       "selectThreadThinking",
+      "setHarnessLaunchSettings",
       "setIdleReleaseSettings",
       "startUpdate",
       "subscribeCodexAccounts",

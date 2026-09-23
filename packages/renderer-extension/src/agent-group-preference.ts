@@ -19,8 +19,8 @@ export interface AgentGroupEntry {
 
 export interface AgentGroupPreferenceStore {
   /** All known external Agents, in display order, each tagged with its section. */
-  list(): readonly AgentGroupEntry[];
-  sectionOf(agent: ExternalRendererAgent): AgentGroupSection;
+  list(notInstalled?: ReadonlySet<ExternalRendererAgent>): readonly AgentGroupEntry[];
+  sectionOf(agent: ExternalRendererAgent, notInstalled?: boolean): AgentGroupSection;
   /**
    * Move `agent` into `section`. When `beforeAgent` is provided the Agent is
    * inserted immediately before it (both must end up in the same section);
@@ -89,7 +89,7 @@ const EXTERNAL_AGENTS: readonly ExternalRendererAgent[] = KNOWN_RENDERER_AGENTS.
 
 interface StoredEntry {
   readonly agent: string;
-  readonly section: AgentGroupSection;
+  readonly section: AgentGroupSection | "auto";
 }
 
 function isKnownExternalAgent(value: unknown): value is ExternalRendererAgent {
@@ -101,7 +101,7 @@ function isStoredEntry(value: unknown): value is StoredEntry {
   const candidate = value as Partial<StoredEntry>;
   return (
     isKnownExternalAgent(candidate.agent) &&
-    (candidate.section === "main" || candidate.section === "more")
+    (candidate.section === "main" || candidate.section === "more" || candidate.section === "auto")
   );
 }
 
@@ -161,7 +161,7 @@ export function createAgentGroupPreferenceStore(
       if (seen.has(agent)) continue;
       seen.add(agent);
       nextOrder.push(agent);
-      sections.set(agent, entry.section);
+      if (entry.section !== "auto") sections.set(agent, entry.section);
     }
     // Agents that shipped after the user last saved a preference (new
     // Harnesses) keep the first-run section and land at the end.
@@ -185,13 +185,15 @@ export function createAgentGroupPreferenceStore(
   };
 
   return {
-    list() {
+    list(notInstalled) {
+      void notInstalled;
       return order.map((agent) => ({
         agent,
         section: sections.get(agent) ?? defaultAgentGroupSection(agent),
       }));
     },
-    sectionOf(agent) {
+    sectionOf(agent, notInstalled = false) {
+      void notInstalled;
       return sections.get(agent) ?? defaultAgentGroupSection(agent);
     },
     moveAgent(agent, section, beforeAgent = null) {

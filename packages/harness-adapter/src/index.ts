@@ -1,5 +1,10 @@
 import { WORKSPACE_CONTRACT_VERSION } from "@codexhost/shared-contracts";
 
+export type {
+  HarnessCredentialTransfer,
+  HarnessCredentialExport,
+  HarnessCredentialImports,
+} from "./credential-imports.js";
 export { validateHostApprovalResponse } from "./approval.js";
 export { validateHostInteractionResponse } from "./interaction.js";
 export { HarnessOutputChannel } from "./output-channel.js";

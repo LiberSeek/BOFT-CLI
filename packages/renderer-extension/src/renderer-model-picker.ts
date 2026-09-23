@@ -18,7 +18,10 @@ import {
   PICKER_POPOVER_CLASS,
 } from "./renderer-picker-popover-style.js";
 import {
+  applyRendererTriggerChipSqueezeRoot,
+  applyRendererTriggerChipSqueezeTrigger,
   ensureRendererTriggerChipStyle,
+  rendererModelTriggerMaxWidth,
   TRIGGER_CHIP_CLASS,
 } from "./renderer-trigger-chip-style.js";
 
@@ -34,7 +37,6 @@ const OPTION_CLASSES =
   "flex w-full cursor-interaction items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-token-foreground outline-none enabled:hover:bg-token-list-hover-background enabled:active:bg-token-foreground/15 disabled:cursor-not-allowed disabled:opacity-40";
 
 const HEADING_CLASSES = "px-2 pb-1 pt-1.5 text-sm text-token-text-tertiary";
-const MODEL_TRIGGER_MAX_WIDTH = "min(200px, 26vw)";
 const MODEL_SCROLLBAR_STYLE_ATTRIBUTE = "data-codexhost-model-picker-scrollbar";
 
 export interface RendererModelControlView {
@@ -236,8 +238,8 @@ export function syncRendererModelTriggerClass(control: RendererModelPickerContro
   // Codex can rename or remove those between Desktop releases; our own
   // `TRIGGER_CHIP_CLASS` chrome (see renderer-trigger-chip-style.ts) does not.
   control.trigger.className = TRIGGER_CHIP_CLASS;
-  control.trigger.style.width = "fit-content";
-  control.trigger.style.maxWidth = MODEL_TRIGGER_MAX_WIDTH;
+  applyRendererTriggerChipSqueezeTrigger(control.trigger);
+  applyRendererTriggerChipSqueezeRoot(control.root, rendererModelTriggerMaxWidth());
 }
 
 function createCheck(): HTMLElement {
@@ -309,6 +311,7 @@ export function mountRendererModelPicker(
   root.setAttribute("data-codexhost-model-control", composerId);
   root.className = "relative min-w-0";
   root.style.display = "none";
+  applyRendererTriggerChipSqueezeRoot(root, rendererModelTriggerMaxWidth());
 
   const trigger = document.createElement("button");
   trigger.type = "button";
@@ -320,9 +323,12 @@ export function mountRendererModelPicker(
   trigger.style.gap = "4px";
   trigger.style.font = "400 13px/18px system-ui, sans-serif";
   trigger.style.letterSpacing = "0";
+  trigger.className = TRIGGER_CHIP_CLASS;
+  applyRendererTriggerChipSqueezeTrigger(trigger);
 
   const label = document.createElement("span");
   label.style.color = "inherit";
+  label.style.flex = "1 1 auto";
   label.style.minWidth = "0";
   label.style.overflow = "hidden";
   label.style.textOverflow = "ellipsis";
@@ -330,8 +336,8 @@ export function mountRendererModelPicker(
 
   const thinkingLabel = document.createElement("span");
   thinkingLabel.style.color = "var(--color-text-tertiary, #8f8f8f)";
-  thinkingLabel.style.flex = "none";
-  thinkingLabel.style.maxWidth = "96px";
+  thinkingLabel.style.flex = "0 1 auto";
+  thinkingLabel.style.maxWidth = "72px";
   thinkingLabel.style.overflow = "hidden";
   thinkingLabel.style.textOverflow = "ellipsis";
   thinkingLabel.style.whiteSpace = "nowrap";
@@ -724,8 +730,8 @@ export function renderRendererModelPicker(
   control.root.style.alignItems = "center";
   control.root.style.alignSelf = "center";
   control.root.style.height = "28px";
-  control.root.style.flex = "0 0 auto";
   control.root.style.verticalAlign = "middle";
+  applyRendererTriggerChipSqueezeRoot(control.root, rendererModelTriggerMaxWidth());
   if (!visible) {
     control.close();
     return;

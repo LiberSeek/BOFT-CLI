@@ -43,6 +43,7 @@ export type OmpInteractionRequest =
       method: "select";
       title: string;
       options: string[];
+      optionDetails?: Array<{ description?: string }>;
       timeoutMs?: number;
     }
   | {
@@ -470,7 +471,8 @@ export function ompRpcProcessCommand(
     : [];
   const arguments_ = [
     "--mode",
-    "rpc",
+    // OMP only creates ask and connects its tool UI in rpc-ui mode.
+    "rpc-ui",
     ...permissionArguments,
     ...modelArguments,
     ...sessionArguments,
@@ -893,7 +895,12 @@ export class OmpRpcSession {
     }
     const frame =
       "cancelled" in response
-        ? { type: "extension_ui_response", id: response.requestId, cancelled: true }
+        ? {
+            type: "extension_ui_response",
+            id: response.requestId,
+            cancelled: true,
+            ...(reason === "expired" ? { timedOut: true } : {}),
+          }
         : "confirmed" in response
           ? { type: "extension_ui_response", id: response.requestId, confirmed: response.confirmed }
           : { type: "extension_ui_response", id: response.requestId, value: response.value };
@@ -1292,11 +1299,31 @@ export class OmpRpcSession {
       ) {
         throw new OmpRpcFaultError("protocolError", "Omp RPC select request has invalid options");
       }
+      let optionDetails: Array<{ description?: string }> | undefined;
+      if (value.optionDetails !== undefined) {
+        if (
+          !Array.isArray(value.optionDetails) ||
+          value.optionDetails.length !== value.options.length ||
+          !value.optionDetails.every(
+            (detail): detail is { description?: string } =>
+              typeof detail === "object" &&
+              detail !== null &&
+              !Array.isArray(detail) &&
+              (detail.description === undefined || typeof detail.description === "string"),
+          )
+        ) {
+          throw new OmpRpcFaultError("protocolError", "Omp RPC select option details are invalid");
+        }
+        optionDetails = value.optionDetails.map(({ description }) =>
+          description === undefined ? {} : { description },
+        );
+      }
       request = {
         requestId,
         method,
         title,
         options: [...value.options],
+        ...(optionDetails ? { optionDetails } : {}),
         ...(typeof timeoutMs === "number" ? { timeoutMs } : {}),
       };
     } else if (method === "confirm") {
@@ -1406,8 +1433,8 @@ export class OmpRpcSession {
     if (typeof callId !== "string" || callId.length === 0) {
       throw new OmpRpcFaultError("protocolError", "Omp RPC returned an invalid Tool update");
     }
-    // Omp allows tool_execution_update after tool_execution_end for async jobs;
-    // a late update references an already-completed call and is ignored.
+    // Omp reports background job progress after `tool_execution_end`, so an
+    // update for an already-completed or unknown call is not a protocol fault.
     if (!active.tools.has(callId)) return;
     const outputResult = jsonValueSchema.safeParse(value.partialResult ?? null);
     if (!outputResult.success) {
@@ -1423,7 +1450,8 @@ export class OmpRpcSession {
       throw new OmpRpcFaultError("protocolError", "Omp RPC returned an invalid Tool end");
     }
     const expectedName = active.tools.get(callId);
-    // A duplicate or late tool_execution_end for an unknown call is ignored.
+    // Background jobs can finish again after their call or parent Turn ended.
+    // Ignore untracked calls before validating payloads intended for active Tools.
     if (expectedName === undefined) return;
     const result = jsonValueSchema.safeParse(value.result);
     if (

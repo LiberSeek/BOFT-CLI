@@ -154,6 +154,7 @@ describe("production Desktop Controller", () => {
         "muse",
         "kiro-cli",
         "codebuddy",
+        "workbuddy",
         "cursor-cli",
         "qoder",
         "qoder-cn",

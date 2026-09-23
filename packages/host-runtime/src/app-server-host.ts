@@ -3,6 +3,11 @@ import {
   LOADED_SESSIONS_METHOD,
   idleReleaseSettingsSchema,
 } from "@codexhost/shared-contracts";
+import {
+  CREDENTIAL_IMPORTS_METHOD,
+  credentialImportsParamsSchema,
+} from "@codexhost/shared-contracts";
+import { handleCredentialImports } from "./credential-imports.js";
 import { AccountRateLimits } from "./codex-runtime/account-rate-limits.js";
 import { NativeAccountObserver } from "./native-account-observer.js";
 import { HarnessAccountInspectionCache, listHarnessAccountSources } from "./harness-accounts.js";
@@ -110,6 +115,13 @@ import {
 } from "./delegation-types.js";
 import { HarnessDelegationCoordinator } from "./harness-delegation-coordinator.js";
 import { loadHarnessPlugins } from "./harness-plugin-loader.js";
+import { HarnessLaunchSettingsStore } from "./harness-launch-settings.js";
+import {
+  HARNESS_LAUNCH_SETTINGS_GET_METHOD,
+  HARNESS_LAUNCH_SETTINGS_SET_METHOD,
+  harnessLaunchSettingsGetSchema,
+  harnessLaunchSettingsSetSchema,
+} from "@codexhost/shared-contracts";
 import { DesktopRequestQueue } from "./desktop-request-queue.js";
 import type {
   DelegationControlRegistration,
@@ -228,6 +240,8 @@ export interface AppServerHostOptions {
   /** Defaults to true. A listener that shares one store across sessions owns closing it. */
   closeMappingStoreOnExit?: boolean;
   spawnOfficial?: typeof spawn;
+  /** Grace period for each official app-server stop step. Tests shorten it. */
+  officialCloseTimeoutMs?: number;
   createOfficialConnection?: () =>
     OfficialAppServerConnection | Promise<OfficialAppServerConnection>;
   accountControl?: CodexAccountControl;
@@ -501,6 +515,7 @@ export class AppServerHost {
   #nativeAccountObserver: NativeAccountObserver | undefined;
   #externalAdapters: Map<ExternalHarnessId, HarnessAdapter>;
   #pluginDescriptors: HarnessPluginDescriptor[] = [];
+  readonly #launchSettings: HarnessLaunchSettingsStore;
   readonly #accountInspections = new HarnessAccountInspectionCache();
   #externalRuntime: ExternalThreadRuntime;
   readonly #externalSteering = new ExternalTurnSteering();
@@ -543,6 +558,9 @@ export class AppServerHost {
     };
     this.#writer = new OrderedWriter(this.#options.desktopOutput);
     const environment = this.#options.environment ?? process.env;
+    this.#launchSettings = new HarnessLaunchSettingsStore(
+      this.#options.pluginContext?.environment ?? environment,
+    );
     const permanentHome = path.resolve(environment.CODEX_HOME ?? path.join(os.homedir(), ".codex"));
     this.#ownsOfficialRuntimeScope = options.officialRuntimeScope === undefined;
     this.#officialRuntimeScope =
@@ -564,6 +582,9 @@ export class AppServerHost {
                   ...(this.#options.spawnOfficial
                     ? { spawnOfficial: this.#options.spawnOfficial }
                     : {}),
+                  ...(this.#options.officialCloseTimeoutMs === undefined
+                    ? {}
+                    : { closeTimeoutMs: this.#options.officialCloseTimeoutMs }),
                 }),
           ),
       });
@@ -729,6 +750,7 @@ export class AppServerHost {
     if (!this.#options.pluginRoots || this.#pluginLoadAbort.signal.aborted) return;
     const plugins = await loadHarnessPlugins({
       roots: this.#options.pluginRoots,
+      launchCommandForPlugin: (id) => this.#launchSettings.initialCommand(id),
       context: this.#options.pluginContext ?? {
         environment: this.#options.environment ?? process.env,
         platform: process.platform,
@@ -973,6 +995,33 @@ export class AppServerHost {
       this.#dispatchDesktopRequest(() => this.#handleCodexAccountRequest(request));
       return;
     }
+    if (request.method === CREDENTIAL_IMPORTS_METHOD) {
+      this.#dispatchDesktopRequest(async () => {
+        if (!credentialImportsParamsSchema.safeParse(request.params).success) {
+          await this.#writer.json(rpcError(request, -32602, "Invalid credential import request"));
+          return;
+        }
+        await this.#waitForPlugins();
+        try {
+          const result = await handleCredentialImports(
+            request.params,
+            this.#externalAdapters.values(),
+            this.#options.environment ?? process.env,
+          );
+          await this.#writer.json(rpcEnvelope(request, { result: jsonValueSchema.parse(result) }));
+        } catch {
+          // Credential/native SDK exceptions can include sensitive input. Never forward them.
+          await this.#writer.json(
+            rpcError(
+              request,
+              -32077,
+              "Credential operation failed. Check the source login, choose an unused Provider name, and verify Pi configuration access.",
+            ),
+          );
+        }
+      });
+      return;
+    }
     if (request.method === "codexhost/harness/accounts/sources") {
       this.#dispatchDesktopRequest(async () => {
         if (!harnessAccountSourceListParamsSchema.safeParse(request.params).success) {
@@ -1042,6 +1091,52 @@ export class AppServerHost {
     }
     if (request.method === "codexhost/harness/web-ui/open") {
       this.#dispatchDesktopRequest(() => this.#openHarnessWebUi(request));
+      return;
+    }
+    if (
+      request.method === HARNESS_LAUNCH_SETTINGS_GET_METHOD ||
+      request.method === HARNESS_LAUNCH_SETTINGS_SET_METHOD
+    ) {
+      this.#dispatchDesktopRequest(async () => {
+        const schema =
+          request.method === HARNESS_LAUNCH_SETTINGS_SET_METHOD
+            ? harnessLaunchSettingsSetSchema
+            : harnessLaunchSettingsGetSchema;
+        const params = schema.safeParse(request.params);
+        if (!params.success) {
+          await this.#writer.json(rpcError(request, -32602, "Invalid Harness launch settings"));
+          return;
+        }
+        await this.#waitForPlugins();
+        if (
+          !this.#pluginDescriptors.some(
+            (plugin) => plugin.id === params.data.harnessId && plugin.launchCommand,
+          )
+        ) {
+          await this.#writer.json(
+            rpcError(request, -32602, "Harness launch settings are unavailable"),
+          );
+          return;
+        }
+        try {
+          const result =
+            request.method === HARNESS_LAUNCH_SETTINGS_SET_METHOD
+              ? await this.#launchSettings.set(
+                  params.data.harnessId,
+                  harnessLaunchSettingsSetSchema.parse(request.params).path,
+                )
+              : await this.#launchSettings.get(params.data.harnessId);
+          await this.#writer.json(rpcEnvelope(request, { result: jsonValueSchema.parse(result) }));
+        } catch {
+          await this.#writer.json(
+            rpcError(
+              request,
+              -32602,
+              "Could not read or save launch settings. Use an existing absolute installation directory on this Host, without arguments, and check configuration permissions.",
+            ),
+          );
+        }
+      });
       return;
     }
     if (request.method === "codexhost/harness/plugins/list") {

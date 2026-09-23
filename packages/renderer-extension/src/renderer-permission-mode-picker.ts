@@ -21,7 +21,10 @@ import {
   PICKER_POPOVER_CLASS,
 } from "./renderer-picker-popover-style.js";
 import {
+  applyRendererTriggerChipSqueezeRoot,
+  applyRendererTriggerChipSqueezeTrigger,
   ensureRendererTriggerChipStyle,
+  rendererPermissionModeTriggerMaxWidth,
   TRIGGER_CHIP_CLASS,
 } from "./renderer-trigger-chip-style.js";
 
@@ -136,8 +139,9 @@ export function syncRendererPermissionModeTriggerClass(
   // Codex can rename or remove those between Desktop releases; our own
   // `TRIGGER_CHIP_CLASS` chrome (see renderer-trigger-chip-style.ts) does not.
   control.trigger.className = TRIGGER_CHIP_CLASS;
-  control.trigger.style.maxWidth = "min(220px, 34vw)";
   control.trigger.style.letterSpacing = "0";
+  applyRendererTriggerChipSqueezeTrigger(control.trigger);
+  applyRendererTriggerChipSqueezeRoot(control.root, rendererPermissionModeTriggerMaxWidth());
 }
 
 export function mountRendererPermissionModePicker(
@@ -151,6 +155,7 @@ export function mountRendererPermissionModePicker(
   root.setAttribute("data-codexhost-permission-mode-control", composerId);
   root.className = "relative min-w-0";
   root.style.display = "none";
+  applyRendererTriggerChipSqueezeRoot(root, rendererPermissionModeTriggerMaxWidth());
 
   const trigger = document.createElement("button");
   trigger.type = "button";
@@ -161,6 +166,8 @@ export function mountRendererPermissionModePicker(
   trigger.style.padding = "0 6px";
   trigger.style.gap = "4px";
   trigger.style.font = "400 13px/18px system-ui, sans-serif";
+  trigger.className = TRIGGER_CHIP_CLASS;
+  applyRendererTriggerChipSqueezeTrigger(trigger);
 
   const shield = document.createElement("span");
   shield.className = "inline-flex shrink-0 items-center";
@@ -168,6 +175,7 @@ export function mountRendererPermissionModePicker(
 
   const label = document.createElement("span");
   label.className = "truncate";
+  label.style.flex = "1 1 auto";
   label.style.minWidth = "0";
   label.style.overflow = "hidden";
   label.style.textOverflow = "ellipsis";
@@ -376,8 +384,8 @@ export function renderRendererPermissionModePicker(
   control.root.style.alignItems = "center";
   control.root.style.alignSelf = "center";
   control.root.style.height = "28px";
-  control.root.style.flex = "0 0 auto";
   control.root.style.verticalAlign = "middle";
+  applyRendererTriggerChipSqueezeRoot(control.root, rendererPermissionModeTriggerMaxWidth());
   if (!visible) {
     control.close();
     return;

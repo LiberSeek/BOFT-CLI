@@ -1,4 +1,5 @@
 import { z } from "zod";
+export * from "./credential-imports.js";
 import { WORKSPACE_CONTRACT_VERSION } from "./version.js";
 export {
   IDLE_RELEASE_SETTINGS_METHOD,
@@ -60,6 +61,7 @@ export type {
   HarnessPluginListResult,
   HarnessPluginManifest,
 } from "./harness-plugins.js";
+export * from "./harness-launch-settings.js";
 export { codexhostErrorSchema } from "./errors.js";
 export {
   codexAccountUsageParamsSchema,
