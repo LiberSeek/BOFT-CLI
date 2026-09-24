@@ -67,5 +67,8 @@ describe("Harness command display names", () => {
     expect(harnessCommandDisplayName("code_review")).toBe("Code Review");
     expect(harnessCommandDisplayName("Initialize CLAUDE.md")).toBe("Initialize CLAUDE.md");
     expect(harnessCommandDisplayName("压缩上下文")).toBe("压缩上下文");
+    expect(harnessCommandDisplayName("codexhost-delegation")).toBe("BOFT Delegation");
+    expect(harnessCommandDisplayName("/skill:codexhost-delegation")).toBe("BOFT Delegation");
+    expect(harnessCommandDisplayName("Codexhost Delegation")).toBe("BOFT Delegation");
   });
 });

@@ -38,7 +38,7 @@ import type { RendererSettingsLocale } from "./settings/localization.js";
 const MENU_ATTRIBUTE = "data-codexhost-delegation-mention-menu";
 const STYLE_ATTRIBUTE = "data-codexhost-delegation-mention-style";
 const MENU_MAX_HEIGHT = 320;
-const SOURCE_TAG = "codexhost";
+const SOURCE_TAG = "BANK OF TOKEN";
 // Class lists mirror Desktop's composer suggestion menu (measured from the
 // native `@` menu), so density, colors and light/dark theming follow Desktop.
 const MENU_CLASS =
@@ -131,6 +131,11 @@ export function filterDelegationCommands(
     .map(({ command }) => command);
 }
 
+/** Visible product word in menu titles. Skill ids stay `codexhost-delegation`. */
+function menuTitleWord(word: string): string {
+  return word.toLowerCase() === "codexhost" ? "BOFT" : word.charAt(0).toUpperCase() + word.slice(1);
+}
+
 /**
  * Readable row title like Desktop's own menus ("Code Review" rather than
  * `/skill:code-review`). Labels that are already readable are kept.
@@ -141,14 +146,14 @@ export function harnessCommandDisplayName(label: string): string {
     .replace(/^\//u, "")
     .replace(/^skill:/u, "");
   if (!slug || /\s/u.test(slug) || /[A-Z]/u.test(slug) || /[^\x00-\x7F]/u.test(slug)) {
-    return slug || label;
+    return (slug || label).replace(/\bcodexhost\b/giu, "BOFT");
   }
   // Plugin-namespaced names (`plugin:skill`) show the skill part.
   const name = slug.split(":").filter(Boolean).at(-1) ?? slug;
   return name
     .split(/[-_.]+/u)
     .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(menuTitleWord)
     .join(" ");
 }
 
