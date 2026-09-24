@@ -978,10 +978,7 @@ export class KimiSession implements HarnessSession {
         const added = (await this.#readNativeTurns()).filter(
           (turn) => !previousKeys.has(turn.nativeTurnRef.nativeTurnKey),
         );
-        const matching = added.filter(
-          (turn) =>
-            turnText(turn.input).trim() === normalizedInput,
-        );
+        const matching = added.filter((turn) => turnText(turn.input).trim() === normalizedInput);
         if (matching.length > 1) {
           return {
             turn: null,
