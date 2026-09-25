@@ -325,6 +325,24 @@ function aboutPage(messages: RendererSettingsMessages): RendererSettingsPageDefi
   });
 }
 
+function updateStarBanner(document: Document, messages: RendererSettingsMessages): HTMLElement {
+  const banner = document.createElement("div");
+  banner.className = "settings-update-star";
+  const copy = document.createElement("p");
+  copy.className = "settings-update-star__copy";
+  copy.textContent = messages.updateStarCallout;
+  const link = document.createElement("a");
+  link.className = "settings-update-link settings-update-star__link";
+  link.href = CODEXHOST_GITHUB_REPOSITORY_URL;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  const star = createRendererSettingsIcon("star", 14);
+  star.classList.add("settings-update-star__mark");
+  link.append(createRendererSettingsIcon("github", 15), messages.updateStarLink, star);
+  banner.append(copy, link);
+  return banner;
+}
+
 function updatesPage(
   messages: RendererSettingsMessages,
   getClient: () => RendererUpdateClient | null,
@@ -445,11 +463,13 @@ function updatesPage(
       controls.append(manualTitle, manualNpm, manualWindowsInstaller, actions);
 
       // Release notes render below the fold, in the page scroller rather than a
-      // nested one.
+      // nested one. The Star banner stays above them so it remains visible
+      // without scrolling past the notes.
       const notes = document.createElement("div");
       notes.className = "settings-update-notes-section";
+      const starBanner = updateStarBanner(document, messages);
 
-      context.content.append(header, metadata, panel, controls, notes);
+      context.content.append(header, metadata, panel, controls, starBanner, notes);
 
       // Presentation-only: emphasise the manual path once the automatic one has
       // visibly failed.

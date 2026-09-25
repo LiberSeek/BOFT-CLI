@@ -215,6 +215,7 @@ export interface RendererSettingsMessages {
   readonly enabled: string;
   readonly disabled: string;
   readonly openSettings: string;
+  readonly starOnGitHub: string;
   readonly settingsButtonTitle: string;
   readonly settingsUnavailableTitle: string;
   readonly updateCurrentVersion: string;
@@ -250,6 +251,8 @@ export interface RendererSettingsMessages {
   readonly updateCopyFailed: string;
   readonly updateDownloadFromReleases: string;
   readonly updateDownloadWindowsInstaller: string;
+  readonly updateStarCallout: string;
+  readonly updateStarLink: string;
   readonly aboutTagline: string;
   readonly aboutLead: string;
   readonly aboutExtensionIntro: string;
@@ -267,6 +270,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "en",
   title: "Settings",
   close: "Close settings",
+  starOnGitHub: "Star to support",
   sectionsLabel: "Settings sections",
   connectionSection: "Connections",
   generalSection: "General",
@@ -454,7 +458,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionOpenInstallation: "Open official installation page",
   connectionOpenHarnessWeb: "Open DeepSeek Harness Web",
   connectionDeepSeekTestedVersions:
-    "Tested with DSH 0.1.2-rc.1, 0.1.5-rc.1 and 0.1.5-rc.2. Other versions may connect, but have not been verified.",
+    "Supported DSH versions: 0.1.2-rc.1, 0.1.5-rc.1, 0.1.5-rc.2, 0.1.5-rc.3, 0.1.7-rc.1 and 0.1.7-rc.2. Other versions may connect after native protocol checks, but are not listed as supported.",
   connectionInstall: "Install",
   connectionInstallDescription:
     "This Harness was not detected. Copy the official install command, copy an install prompt for another Agent, or open the official installation page. After installing, return here and run the check again.",
@@ -524,6 +528,8 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   updateCopyFailed: "Copy failed",
   updateDownloadFromReleases: "Download from GitHub Releases",
   updateDownloadWindowsInstaller: "Download Windows installer",
+  updateStarCallout: "If BOFT CLI has helped you, please Star it on GitHub. It means a lot to us 👉",
+  updateStarLink: "GitHub",
   aboutTagline: "An Extension for running third-party Agent Harnesses in Codex.",
   aboutLead: "Codex provides an excellent desktop development experience.",
   aboutExtensionIntro:
@@ -562,6 +568,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "zh-CN",
   title: "设置",
   close: "关闭设置",
+  starOnGitHub: "Star 支持",
   sectionsLabel: "设置分类",
   connectionSection: "连接",
   generalSection: "通用",
@@ -741,7 +748,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionOpenInstallation: "前往官方安装页面",
   connectionOpenHarnessWeb: "打开 DeepSeek Harness Web",
   connectionDeepSeekTestedVersions:
-    "已在 DSH 0.1.2-rc.1、0.1.5-rc.1 和 0.1.5-rc.2 上测试。其他版本可以尝试连接，但尚未验证。",
+    "支持 DSH 版本：0.1.2-rc.1、0.1.5-rc.1、0.1.5-rc.2、0.1.5-rc.3、0.1.7-rc.1 和 0.1.7-rc.2。其他版本可以在通过原生协议检查后尝试连接，但尚未列入支持列表。",
   connectionInstall: "安装",
   connectionInstallDescription:
     "尚未检测到该 Harness。可以复制官方安装命令、复制安装 Prompt 交给其他 Agent 执行，或前往官方安装页面。安装完成后请返回此页面重新检查。",
@@ -807,6 +814,8 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   updateCopyFailed: "复制失败",
   updateDownloadFromReleases: "前往 GitHub Releases 下载",
   updateDownloadWindowsInstaller: "下载 Windows 安装包",
+  updateStarCallout: "如果 BOFT CLI 帮到了你，请在 GitHub 点个 Star，这对我们意义重大 👉",
+  updateStarLink: "GitHub",
   aboutTagline: "在 Codex 中运行第三方 Agent Harness 的 Extension。",
   aboutLead: "Codex 提供了优秀的桌面开发交互体验。",
   aboutExtensionIntro: "BOFT CLI 在基础上，通过 Extension 加入了更多引人入胜的 Agent。",

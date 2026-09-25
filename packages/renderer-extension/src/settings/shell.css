@@ -270,6 +270,22 @@
   white-space: nowrap;
 }
 
+.settings-nav-star-link {
+  margin-top: 0;
+  color: var(--settings-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.settings-nav-star-link .codexhost-settings-icon {
+  color: var(--settings-warning);
+}
+
+.settings-nav-star-link:hover {
+  color: var(--settings-warning);
+  background: var(--settings-warning-bg);
+}
+
 .settings-icon-button {
   display: inline-flex;
   align-items: center;
@@ -2161,121 +2177,44 @@
   border: 0;
 }
 
-.settings-session-import-content {
-  display: grid;
-  min-width: 0;
-  gap: 12px;
+.settings-update-star {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
   margin-top: 16px;
-}
-
-.settings-session-import-list {
-  display: grid;
-  min-width: 0;
-  overflow: hidden;
-  background: var(--settings-surface);
+  padding: 12px 14px;
+  background: var(--settings-panel);
   border: 1px solid var(--settings-border);
   border-radius: 12px;
 }
 
-.settings-session-import-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  min-width: 0;
-  gap: 16px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--settings-divider);
-}
-
-.settings-session-import-row:last-child {
-  border-bottom: 0;
-}
-
-.settings-session-import-row__copy {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-
-.settings-session-import-row__copy strong {
-  color: var(--settings-text);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-}
-
-.settings-session-import-row__copy span,
-.settings-session-import-row__cwd {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--settings-muted);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.settings-session-import-row__cwd {
-  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-}
-
-.settings-session-import-row__action {
-  display: flex;
-  align-items: center;
-  flex: none;
-  gap: 8px;
-}
-
-.settings-session-import-running {
-  color: #f5c542;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  white-space: nowrap;
-}
-
-.settings-session-import-recovery {
-  display: grid;
-  min-width: 0;
-  gap: 12px;
-  padding: 16px;
-  background: var(--settings-surface);
-  border: 1px solid var(--settings-border);
-  border-radius: 12px;
-}
-
-.settings-session-import-recovery__copy {
-  display: grid;
-  gap: 6px;
-}
-
-.settings-session-import-recovery__copy strong {
-  color: var(--settings-text);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 22px;
-}
-
-.settings-session-import-recovery__copy p {
+.settings-update-star__copy {
   margin: 0;
-  color: var(--settings-muted);
+  min-width: min(100%, 16rem);
+  flex: 1;
+  color: var(--settings-focus);
   font-size: 13px;
+  font-weight: 600;
   line-height: 20px;
 }
 
-.settings-session-import-recovery__path {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 8px;
+.settings-update-star__link {
+  color: var(--settings-focus);
+  background: light-dark(rgb(11 117 209 / 8%), rgb(102 170 249 / 12%));
+  border-color: light-dark(rgb(11 117 209 / 22%), rgb(102 170 249 / 32%));
 }
 
-.settings-session-import-recovery__path code {
-  min-width: 0;
-  flex: 1;
-  overflow-wrap: anywhere;
-  color: var(--settings-text);
-  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
-  line-height: 18px;
+.settings-update-star__link:hover {
+  background: light-dark(rgb(11 117 209 / 14%), rgb(102 170 249 / 18%));
+  border-color: light-dark(rgb(11 117 209 / 32%), rgb(102 170 249 / 42%));
+}
+
+.settings-update-star__mark {
+  color: light-dark(#f5b400, #ffd15c);
+  fill: currentColor;
+  stroke: none;
 }
 
 .codexhost-settings-icon {

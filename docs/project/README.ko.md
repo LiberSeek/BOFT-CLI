@@ -55,7 +55,7 @@
 ### 인터페이스
 
 <div align="center">
-  <img width="90%" src="imgs/codexhost-interface-overview.png" alt="Codex Desktop에서 독립 Thread로 실행 중인 Pi, Claude Code, OpenCode, Oh My Pi, Grok Build, DeepSeek Harness">
+  <img width="90%" src="../imgs/codexhost-native-overview.png" alt="Codex Desktop에서 실행 중인 Claude Code, Pi, Grok Build, Oh My Pi 세션과 Diff 검토, Fork, Worktree, Agent 전환">
 </div>
 
 ## 빠른 시작
@@ -94,25 +94,55 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
 
 </details>
 
-### 상호작용 예시
+### 주요 기능
 
 <table>
   <tr>
-    <td width="50%" valign="top">
-      <p><strong>Agent 및 Model 선택</strong></p>
-      <img src="imgs/agent-harness-selector.png" alt="작업 제출 전에 실제 실행할 Agent와 Model을 선택할 수 있으며 Codex, Pi, Claude Code, OpenCode, DeepSeek Harness, Grok, Oh My Pi를 사용할 수 있습니다">
-    </td>
-    <td width="50%" valign="top">
-      <p><strong>Usage 및 비용 정보</strong></p>
-      <img src="imgs/usage-panel.png" alt="Usage 패널에서 컨텍스트, 캐시 적중 및 예상 비용을 확인할 수 있습니다">
+    <td colspan="2" valign="top">
+      <p><strong>전체 작업 화면</strong><br /><sub>여러 Harness의 세션이 하나의 사이드바에 모이고, 입력창 오른쪽 아래에서 언제든 Agent를 전환</sub></p>
+      <div align="center">
+        <img width="90%" src="../imgs/codexhost-full-workspace.png" alt="Codex Desktop에서 실행 중인 codexhost 전체 작업 화면: 프로젝트 구조, 대화 영역, 여러 Agent 선택기">
+      </div>
     </td>
   </tr>
   <tr>
-    <td colspan="2" valign="top">
-      <p><strong>#으로 위임할 Agent 선택</strong></p>
-      <div align="center">
-        <img width="90%" src="../imgs/composer-hash-delegation-menu.png" alt="채팅 입력창에 #을 입력하면 작업을 위임할 Agent 목록이 표시됩니다">
-      </div>
+    <td width="50%" valign="top">
+      <p><strong>Diff 검토 패널</strong><br /><sub>매 턴의 변경 사항을 자동으로 요약하고, 「검토」를 누르면 오른쪽에서 전체 Diff 확인</sub></p>
+      <img src="../imgs/highlight-diff-review.png" alt="대화의 변경 요약 카드와 오른쪽 검토 패널의 Diff">
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>아무 메시지에서나 Fork</strong><br /><sub>현재 작업 공간에서, 또는 새 Worktree에서 병렬 개발</sub></p>
+      <img src="../imgs/highlight-fork-worktree.png" alt="메시지에서 브랜치를 만드는 메뉴: 현재 작업 공간 또는 새 워크트리">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p><strong># 입력으로 다른 Agent에 위임</strong><br /><sub>여러 Agent가 각자 독립 세션에서 병렬 실행 · <a href="#agent-간-협업">자세히 보기</a></sub></p>
+      <img src="../imgs/highlight-delegation.png" alt="# 입력으로 Codex, Claude Code, Grok 등 Agent를 선택하고 각 작업이 독립 세션에서 병렬 실행">
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>도구 호출과 사고 과정</strong><br /><sub>모든 edit, 명령, 사고 과정을 펼쳐서 자세히 확인</sub></p>
+      <img src="../imgs/highlight-tool-details.png" alt="편집 기록을 펼쳐 새로 만든 파일의 Diff 표시">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p><strong>Subagent 가시화</strong><br /><sub>Subagent마다 고유 아이콘이 있고, 오른쪽에서 전체 대화 확인</sub></p>
+      <img src="../imgs/highlight-subagent.png" alt="메인 대화에 4개 Subagent 상태가 표시되고 오른쪽에 그중 하나의 전체 대화">
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>원격 개발</strong><br /><sub>VPS를 프로젝트로 추가하면 Agent가 원격 머신에서 바로 실행 · <a href="#원격-harness">자세히 보기</a></sub></p>
+      <img src="../imgs/highlight-remote.png" alt="사이드바의 원격 VPS 프로젝트와 원격 머신의 작업 디렉터리를 반환하는 대화">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p><strong>사용량 한눈에 보기</strong><br /><sub>캐시 적중률, 예상 비용, 컨텍스트 사용량을 실시간 표시</sub></p>
+      <img src="../imgs/highlight-usage.png" alt="사용량 팝오버: 컨텍스트, 캐시 적중률, 캐시 읽기/쓰기, 총 Token, 예상 비용">
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>계정 원클릭 가져오기</strong><br /><sub>로컬에 로그인된 Codex, Grok 자격 증명을 Pi로 바로 복사하고 한도를 실시간 확인</sub></p>
+      <img src="../imgs/highlight-account-import.png" alt="계정 설정: 5시간·7일 남은 한도와 Pi로 가져온 계정">
     </td>
   </tr>
   <tr>
@@ -124,10 +154,8 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <p><strong>Mermaid 다이어그램 렌더링</strong></p>
-      <div align="center">
-        <img width="90%" src="imgs/codex-vs-pi-agent-tui.png" alt="Pi + Codex Desktop과 Pi Agent TUI의 Mermaid 다이어그램 렌더링 비교">
-      </div>
+      <p><strong>Mermaid 다이어그램 렌더링</strong><br /><sub>왼쪽: Codex Desktop + Pi는 다이어그램을 바로 렌더링, 오른쪽: Pi TUI는 소스만 표시</sub></p>
+      <img src="../imgs/codex-vs-pi-agent-tui.png" alt="Pi + Codex Desktop과 Pi Agent TUI의 Mermaid 다이어그램 렌더링 비교">
     </td>
   </tr>
 </table>
