@@ -25,6 +25,8 @@ use codexhost_shim::{HOST_NODE_PATH_ENV, HOST_RUNTIME_PATH_ENV, REMOTE_SSH_MANAG
 use fs2::FileExt;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::os::unix::fs::MetadataExt;
+#[cfg(target_os = "macos")]
+use std::os::unix::fs::PermissionsExt;
 
 fn shim_path() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_boft-shim"))
@@ -487,6 +489,34 @@ fn macos_fixture_bundle(directory: &std::path::Path) -> PathBuf {
 }
 
 #[cfg(target_os = "macos")]
+fn macos_packaged_fixture_bundle(directory: &std::path::Path) -> PathBuf {
+    let bundle = macos_fixture_bundle(directory);
+    fs::remove_file(bundle.join("Contents/Resources/codex")).unwrap();
+    let package = bundle.join("Contents/Resources/codex-cli");
+    fs::create_dir_all(package.join("bin")).unwrap();
+    fs::create_dir_all(package.join("CodexCLI.app/Contents/MacOS")).unwrap();
+    fs::write(
+        package.join("codex-package.json"),
+        r#"{"layoutVersion":1,"entrypoint":"bin/codex"}"#,
+    )
+    .unwrap();
+    let entrypoint = package.join("bin/codex");
+    fs::write(&entrypoint, b"#!/bin/sh\nexit 0\n").unwrap();
+    fs::set_permissions(&entrypoint, fs::Permissions::from_mode(0o755)).unwrap();
+    fs::copy(
+        fake_codex_path(),
+        package.join("CodexCLI.app/Contents/MacOS/codex"),
+    )
+    .unwrap();
+    bundle
+}
+
+#[cfg(target_os = "macos")]
+fn packaged_cli(bundle: &std::path::Path) -> PathBuf {
+    bundle.join("Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex")
+}
+
+#[cfg(target_os = "macos")]
 #[test]
 fn macos_browser_helper_preserving_only_cli_override_reaches_official_cli() {
     let directory = temporary_directory();
@@ -512,6 +542,31 @@ fn macos_browser_helper_preserving_only_cli_override_reaches_official_cli() {
         "{stderr}"
     );
     assert!(stderr.contains("codex_cli_path_present=false"), "{stderr}");
+    fs::remove_dir_all(directory).unwrap();
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_packaged_cli_sandbox_reaches_the_nested_official_cli() {
+    let directory = temporary_directory();
+    let bundle = macos_packaged_fixture_bundle(&directory);
+    let mut command = Command::new(shim_path());
+    for (key, _) in std::env::vars_os() {
+        if key.to_string_lossy().starts_with("CODEXHOST_") {
+            command.env_remove(key);
+        }
+    }
+    let output = command
+        .args(["sandbox", "--", "/usr/bin/true"])
+        .env_remove(CODEX_CLI_PATH_ENV)
+        .env(CUSTOM_INSTALL_ROOT_ENV, &bundle)
+        .env("FAKE_CODEX_PRINT_INVOCATION", "1")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{stderr}");
+    assert!(stderr.contains("args=sandbox|--|/usr/bin/true"), "{stderr}");
     fs::remove_dir_all(directory).unwrap();
 }
 
@@ -700,6 +755,61 @@ fn macos_native_helpers_do_not_become_host_runtime_owners() {
         if depth > 0 {
             assert!(!directory.join("local-host-runtime-owner.lock").exists());
         }
+        fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_packaged_cli_helpers_follow_the_desktop_bundle() {
+    for depth in [0, 2] {
+        let directory = temporary_directory();
+        let bundle = macos_packaged_fixture_bundle(&directory);
+        let desktop = bundle.join("Contents/MacOS/ChatGPT");
+        let mut child = Command::new(&desktop)
+            .args(["app-server", "--listen", "stdio://"])
+            .env("FAKE_CODEX_HELPER_SHIM", shim_path())
+            .env("FAKE_CODEX_HELPER_DEPTH", depth.to_string())
+            .env("FAKE_CODEX_HELPER_EXECUTABLE", fake_codex_path())
+            .env("FAKE_CODEX_PRINT_INVOCATION", "1")
+            .env("FAKE_CODEX_ROUTE_RESPONSE", "1")
+            .env("CODEXHOST_LAUNCHER_PID", process::id().to_string())
+            .env(
+                "CODEXHOST_LAUNCHER_EXECUTABLE",
+                std::env::current_exe().unwrap(),
+            )
+            .env("CODEXHOST_DATA_DIR", &directory)
+            .env_remove("CODEXHOST_NPM_NODE_PATH")
+            .env_remove("CODEXHOST_NPM_PACKAGE_ROOT")
+            .env_remove(REMOTE_SSH_MANAGED_ENV)
+            .env(STOCK_CODEX_PATH_ENV, packaged_cli(&bundle))
+            .env(CODEX_CLI_PATH_ENV, shim_path())
+            .env(HOST_NODE_PATH_ENV, fake_codex_path())
+            .env(HOST_RUNTIME_PATH_ENV, fake_codex_path())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        stdin.write_all(b"x").unwrap();
+        let mut response = [0_u8; 8];
+        child
+            .stdout
+            .as_mut()
+            .unwrap()
+            .read_exact(&mut response)
+            .unwrap();
+        assert_eq!(&response, b"response");
+        drop(stdin);
+        let output = child.wait_with_output().unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "depth={depth}: {stderr}");
+        assert_eq!(
+            stderr.contains("args=app-server|--listen|stdio://"),
+            depth > 0,
+            "packaged CLI helper routing depth={depth}: {stderr}"
+        );
         fs::remove_dir_all(directory).unwrap();
     }
 }

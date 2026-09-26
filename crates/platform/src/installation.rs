@@ -13,6 +13,9 @@ use std::time::SystemTime;
 
 #[cfg(target_os = "macos")]
 use plist::Value;
+
+#[cfg(target_os = "macos")]
+mod macos_codex_cli;
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 use sha2::{Digest, Sha256};
 #[cfg(target_os = "windows")]
@@ -1072,8 +1075,7 @@ fn inspect_bundle(bundle: &Path) -> Result<DesktopInstallation, PlatformError> {
         &bundle.join("Contents/MacOS").join(executable_name),
         "Desktop executable",
     )?;
-    let packaged_codex_cli =
-        canonical_macho_executable(&bundle.join("Contents/Resources/codex"), "Codex CLI")?;
+    let packaged_codex_cli = macos_codex_cli::resolve_packaged_codex_cli(&bundle)?;
     if !desktop_executable.starts_with(&bundle) || !packaged_codex_cli.starts_with(&bundle) {
         return Err(PlatformError::Invalid(format!(
             "App bundle '{}' resolves an executable outside the bundle",
