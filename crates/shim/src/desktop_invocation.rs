@@ -75,11 +75,10 @@ fn desktop_installation_for_cli(
         if cursor
             .extension()
             .is_some_and(|extension| extension == "app")
+            && let Ok(installation) = discover_codex_desktop_from_root(cursor)
         {
-            if let Ok(installation) = discover_codex_desktop_from_root(cursor) {
-                return same_cli(&installation.executable_codex_cli, stock_codex_path)
-                    .then_some(installation);
-            }
+            return same_cli(&installation.executable_codex_cli, stock_codex_path)
+                .then_some(installation);
         }
         cursor = cursor.parent()?;
     }
