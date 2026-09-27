@@ -5,6 +5,7 @@ import {
   type HarnessOutput,
   type HarnessResult,
   type HostCommand,
+  type HostTextInput,
   type TurnStartCommand,
   type TurnStartAccepted,
   type TurnCancelCommand,
@@ -263,7 +264,11 @@ export class V2Session implements HarnessSession {
           this.#closed ? "invalidState" : "sessionBusy",
         ),
       };
-    if (!compact && !command.input.some((p) => p.text.trim()))
+    const text = command.input
+      .filter((part): part is HostTextInput => part.type === "text")
+      .map((part) => part.text)
+      .join("\n");
+    if (!compact && !text.trim())
       return { ok: false, error: failure("OpenCode requires text input", "invalidRequest") };
     let resolve!: () => void;
     const done = new Promise<void>((r) => {
@@ -298,7 +303,7 @@ export class V2Session implements HarnessSession {
       else
         await this.client.session.prompt({
           sessionID: this.info.id,
-          text: command.input.map((p) => p.text).join("\n"),
+          text,
           delivery: "queue",
           metadata: { "codexhost.turnId": active.turnId },
         });

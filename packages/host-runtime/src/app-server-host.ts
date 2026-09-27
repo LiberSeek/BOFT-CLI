@@ -304,6 +304,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function officialThreadBusy(thread: Record<string, unknown> | null): boolean {
+  if (thread && isRecord(thread.status) && thread.status.type === "active") return true;
+  const turns = thread && Array.isArray(thread.turns) ? thread.turns : [];
+  const latestTurn = turns.at(-1);
+  return (
+    isRecord(latestTurn) && (latestTurn.status === "inProgress" || latestTurn.status === "running")
+  );
+}
+
 function isCreditsAdapter(adapter: HarnessAdapter): adapter is HarnessAdapter & {
   credits(): unknown;
   refreshCredits?: () => Promise<unknown>;
@@ -2097,15 +2106,38 @@ export class AppServerHost {
       throw new DelegationControlError("THREAD_NOT_FOUND", "Official Thread was not found");
     }
     const currentThread = isRecord(current.result.thread) ? current.result.thread : null;
-    const currentTurns =
-      currentThread && Array.isArray(currentThread.turns) ? currentThread.turns : [];
-    const latestTurn = currentTurns.at(-1);
-    if (
-      (currentThread && isRecord(currentThread.status) && currentThread.status.type === "active") ||
-      (isRecord(latestTurn) &&
-        (latestTurn.status === "inProgress" || latestTurn.status === "running"))
-    ) {
+    if (officialThreadBusy(currentThread)) {
       throw new DelegationControlError("THREAD_BUSY", "Thread already has an active Turn");
+    }
+    // Read stays idle after unsubscribe and does not resubscribe. Resume does, and
+    // excludeTurns keeps paginated history out of the response without replacing config.
+    const resumed = await this.#requestOfficial("thread/resume", {
+      threadId: input.threadId,
+      excludeTurns: true,
+    });
+    if (isRecord(resumed.error) || !isRecord(resumed.result)) {
+      throw new DelegationControlError(
+        "DELEGATION_FAILED",
+        isRecord(resumed.error) && typeof resumed.error.message === "string"
+          ? resumed.error.message
+          : "Official Thread resume failed",
+      );
+    }
+    const resumedThread = isRecord(resumed.result.thread) ? resumed.result.thread : null;
+    if (!resumedThread || resumedThread.id !== input.threadId) {
+      throw new DelegationControlError(
+        "DELEGATION_FAILED",
+        "Official Thread resume did not return the requested Thread",
+      );
+    }
+    if (officialThreadBusy(resumedThread)) {
+      throw new DelegationControlError("THREAD_BUSY", "Thread already has an active Turn");
+    }
+    if (!isRecord(resumedThread.status) || resumedThread.status.type !== "idle") {
+      throw new DelegationControlError(
+        "DELEGATION_FAILED",
+        "Official Thread is not idle after resume",
+      );
     }
     const response = await this.#requestOfficial("turn/start", {
       threadId: input.threadId,
@@ -2403,7 +2435,11 @@ export class AppServerHost {
     }
     const coordinator = this.#options.updateCoordinator;
     if (!coordinator) {
-      await this.#writer.json(rpcError(request, -32090, "Application updates are unavailable"));
+      await this.#writer.json(
+        request.method === "codexhost/update/check"
+          ? rpcEnvelope(request, { result: null })
+          : rpcError(request, -32090, "Application updates are unavailable"),
+      );
       return;
     }
     try {
@@ -2850,6 +2886,7 @@ export class AppServerHost {
     const gate = turnProjectionGate();
     thread.running = true;
     thread.activeTurnId = turnId;
+    thread.projectedTerminalTurnId = null;
     thread.projectedTurns.set(turnId, projection);
     thread.responseGates.set(turnId, gate);
     thread.ephemeralTurnIds.add(turnId);
@@ -3102,6 +3139,14 @@ export class AppServerHost {
         });
         thread.transportModelId = transportModelId;
         thread.requestedModel = effectiveModel;
+        thread.thread = externalThreadValue({
+          record: { ...thread.record, transportModelId },
+          turns: thread.turns,
+          sessionId: thread.sessionId,
+          running: thread.running,
+        });
+        // Resume restores the saved selection, so an unsaved change must not
+        // be reported as a completed selection.
         try {
           thread.record = await this.#repository.setTransportModelId(
             thread.record.hostThreadId,
@@ -3109,13 +3154,15 @@ export class AppServerHost {
           );
         } catch (error) {
           this.#diagnose(error);
+          await this.#writer.json(
+            rpcError(
+              request,
+              -32078,
+              `Permission Mode was applied but could not be saved: ${errorMessage(error)}`,
+            ),
+          );
+          return;
         }
-        thread.thread = externalThreadValue({
-          record: { ...thread.record, transportModelId },
-          turns: thread.turns,
-          sessionId: thread.sessionId,
-          running: thread.running,
-        });
       }
       await this.#writer.json(rpcEnvelope(request, { result: jsonValueSchema.parse(projected) }));
     } catch (error) {
@@ -3679,6 +3726,7 @@ export class AppServerHost {
     };
     thread.running = true;
     thread.activeTurnId = turnId;
+    thread.projectedTerminalTurnId = null;
     thread.projectedTurns.set(turnId, projection);
     thread.responseGates.set(turnId, {
       promise: Promise.resolve(),
@@ -3849,6 +3897,7 @@ export class AppServerHost {
     const gate = turnProjectionGate();
     thread.running = true;
     thread.activeTurnId = turnId;
+    thread.projectedTerminalTurnId = null;
     thread.projectedTurns.set(turnId, projection);
     thread.responseGates.set(turnId, gate);
 
@@ -4168,6 +4217,7 @@ export class AppServerHost {
       };
       thread.running = true;
       thread.activeTurnId = event.turnId;
+      thread.projectedTerminalTurnId = null;
       thread.projectedTurns.set(event.turnId, projection);
       thread.responseGates.set(event.turnId, {
         promise: Promise.resolve(),
@@ -4219,6 +4269,7 @@ export class AppServerHost {
         thread.ephemeralTurnIds.delete(event.turnId);
       } else {
         thread.turns.push(result.completedTurn);
+        thread.projectedTerminalTurnId = event.turnId;
         thread.thread.updatedAt = completedAt;
         thread.thread.recencyAt = completedAt;
       }
