@@ -31,6 +31,14 @@ pub(super) fn resolve_packaged_codex_cli(bundle: &Path) -> Result<PathBuf, Platf
     if manifest.is_file() {
         return resolve_codex_cli_package(&bundle, &package_root, &manifest);
     }
+    // Desktop 26.924+ may ship the nested Mach-O before a package manifest is
+    // present. Prefer that copy, and keep the flat CLI for earlier builds.
+    let nested = package_root.join(PACKAGE_EXECUTABLE);
+    if nested.symlink_metadata().is_ok() {
+        let cli = canonical_macho_executable(&nested, "Codex CLI")?;
+        ensure_inside(&bundle, &cli, "Codex CLI")?;
+        return Ok(cli);
+    }
     let cli = canonical_macho_executable(&bundle.join(LEGACY_CLI), "Codex CLI")?;
     ensure_inside(&bundle, &cli, "Codex CLI")?;
     Ok(cli)
@@ -213,6 +221,16 @@ mod tests {
             r#"{"layoutVersion": 1, "entrypoint": "bin/codex"}"#,
         );
         let cli = resolve_packaged_codex_cli(&bundle).expect("packaged cli");
+        assert!(cli.ends_with("CodexCLI.app/Contents/MacOS/codex"));
+        fs::remove_dir_all(bundle.parent().expect("temp root")).expect("cleanup");
+    }
+
+    #[test]
+    fn prefers_a_nested_mach_o_when_the_package_manifest_is_absent() {
+        let bundle = temporary_directory("codexhost-codex-cli").join("ChatGPT.app");
+        macho(&bundle.join("Contents/Resources/codex"));
+        macho(&bundle.join("Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"));
+        let cli = resolve_packaged_codex_cli(&bundle).expect("nested cli");
         assert!(cli.ends_with("CodexCLI.app/Contents/MacOS/codex"));
         fs::remove_dir_all(bundle.parent().expect("temp root")).expect("cleanup");
     }
