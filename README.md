@@ -57,7 +57,7 @@
 ### 界面
 
 <div align="center">
-  <img width="90%" src="docs/imgs/codexhost-interface-overview.png" alt="Pi、Claude Code、OpenCode、Oh My Pi、Grok Build 和 DeepSeek Harness 作为独立 Thread 运行在 Codex Desktop 中">
+  <img width="90%" src="docs/imgs/codexhost-native-overview.png" alt="Claude Code、Pi、Grok Build 和 Oh My Pi 作为独立 Thread 运行在 Codex Desktop 中，并可进行 Diff 审查、Fork、Worktree 和 Agent 切换">
 </div>
 
 ## 快速使用
@@ -123,20 +123,50 @@ xattr -d com.apple.quarantine /Applications/BOFT.app
     <td colspan="2" valign="top">
       <p><strong>用 # 选择要协作的 Agent</strong></p>
       <div align="center">
-        <img width="90%" src="docs/imgs/composer-hash-delegation-menu.png" alt="在输入框中输入 #，打开可委派任务的 Agent 菜单">
+        <img width="90%" src="docs/imgs/highlight-delegation.png" alt="在输入框中输入 #，选择 Codex、Claude Code、Grok 等 Agent，每个任务在独立会话中并行执行">
       </div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p><strong>Diff 审查</strong><br /><sub>每一轮都会汇总改动，点 Review 在右侧打开完整 Diff</sub></p>
+      <img src="docs/imgs/highlight-diff-review.png" alt="对话中的改动摘要，以及右侧审查面板里的完整 Diff">
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>从任意消息 Fork</strong><br /><sub>在当前工作区继续，或在新的 Worktree 里并行开发</sub></p>
+      <img src="docs/imgs/highlight-fork-worktree.png" alt="从一条消息创建分支：当前工作区或新的 Worktree">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p><strong>工具调用与思考</strong><br /><sub>展开编辑、命令或思考步骤，查看具体内容</sub></p>
+      <img src="docs/imgs/highlight-tool-details.png" alt="展开一条编辑记录，显示新建文件的 Diff">
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>可见的 Subagent</strong><br /><sub>每个 Subagent 有自己的图标，可在右侧打开完整对话</sub></p>
+      <img src="docs/imgs/highlight-subagent.png" alt="主对话里 4 个 Subagent 的状态，右侧打开了其中一个的完整对话">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <p><strong>远程开发</strong><br /><sub>把 VPS 加为项目后，Agent 直接在远程机器上运行 · <a href="#远程连接-harness">了解更多</a></sub></p>
+      <img src="docs/imgs/highlight-remote.png" alt="侧边栏中的远程 VPS 项目，对话返回远程工作目录">
+    </td>
+    <td width="50%" valign="top">
+      <p><strong>一键导入账号</strong><br /><sub>把本机已登录的 Codex 和 Grok 凭证复制到 Pi，并查看实时额度</sub></p>
+      <img src="docs/imgs/highlight-account-import.png" alt="账号设置：5 小时与 7 天剩余额度，以及导入到 Pi 的账号">
     </td>
   </tr>
   <tr>
     <td colspan="2" valign="top">
       <p><strong>额度一目了然</strong></p>
-      <img src="docs/imgs/grok-usage-limits.png" alt="五小时与七天窗口的剩余额度和重置时间">
+      <img src="docs/imgs/highlight-usage.png" alt="用量弹层：上下文、缓存命中、缓存读写、总 Token 和费用估算">
       <p>macOS 会在原生 ChatGPT 菜单栏图标内追加剩余额度百分比，Windows 则使用任务栏覆盖图标；优先使用 5 小时窗口，没有时回退到 7 天窗口。</p>
     </td>
   </tr>
   <tr>
     <td colspan="2" valign="top">
-      <p><strong>Mermaid 图表可视化渲染</strong></p>
+      <p><strong>Mermaid 图表可视化渲染</strong><br /><sub>左：Codex Desktop + Pi 直接渲染图表；右：Pi TUI 只显示源码</sub></p>
       <div align="center">
         <img width="90%" src="docs/imgs/codex-vs-pi-agent-tui.png" alt="Pi + Codex Desktop 与 Pi Agent TUI 的 Mermaid 图表可视化渲染对比">
       </div>

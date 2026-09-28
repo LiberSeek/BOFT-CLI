@@ -7,7 +7,7 @@ page footer. It is bundled as a data URL because Codex Desktop CSP allows
 `codexhost-logo.png`, `codexhost-icon.png`, and `codexhost-logo-transparent.png`
 are the BOFT product marks. `codexhost-brand-icon.png` is the 256px crop used
 as the Renderer settings brand icon (settings header mark and the
-application-header settings trigger button). `codexhost-app-icon.svg` is the
+application-header settings trigger). `codexhost-app-icon.svg` is the
 upstream vector master and is not the settings brand icon in this fork.
 
 `codex-logo.png` is the Codex X mark source and

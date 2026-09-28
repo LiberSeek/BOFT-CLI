@@ -347,6 +347,28 @@ export class HarnessDelegationCoordinator {
             revision = thread.stateObserver.revision;
           }
         }
+        const state = thread.stateObserver.state;
+        if (state.effectiveModel && state.effectivePermissionModeId) {
+          const transportModelId = encodeExternalTransportSelection(targetHarnessId, {
+            model: state.effectiveModel,
+            permissionModeId: state.effectivePermissionModeId,
+            ...(state.effectiveThinkingOptionId
+              ? { thinkingOptionId: state.effectiveThinkingOptionId }
+              : {}),
+          });
+          thread.record = await this.#repository.setTransportModelId(
+            childThreadId,
+            transportModelId,
+          );
+          thread.transportModelId = transportModelId;
+          thread.requestedPermissionModeId = state.effectivePermissionModeId;
+          thread.thread = externalThreadValue({
+            record: thread.record,
+            turns: thread.turns,
+            sessionId: thread.sessionId,
+            running: thread.running,
+          });
+        }
         await this.#repository.setDelegationStatus(delegationId, "running");
         await this.#notifyThreadStarted(thread.thread);
         return {
@@ -471,7 +493,16 @@ export class HarnessDelegationCoordinator {
     const thread = resolution.thread;
     if (!thread.running && !resolution.historyFresh) {
       const error = await this.#externalRuntime.refresh(thread);
-      if (error) throw new DelegationControlError("INTERNAL_ERROR", error.message);
+      // A Harness that died cannot serve its native history, but the Host already
+      // projected the terminal Turn. Report that Turn only while it is still the
+      // latest attempt, so an older Turn never stands in for a later start.
+      const last = thread.turns.at(-1);
+      const projectedTerminal =
+        thread.projectedTerminalTurnId !== null &&
+        last?.id === thread.projectedTerminalTurnId &&
+        (last.status === "completed" || last.status === "failed" || last.status === "interrupted");
+      if (error && !projectedTerminal)
+        throw new DelegationControlError("INTERNAL_ERROR", error.message);
     }
     const turns = thread.activeTurnId
       ? [

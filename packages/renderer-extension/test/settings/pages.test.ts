@@ -14,7 +14,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/settings/icons.js", () => ({
-  createRendererSettingsIcon: () => "icon",
+  createRendererSettingsIcon: () => ({ classList: { add() {} } }),
   createRendererSettingsBrandIcon: () => "brand-icon",
   createRendererSettingsGitHubIcon: () => "github-icon",
   isRendererSettingsIconName: () => true,
@@ -785,7 +785,9 @@ describe("Renderer Connections page", () => {
     const guide = harnessInstallGuide(agent, "windows");
     expect(visibleText(panel)).toContain(guide.command);
     expect(
-      visibleText(content).includes("已在 DSH 0.1.2-rc.1、0.1.5-rc.1 和 0.1.5-rc.2 上测试。"),
+      visibleText(content).includes(
+        "支持 DSH 版本：0.1.2-rc.1、0.1.5-rc.1、0.1.5-rc.2、0.1.5-rc.3、0.1.7-rc.1 和 0.1.7-rc.2。",
+      ),
     ).toBe(agent === "deepseek-harness");
     expect(refresh).not.toHaveBeenCalled();
     const copy = descendants(panel).find(
@@ -957,7 +959,10 @@ describe("Renderer Connections page", () => {
     );
     if (!dshRow) throw new Error("DeepSeek Harness row is not rendered");
     dshRow.dispatch("click", { target: null });
-    expect(visibleText(content)).toContain("其他版本可以尝试连接，但尚未验证。");
+    expect(visibleText(content)).toContain("0.1.7-rc.2");
+    expect(visibleText(content)).toContain(
+      "其他版本可以在通过原生协议检查后尝试连接，但尚未列入支持列表。",
+    );
     const open = descendants(content).find(
       ({ dataset }) => dataset.connectionAction === "open-web-ui",
     );
@@ -1748,6 +1753,86 @@ describe("Renderer Updates page", () => {
     scope.dispose();
   });
 
+  it("shows updates as unavailable when the Host has no update capability", async () => {
+    const client = {
+      checkUpdate: vi.fn(async () => null),
+      startUpdate: vi.fn(),
+      readUpdateStatus: vi.fn(),
+    };
+    const page = createDefaultRendererSettingsPages(
+      rendererSettingsMessages("zh-CN"),
+      () => client,
+    ).find(({ id }) => id === "updates");
+    if (!page) throw new Error("Updates page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    const panel = elementWithClass(content, "settings-update-panel");
+    await vi.waitFor(() => expect(panel.dataset.updateState).toBe("unavailable"));
+    expect(visibleText(panel)).toContain("运行时尚未安装该项能力");
+    expect(visibleText(panel)).not.toContain("当前已是最新版本");
+    expect(descendants(panel).some(({ tagName }) => tagName === "button")).toBe(false);
+
+    cleanup?.();
+    scope.dispose();
+  });
+
+  it("clears the previous check when Retry finds updates unavailable", async () => {
+    const client = {
+      checkUpdate: vi
+        .fn<() => Promise<UpdateCheckResult | null>>()
+        .mockResolvedValueOnce({ ...updateCheck(), error: "network down" })
+        .mockResolvedValueOnce(null),
+      startUpdate: vi.fn(),
+      readUpdateStatus: vi.fn(),
+    };
+    const page = createDefaultRendererSettingsPages(
+      rendererSettingsMessages("zh-CN"),
+      () => client,
+    ).find(({ id }) => id === "updates");
+    if (!page) throw new Error("Updates page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    const panel = elementWithClass(content, "settings-update-panel");
+    const metadata = elementWithClass(content, "settings-update-metadata");
+    const manualNpm = descendants(content).find(
+      ({ className }) => className === "settings-update-manual",
+    );
+    await vi.waitFor(() => expect(panel.dataset.updateState).toBe("error"));
+    expect(visibleText(metadata)).toContain("v1.2.3");
+    expect(manualNpm?.hidden).toBe(false);
+
+    const retry = descendants(panel).find(
+      ({ tagName, children }) => tagName === "button" && children.includes("重试"),
+    );
+    if (!retry) throw new Error("Missing Retry button");
+    retry.dispatch("click");
+    await vi.waitFor(() => expect(panel.dataset.updateState).toBe("unavailable"));
+    expect(visibleText(metadata)).not.toMatch(/v1\.2\.[23]/);
+    expect(manualNpm?.hidden).toBe(true);
+    expect(elementWithClass(content, "settings-update-controls").className).toBe(
+      "settings-update-controls",
+    );
+
+    cleanup?.();
+    scope.dispose();
+  });
+
   it("shows only the Update action before an update starts and ignores stale success state", async () => {
     const client = {
       checkUpdate: vi.fn(async () => updateCheck(updateStatus("succeeded"))),
@@ -2120,9 +2205,18 @@ describe("Renderer Updates page", () => {
     // Status and the update action come first; the manual fallback stays visible
     // right below it, and release notes render last.
     expect(content.children.indexOf(panel)).toBeLessThan(content.children.indexOf(controls));
-    expect(content.children.indexOf(controls)).toBeLessThan(
+    const starBanner = elementWithClass(content, "settings-update-star");
+    expect(content.children.indexOf(controls)).toBeLessThan(content.children.indexOf(starBanner));
+    expect(content.children.indexOf(starBanner)).toBeLessThan(
       content.children.indexOf(elementWithClass(content, "settings-update-notes-section")),
     );
+    expect(visibleText(starBanner)).toContain("如果 BOFT CLI 帮到了你，请在 GitHub 点个 Star");
+    const starLink = descendants(starBanner).find(({ tagName }) => tagName === "a");
+    expect(starLink).toMatchObject({
+      href: "https://github.com/LiberSeek/BOFT-CLI",
+      target: "_blank",
+      rel: "noopener noreferrer",
+    });
     expect(descendants(panel)).toContain(updateButton);
     expect(descendants(panel)).not.toContain(notes);
     expect(notes.children.map((child) => (child as FakeElement).tagName)).toEqual(["h2", "ul"]);

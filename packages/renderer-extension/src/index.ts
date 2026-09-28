@@ -242,17 +242,13 @@ export {
 } from "./settings/shell.js";
 export type { RendererSettingsShell } from "./settings/shell.js";
 export {
-  SETTINGS_HEADER_SURFACE_SELECTOR,
   SETTINGS_TRIGGER_ATTRIBUTE,
   inspectRendererSettingsContract,
   installRendererSettingsHeaderTrigger,
   mountRendererSettingsTrigger,
-  selectRendererSettingsHeaderSlot,
 } from "./settings/trigger.js";
 export type {
-  RendererSettingsBounds,
   RendererSettingsContractInspection,
-  RendererSettingsHeaderSlotCandidate,
   RendererSettingsHeaderTriggerControl,
   RendererSettingsTriggerControl,
 } from "./settings/trigger.js";

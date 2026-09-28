@@ -5,12 +5,8 @@ import {
 } from "./localization.js";
 
 export const SETTINGS_TRIGGER_ATTRIBUTE = "data-codexhost-settings-trigger";
-export const SETTINGS_HEADER_SURFACE_SELECTOR =
-  '[data-testid="app-shell-header-context-menu-surface"]';
-const SETTINGS_APPLICATION_HEADER_SELECTOR = 'header[data-pip-obstacle="app-shell-header"]';
-const SETTINGS_HEADER_SLOT_SELECTOR = ':scope > [data-test-id="header-shell-slot"]';
-const SETTINGS_HEADER_NATIVE_ACTION_GROUP_SELECTOR =
-  ':scope > [data-app-shell-header-obstacle="true"]';
+const SETTINGS_HEADER_SELECTOR = 'header[data-pip-obstacle="app-shell-header"]';
+const SETTINGS_HEADER_TOOLBAR_SELECTOR = '[data-app-shell-header-toolbar="true"]';
 
 export interface RendererSettingsTriggerControl {
   root: HTMLElement;
@@ -18,22 +14,6 @@ export interface RendererSettingsTriggerControl {
   updateButton: HTMLButtonElement;
   setUpdateAvailable(available: boolean): void;
   dispose(): void;
-}
-
-export interface RendererSettingsBounds {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-  width: number;
-  height: number;
-}
-
-export interface RendererSettingsHeaderSlotCandidate<T> {
-  value: T;
-  bounds: RendererSettingsBounds;
-  visibleButtonCount: number;
-  structuralActionGroup?: boolean;
 }
 
 export interface RendererSettingsHeaderTriggerControl {
@@ -54,97 +34,90 @@ export interface RendererSettingsContractInspection {
   insertionPointCount: number;
 }
 
-function measuredBounds(element: Element): RendererSettingsBounds {
+function isVisible(element: Element): boolean {
   const bounds = element.getBoundingClientRect();
-  return {
-    left: bounds.left,
-    right: bounds.right,
-    top: bounds.top,
-    bottom: bounds.bottom,
-    width: bounds.width,
-    height: bounds.height,
-  };
+  return bounds.width > 0 && bounds.height > 0;
 }
 
-export function selectRendererSettingsHeaderSlot<T>(
-  header: RendererSettingsBounds,
-  candidates: readonly RendererSettingsHeaderSlotCandidate<T>[],
-): T | null {
-  const midpoint = header.left + header.width / 2;
-  const maximumWidth = Math.min(320, header.width / 2);
-  const eligible = candidates.filter(
-    ({ bounds, visibleButtonCount, structuralActionGroup }) =>
-      (visibleButtonCount > 1 || structuralActionGroup === true) &&
-      bounds.width >= 0 &&
-      bounds.height >= 0 &&
-      bounds.width <= maximumWidth &&
-      bounds.left >= midpoint &&
-      bounds.right <= header.right + 1 &&
-      bounds.top >= header.top - 1 &&
-      bounds.bottom <= header.bottom + 1,
+function isElement(node: ChildNode): node is HTMLElement {
+  return node.nodeType === 1 || "hasAttribute" in node;
+}
+
+/**
+ * The toolbar's right cluster is the child that sits at the inline end.
+ * A resolved auto margin is a used pixel length, so position is the contract.
+ * A collapsed cluster still reports that end position before native actions appear.
+ */
+function isRightActionCluster(header: HTMLElement, child: HTMLElement): boolean {
+  const headerBounds = header.getBoundingClientRect();
+  const bounds = child.getBoundingClientRect();
+  const midpoint = headerBounds.left + headerBounds.width / 2;
+  return bounds.left >= midpoint - 1 && bounds.right <= headerBounds.right + 1;
+}
+
+function findRightActionCluster(header: HTMLElement): HTMLElement | null {
+  const toolbar = header.querySelector<HTMLElement>(SETTINGS_HEADER_TOOLBAR_SELECTOR);
+  if (!toolbar) return null;
+  const clusters = [...toolbar.children].filter((child): child is HTMLElement =>
+    isElement(child) && isRightActionCluster(header, child),
   );
-  eligible.sort(
-    (left, right) =>
-      Math.abs(header.right - left.bounds.right) - Math.abs(header.right - right.bounds.right) ||
-      right.visibleButtonCount - left.visibleButtonCount ||
-      left.bounds.left - right.bounds.left,
+  clusters.sort(
+    (left, right) => right.getBoundingClientRect().right - left.getBoundingClientRect().right,
   );
-  return eligible[0]?.value ?? null;
+  return clusters[0] ?? null;
 }
 
-export function inspectRendererSettingsContract(
-  ownerDocument: Document = document,
-): RendererSettingsContractInspection {
-  const headers = [
-    ...ownerDocument.querySelectorAll<HTMLElement>(SETTINGS_APPLICATION_HEADER_SELECTOR),
-  ];
-  const visibleHeaders = headers.filter((header) => {
-    const bounds = measuredBounds(header);
-    return bounds.width > 0 && bounds.height > 0;
-  });
-  const insertionPointCount = visibleHeaders.filter((header) =>
-    [...header.querySelectorAll<HTMLElement>(SETTINGS_HEADER_SLOT_SELECTOR)].some((slot) => {
-      const bounds = measuredBounds(slot);
-      return bounds.width > 0 && bounds.height > 0;
-    }),
-  ).length;
-  return {
-    headerCount: headers.length,
-    visibleHeaderCount: visibleHeaders.length,
-    insertionPointCount,
-  };
+function directClusterChild(cluster: HTMLElement, node: Element): HTMLElement | null {
+  let current: Element | null = node;
+  while (current && current.parentElement !== cluster) current = current.parentElement;
+  return current?.parentElement === cluster ? (current as HTMLElement) : null;
 }
 
-function findNativeHeaderActionGroup(header: HTMLElement): HTMLElement | null {
-  const surface = header.querySelector<HTMLElement>(SETTINGS_HEADER_SURFACE_SELECTOR);
-  if (!surface) return null;
-  const groups = [
-    ...surface.querySelectorAll<HTMLElement>(SETTINGS_HEADER_NATIVE_ACTION_GROUP_SELECTOR),
-  ];
-  return groups.at(-1) ?? null;
+function ownedByTrigger(node: Element): boolean {
+  let current: Element | null = node;
+  while (current) {
+    if ("hasAttribute" in current && current.hasAttribute(SETTINGS_TRIGGER_ATTRIBUTE)) return true;
+    current = current.parentElement;
+  }
+  return false;
+}
+
+/** The pinned-summary toggle is the pressed button at the end of the chat toolbar cluster. */
+function summaryClusterChild(cluster: HTMLElement): HTMLElement | null {
+  const summary = [...cluster.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")]
+    .filter((button) => !ownedByTrigger(button))
+    .at(-1);
+  return summary ? directClusterChild(cluster, summary) : null;
 }
 
 function findRendererSettingsHeaderInsertionPoint(
   ownerDocument: Document,
 ): RendererSettingsHeaderInsertionPoint | null {
-  const header = ownerDocument.querySelector<HTMLElement>(SETTINGS_APPLICATION_HEADER_SELECTOR);
-  if (!header) return null;
-
-  const headerBounds = measuredBounds(header);
-  if (headerBounds.width <= 0 || headerBounds.height <= 0) return null;
-
-  const nativeActionGroup = findNativeHeaderActionGroup(header);
-  if (nativeActionGroup?.parentElement) {
-    return { parent: nativeActionGroup.parentElement, before: nativeActionGroup };
+  for (const header of ownerDocument.querySelectorAll<HTMLElement>(SETTINGS_HEADER_SELECTOR)) {
+    if (!isVisible(header)) continue;
+    const cluster = findRightActionCluster(header);
+    if (!cluster) continue;
+    const summary = summaryClusterChild(cluster);
+    let before: ChildNode | null = summary ? summary.nextSibling : null;
+    if (before && isElement(before) && before.hasAttribute(SETTINGS_TRIGGER_ATTRIBUTE)) {
+      before = before.nextSibling;
+    }
+    return { parent: cluster, before };
   }
+  return null;
+}
 
-  const endSlot = [...header.querySelectorAll<HTMLElement>(SETTINGS_HEADER_SLOT_SELECTOR)]
-    .filter((slot) => {
-      const bounds = measuredBounds(slot);
-      return bounds.width > 0 && bounds.height > 0;
-    })
-    .toSorted((left, right) => measuredBounds(right).left - measuredBounds(left).left)[0];
-  return endSlot ? { parent: header, before: endSlot } : null;
+export function inspectRendererSettingsContract(
+  ownerDocument: Document = document,
+): RendererSettingsContractInspection {
+  const headers = [...ownerDocument.querySelectorAll<HTMLElement>(SETTINGS_HEADER_SELECTOR)];
+  const visibleHeaders = headers.filter(isVisible);
+  return {
+    headerCount: headers.length,
+    visibleHeaderCount: visibleHeaders.length,
+    insertionPointCount: visibleHeaders.filter((header) => findRightActionCluster(header) !== null)
+      .length,
+  };
 }
 
 export function mountRendererSettingsTrigger(

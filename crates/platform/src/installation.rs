@@ -1245,6 +1245,23 @@ mod tests {
     }
 
     #[test]
+    fn prefers_nested_cli_over_legacy_path_when_present() {
+        for include_legacy_cli in [false, true] {
+            let bundle = temporary_bundle("ChatGPT.app", "com.openai.codex", include_legacy_cli);
+            let nested_cli =
+                bundle.join("Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex");
+            fs::create_dir_all(nested_cli.parent().expect("CLI parent"))
+                .expect("create nested CLI directory");
+            fs::copy(bundle.join("Contents/MacOS/ChatGPT"), &nested_cli)
+                .expect("copy executable fixture");
+            let installation = discover_from_candidates([bundle.clone()]).expect("valid bundle");
+            let expected = nested_cli.canonicalize().expect("CLI path");
+            assert_eq!(installation.packaged_codex_cli, expected);
+            assert_eq!(installation.executable_codex_cli, expected);
+        }
+    }
+
+    #[test]
     fn rejects_wrong_bundle_identity_and_missing_cli() {
         let wrong = temporary_bundle("Wrong.app", "example.invalid", true);
         let missing = temporary_bundle("Missing.app", "com.openai.codex", false);
@@ -1260,16 +1277,24 @@ mod tests {
 
     #[test]
     fn rejects_cli_symlink_outside_bundle() {
-        let bundle = temporary_bundle("Codex.app", "com.openai.codex", false);
-        let external = bundle.parent().expect("parent").join("external-codex");
-        fs::write(&external, [0xcf, 0xfa, 0xed, 0xfe]).expect("write external CLI");
-        fs::set_permissions(&external, fs::Permissions::from_mode(0o755))
-            .expect("make external CLI executable");
-        symlink(&external, bundle.join("Contents/Resources/codex")).expect("link external CLI");
-        assert!(matches!(
-            discover_from_candidates([bundle]),
-            Err(PlatformError::Invalid(_))
-        ));
+        for relative_path in [
+            "Contents/Resources/codex",
+            "Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
+        ] {
+            let bundle = temporary_bundle("Codex.app", "com.openai.codex", false);
+            let external = bundle.parent().expect("parent").join("external-codex");
+            fs::write(&external, [0xcf, 0xfa, 0xed, 0xfe]).expect("write external CLI");
+            fs::set_permissions(&external, fs::Permissions::from_mode(0o755))
+                .expect("make external CLI executable");
+            let cli_path = bundle.join(relative_path);
+            fs::create_dir_all(cli_path.parent().expect("CLI parent"))
+                .expect("create CLI directory");
+            symlink(&external, cli_path).expect("link external CLI");
+            assert!(matches!(
+                discover_from_candidates([bundle]),
+                Err(PlatformError::Invalid(_))
+            ));
+        }
     }
 
     #[test]
