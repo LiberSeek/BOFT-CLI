@@ -3,7 +3,7 @@ import { mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-const SKILL_VERSION = 7;
+const SKILL_VERSION = 8;
 export const DELEGATION_SKILL_NAME = "codexhost-delegation";
 const SKILL_RELATIVE_PATH = path.join("skills", DELEGATION_SKILL_NAME, "SKILL.md");
 const PREVIOUS_MANAGED_DIGESTS: readonly string[] = [
@@ -14,6 +14,9 @@ const PREVIOUS_MANAGED_DIGESTS: readonly string[] = [
   "d3ddf6db9bc5c5df825479c885bbbf0ca08da66f7057a12e02e1fdf57525149e",
   "15eb63519ff867e1536c97188a0c43738d7a49d38d4d6adeb7a1036726e7246d",
   "09acc3cc0a598e546ce35fccb9d856d9fe06c01ab055dfce1914dab92479c9a2",
+  "b9c1cce41d2556e73a6514aa55618d7d3f2f9ef935f5ae50b0da5a04941514b4",
+  "17a50fc087edce40c8ff61e1c28f36b815edf2f0d73c2925f5d29a9e88af6070",
+  "b40666ca01c9c46caeb2c4d672cda628127616679d04dd735231f5fab6583e88",
 ];
 
 export const CODEXHOST_DELEGATION_SKILL = `---
@@ -57,7 +60,12 @@ user’s request and the task:
 - read its current state immediately;
 - wait for a bounded period;
 - check it again later;
+- watch it, so the Host notifies this Thread once when the watched Thread stops
+  and no waiting or polling is needed meanwhile;
 - leave it running in the background.
+
+A watch notification reports execution state only. Read the Thread before
+judging or reporting its work.
 
 Report the result returned by read or a completed wait, together with the target
 agent, status, and a labeled task link. Keep internal tracking IDs in tool calls.
