@@ -58,8 +58,8 @@ function isRightActionCluster(header: HTMLElement, child: HTMLElement): boolean 
 function findRightActionCluster(header: HTMLElement): HTMLElement | null {
   const toolbar = header.querySelector<HTMLElement>(SETTINGS_HEADER_TOOLBAR_SELECTOR);
   if (!toolbar) return null;
-  const clusters = [...toolbar.children].filter((child): child is HTMLElement =>
-    isElement(child) && isRightActionCluster(header, child),
+  const clusters = [...toolbar.children].filter(
+    (child): child is HTMLElement => isElement(child) && isRightActionCluster(header, child),
   );
   clusters.sort(
     (left, right) => right.getBoundingClientRect().right - left.getBoundingClientRect().right,

@@ -528,7 +528,8 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   updateCopyFailed: "Copy failed",
   updateDownloadFromReleases: "Download from GitHub Releases",
   updateDownloadWindowsInstaller: "Download Windows installer",
-  updateStarCallout: "If BOFT CLI has helped you, please Star it on GitHub. It means a lot to us 👉",
+  updateStarCallout:
+    "If BOFT CLI has helped you, please Star it on GitHub. It means a lot to us 👉",
   updateStarLink: "GitHub",
   aboutTagline: "An Extension for running third-party Agent Harnesses in Codex.",
   aboutLead: "Codex provides an excellent desktop development experience.",
