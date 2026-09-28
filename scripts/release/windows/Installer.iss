@@ -30,6 +30,7 @@ Source: "{#PayloadRoot}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsub
 
 [Icons]
 Name: "{userprograms}\BOFT"; Filename: "{app}\bin\boft-start.exe"; WorkingDir: "{app}"
+Name: "{userprograms}\BOFT console"; Filename: "{app}\bin\boft-start.exe"; Parameters: "--console"; WorkingDir: "{app}"
 
 [Dirs]
 Name: "{app}"

@@ -10,7 +10,6 @@ import {
 import { rendererSettingsMessages } from "../../src/settings/localization.js";
 import {
   RENDERER_SETTINGS_COLOR_SCHEME,
-  isRendererSettingsDialogSupported,
   resolveRendererSettingsTheme,
 } from "../../src/settings/shell.js";
 
@@ -54,24 +53,6 @@ describe("Renderer settings foundation", () => {
     expect(rendererSettingsNavSectionLabel("other", chinese)).toBe("其他");
     expect(Object.isFrozen(pages)).toBe(true);
     expect(pages.every((page) => Object.isFrozen(page))).toBe(true);
-  });
-
-  it("enables the settings trigger only for a native modal dialog surface", () => {
-    expect(
-      isRendererSettingsDialogSupported({ showModal() {}, close() {} } as HTMLDialogElement),
-    ).toBe(true);
-    expect(
-      isRendererSettingsDialogSupported({
-        showModal: undefined,
-        close() {},
-      } as unknown as HTMLDialogElement),
-    ).toBe(false);
-    expect(
-      isRendererSettingsDialogSupported({
-        showModal() {},
-        close: undefined,
-      } as unknown as HTMLDialogElement),
-    ).toBe(false);
   });
 
   it("publishes only available settings pages", () => {

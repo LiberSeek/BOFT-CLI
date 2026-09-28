@@ -13,6 +13,7 @@ export interface RendererSettingsTriggerControl {
   button: HTMLButtonElement;
   updateButton: HTMLButtonElement;
   setUpdateAvailable(available: boolean): void;
+  setSelected(selected: boolean): void;
   dispose(): void;
 }
 
@@ -20,6 +21,7 @@ export interface RendererSettingsHeaderTriggerControl {
   readonly root: HTMLElement | null;
   refresh(): boolean;
   setUpdateAvailable(available: boolean): void;
+  setSelected(selected: boolean): void;
   dispose(): void;
 }
 
@@ -130,6 +132,7 @@ export function mountRendererSettingsTrigger(
   const updateLabelText = messages.pageLabels.updates;
   let updateAvailable = false;
   let brandExpanded = false;
+  let selected = false;
 
   const root = ownerDocument.createElement("div");
   root.setAttribute(SETTINGS_TRIGGER_ATTRIBUTE, triggerId);
@@ -280,6 +283,13 @@ export function mountRendererSettingsTrigger(
       updateButton.style.color = "#2563eb";
       updateButton.style.background = "transparent";
     }
+    if (brandExpanded) button.style.background = "transparent";
+    else renderEmphasis();
+  };
+
+  const renderEmphasis = (): void => {
+    if (brandExpanded) return;
+    button.style.background = selected ? "rgba(127, 127, 127, 0.22)" : "transparent";
   };
 
   const applyUpdateAvailable = (nextAvailable: boolean): void => {
@@ -358,6 +368,12 @@ export function mountRendererSettingsTrigger(
     setUpdateAvailable(nextAvailable) {
       applyUpdateAvailable(nextAvailable);
     },
+    setSelected(next) {
+      selected = next;
+      if (next) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+      renderEmphasis();
+    },
     dispose() {
       root.removeEventListener("pointerenter", onRootPointerEnter);
       root.removeEventListener("pointerleave", onRootPointerLeave);
@@ -383,6 +399,7 @@ export function installRendererSettingsHeaderTrigger(options: {
   const ownerDocument = options.ownerDocument ?? document;
   let trigger: RendererSettingsTriggerControl | null = null;
   let updateAvailable = false;
+  let selected = false;
   let disposed = false;
 
   const refresh = (): boolean => {
@@ -404,6 +421,7 @@ export function installRendererSettingsHeaderTrigger(options: {
         options.messages,
       );
       trigger.setUpdateAvailable(updateAvailable);
+      trigger.setSelected(selected);
     }
     if (
       trigger.root.parentElement !== insertionPoint.parent ||
@@ -423,6 +441,10 @@ export function installRendererSettingsHeaderTrigger(options: {
     setUpdateAvailable(available) {
       updateAvailable = available;
       trigger?.setUpdateAvailable(available);
+    },
+    setSelected(next) {
+      selected = next;
+      trigger?.setSelected(next);
     },
     dispose() {
       if (disposed) return;

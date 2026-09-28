@@ -1,31 +1,16 @@
+import type { HarnessDisplayEntries } from "@codexhost/shared-contracts";
 import { KNOWN_RENDERER_AGENTS, type ExternalRendererAgent } from "./agent-selection-state.js";
 
-/**
- * Where an external Agent currently lives from the user's point of view:
- * - "main": shown directly in the Agent picker and the Connections list.
- * - "more": folded away under a collapsible "More Agents" group so the
- *   picker stays short as the number of supported Harnesses grows.
- *
- * This is a purely presentational preference. It never affects whether an
- * Agent is installed, enabled, or reachable — those remain governed by
- * `enabledAgents` / `RendererAgentAvailability` elsewhere.
- */
+/** Display-only grouping; never affects installation or availability. */
 export type AgentGroupSection = "main" | "more";
-
 export interface AgentGroupEntry {
   readonly agent: ExternalRendererAgent;
   readonly section: AgentGroupSection;
 }
-
+export type AgentGroupSyncStatus = "loading" | "ready" | "saving" | "error";
 export interface AgentGroupPreferenceStore {
-  /** All known external Agents, in display order, each tagged with its section. */
   list(notInstalled?: ReadonlySet<ExternalRendererAgent>): readonly AgentGroupEntry[];
   sectionOf(agent: ExternalRendererAgent, notInstalled?: boolean): AgentGroupSection;
-  /**
-   * Move `agent` into `section`. When `beforeAgent` is provided the Agent is
-   * inserted immediately before it (both must end up in the same section);
-   * otherwise it is appended to the end of the target section.
-   */
   moveAgent(
     agent: ExternalRendererAgent,
     section: AgentGroupSection,
@@ -33,13 +18,19 @@ export interface AgentGroupPreferenceStore {
   ): void;
   /**
    * Quietly rewrite order + sections when the caller has already computed a
-   * display-normalized list (e.g. installed-before-uninstalled). Persists but
-   * does not notify subscribers — the caller is expected to already be
-   * rendering `entries`.
+   * display-normalized list (e.g. installed-before-uninstalled). Updates memory
+   * without notifying subscribers — the caller is expected to already be
+   * rendering `entries`. When the Host writer is ready, the same list is
+   * committed for confirmation. Does not write localStorage.
    */
   reconcileOrder(entries: readonly AgentGroupEntry[]): void;
   resetToDefault(): void;
   subscribe(listener: () => void): () => void;
+  legacyEntries(): HarnessDisplayEntries;
+  replace(entries: HarnessDisplayEntries): void;
+  syncStatus(): AgentGroupSyncStatus;
+  setSyncStatus(status: AgentGroupSyncStatus): void;
+  setWriter(writer: ((entries: HarnessDisplayEntries) => void) | null): void;
 }
 
 /**
@@ -63,9 +54,9 @@ export const AGENT_GROUP_PREFERENCE_STORAGE_KEY = "codexhost.agentGroupPreferenc
 
 /**
  * First-run Main group. Everything else starts in More so a fresh install
- * does not dump every uninstalled Harness into the picker. Saved
- * preferences and explicit drags still win; this only fills in missing
- * Agents and `resetToDefault()`.
+ * does not dump every uninstalled Harness into the picker. Saved preferences
+ * and explicit drags still win; this only fills in `auto` entries and
+ * `resetToDefault()` after the Host confirms an empty list.
  */
 export const DEFAULT_MAIN_EXTERNAL_AGENTS = [
   "claude-code",
@@ -87,49 +78,6 @@ const EXTERNAL_AGENTS: readonly ExternalRendererAgent[] = KNOWN_RENDERER_AGENTS.
   (agent): agent is ExternalRendererAgent => agent !== "codex",
 );
 
-interface StoredEntry {
-  readonly agent: string;
-  readonly section: AgentGroupSection | "auto";
-}
-
-function isKnownExternalAgent(value: unknown): value is ExternalRendererAgent {
-  return typeof value === "string" && (EXTERNAL_AGENTS as readonly string[]).includes(value);
-}
-
-function isStoredEntry(value: unknown): value is StoredEntry {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<StoredEntry>;
-  return (
-    isKnownExternalAgent(candidate.agent) &&
-    (candidate.section === "main" || candidate.section === "more" || candidate.section === "auto")
-  );
-}
-
-function readStorage(storage: Pick<Storage, "getItem"> | null): StoredEntry[] | null {
-  if (!storage) return null;
-  try {
-    const raw = storage.getItem(AGENT_GROUP_PREFERENCE_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    return parsed.filter(isStoredEntry);
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(
-  storage: Pick<Storage, "setItem"> | null,
-  entries: readonly StoredEntry[],
-): void {
-  if (!storage) return;
-  try {
-    storage.setItem(AGENT_GROUP_PREFERENCE_STORAGE_KEY, JSON.stringify(entries));
-  } catch {
-    // Best effort only: private browsing / quota errors should not break the UI.
-  }
-}
-
 function safeLocalStorage(): Storage | null {
   try {
     return typeof window !== "undefined" ? window.localStorage : null;
@@ -138,118 +86,163 @@ function safeLocalStorage(): Storage | null {
   }
 }
 
-/**
- * Creates an isolated preference store. Pass an explicit `storage` (or
- * `null`) in tests to avoid touching the real `localStorage` and to keep
- * cases independent from one another.
- */
+function resolvedSection(
+  section: "main" | "more" | "auto" | undefined,
+  agent: ExternalRendererAgent,
+  notInstalled: boolean,
+): AgentGroupSection {
+  if (section && section !== "auto") return section;
+  if (notInstalled) return "more";
+  return defaultAgentGroupSection(agent);
+}
+
+/** Host-confirmed state stays in memory; localStorage is read only for migration. */
 export function createAgentGroupPreferenceStore(
-  storage: Storage | null = safeLocalStorage(),
+  storage: Pick<Storage, "getItem"> | null = safeLocalStorage(),
 ): AgentGroupPreferenceStore {
-  let order: ExternalRendererAgent[] = [...EXTERNAL_AGENTS];
-  let sections = new Map<ExternalRendererAgent, AgentGroupSection>(
-    EXTERNAL_AGENTS.map((agent) => [agent, defaultAgentGroupSection(agent)]),
-  );
-  const listeners = new Set<() => void>();
-
-  const stored = readStorage(storage);
-  if (stored && stored.length > 0) {
-    const seen = new Set<ExternalRendererAgent>();
-    const nextOrder: ExternalRendererAgent[] = [];
-    for (const entry of stored) {
-      const agent = entry.agent as ExternalRendererAgent;
-      if (seen.has(agent)) continue;
-      seen.add(agent);
-      nextOrder.push(agent);
-      if (entry.section !== "auto") sections.set(agent, entry.section);
-    }
-    // Agents that shipped after the user last saved a preference (new
-    // Harnesses) keep the first-run section and land at the end.
+  const normalize = (input: HarnessDisplayEntries): HarnessDisplayEntries => {
+    const seen = new Set<string>();
+    const result = input.filter((entry) => {
+      if (seen.has(entry.agent)) return false;
+      seen.add(entry.agent);
+      return true;
+    });
     for (const agent of EXTERNAL_AGENTS) {
-      if (!seen.has(agent)) nextOrder.push(agent);
+      if (!seen.has(agent)) result.push({ agent, section: "auto" });
     }
-    order = nextOrder;
-  }
-
-  const persist = (): void => {
-    writeStorage(
-      storage,
-      order.map((agent) => ({
-        agent,
-        section: sections.get(agent) ?? defaultAgentGroupSection(agent),
-      })),
-    );
+    return result;
   };
+  const legacyEntries = (): HarnessDisplayEntries => {
+    try {
+      const value: unknown = JSON.parse(
+        storage?.getItem(AGENT_GROUP_PREFERENCE_STORAGE_KEY) ?? "null",
+      );
+      if (Array.isArray(value)) {
+        return normalize(
+          value.filter(
+            (entry): entry is HarnessDisplayEntries[number] =>
+              entry &&
+              typeof entry.agent === "string" &&
+              ["main", "more", "auto"].includes(entry.section),
+          ),
+        );
+      }
+    } catch {
+      /* Missing or inaccessible legacy data uses the default order. */
+    }
+    return normalize([]);
+  };
+  let entries: HarnessDisplayEntries = normalize([]);
+  let status: AgentGroupSyncStatus = "loading";
+  let writer: ((entries: HarnessDisplayEntries) => void) | null = null;
+  const listeners = new Set<() => void>();
   const notify = (): void => {
     for (const listener of [...listeners]) listener();
   };
-
+  const replace = (input: HarnessDisplayEntries): void => {
+    const next = normalize(input);
+    if (JSON.stringify(next) === JSON.stringify(entries)) return;
+    entries = next;
+    notify();
+  };
+  const commit = (next: HarnessDisplayEntries): void => {
+    if (status !== "ready" && status !== "error") return;
+    writer?.(next);
+  };
+  const project = (notInstalled?: ReadonlySet<ExternalRendererAgent>): AgentGroupEntry[] =>
+    entries
+      .filter((entry) => (EXTERNAL_AGENTS as readonly string[]).includes(entry.agent))
+      .map((entry) => {
+        const agent = entry.agent as ExternalRendererAgent;
+        return {
+          agent,
+          section: resolvedSection(entry.section, agent, notInstalled?.has(agent) ?? false),
+        };
+      });
   return {
+    legacyEntries,
+    replace,
+    syncStatus: () => status,
+    setSyncStatus(next) {
+      if (status !== next) {
+        status = next;
+        notify();
+      }
+    },
+    setWriter(next) {
+      writer = next;
+    },
     list(notInstalled) {
-      void notInstalled;
-      return order.map((agent) => ({
-        agent,
-        section: sections.get(agent) ?? defaultAgentGroupSection(agent),
-      }));
+      return project(notInstalled);
     },
     sectionOf(agent, notInstalled = false) {
-      void notInstalled;
-      return sections.get(agent) ?? defaultAgentGroupSection(agent);
+      const section = entries.find((entry) => entry.agent === agent)?.section;
+      return resolvedSection(section, agent, notInstalled);
     },
     moveAgent(agent, section, beforeAgent = null) {
       if (!EXTERNAL_AGENTS.includes(agent)) return;
-      order = order.filter((candidate) => candidate !== agent);
-      const insertAt = beforeAgent && beforeAgent !== agent ? order.indexOf(beforeAgent) : -1;
-      if (insertAt >= 0) order.splice(insertAt, 0, agent);
-      else order.push(agent);
-      sections.set(agent, section);
-      persist();
-      notify();
+      const next = entries.filter((entry) => entry.agent !== agent);
+      const index =
+        beforeAgent && beforeAgent !== agent
+          ? next.findIndex((entry) => entry.agent === beforeAgent)
+          : -1;
+      const moved = { agent, section };
+      if (index >= 0) next.splice(index, 0, moved);
+      else next.push(moved);
+      commit(next);
     },
-    reconcileOrder(entries) {
-      const nextOrder: ExternalRendererAgent[] = [];
-      const nextSections = new Map<ExternalRendererAgent, AgentGroupSection>();
+    reconcileOrder(requested) {
       const seen = new Set<ExternalRendererAgent>();
-      for (const entry of entries) {
+      const next: HarnessDisplayEntries = [];
+      for (const entry of requested) {
         if (!EXTERNAL_AGENTS.includes(entry.agent) || seen.has(entry.agent)) continue;
         seen.add(entry.agent);
-        nextOrder.push(entry.agent);
-        nextSections.set(entry.agent, entry.section);
+        next.push({ agent: entry.agent, section: entry.section });
+      }
+      for (const existing of entries) {
+        const agent = existing.agent as ExternalRendererAgent;
+        if (seen.has(agent) || !EXTERNAL_AGENTS.includes(agent)) continue;
+        seen.add(agent);
+        next.push(existing);
       }
       for (const agent of EXTERNAL_AGENTS) {
-        if (seen.has(agent)) continue;
-        nextOrder.push(agent);
-        nextSections.set(agent, sections.get(agent) ?? defaultAgentGroupSection(agent));
+        if (!seen.has(agent)) next.push({ agent, section: "auto" });
       }
-      const unchanged =
-        nextOrder.length === order.length &&
-        nextOrder.every(
-          (agent, index) =>
-            agent === order[index] &&
-            (nextSections.get(agent) ?? defaultAgentGroupSection(agent)) ===
-              (sections.get(agent) ?? defaultAgentGroupSection(agent)),
+      const normalized = normalize(next);
+      const currentVisible = project();
+      const nextVisible = normalized
+        .filter((entry) => (EXTERNAL_AGENTS as readonly string[]).includes(entry.agent))
+        .map((entry) => {
+          const agent = entry.agent as ExternalRendererAgent;
+          return {
+            agent,
+            section: resolvedSection(entry.section, agent, false),
+          };
+        });
+      const sameVisible =
+        currentVisible.length === nextVisible.length &&
+        currentVisible.every(
+          (entry, index) =>
+            entry.agent === nextVisible[index]?.agent &&
+            entry.section === nextVisible[index]?.section,
         );
-      if (unchanged) return;
-      order = nextOrder;
-      sections = nextSections;
-      persist();
+      if (sameVisible) return;
+      entries = normalized;
+      commit(normalized);
     },
     resetToDefault() {
-      order = [...EXTERNAL_AGENTS];
-      sections = new Map(EXTERNAL_AGENTS.map((agent) => [agent, defaultAgentGroupSection(agent)]));
-      persist();
-      notify();
+      commit([]);
     },
     subscribe(listener) {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => {
+        listeners.delete(listener);
+      };
     },
   };
 }
 
 let sharedStore: AgentGroupPreferenceStore | null = null;
-
-/** Shared singleton so the Connections settings page and every Agent picker stay in sync. */
 export function getSharedAgentGroupPreferenceStore(): AgentGroupPreferenceStore {
   if (!sharedStore) sharedStore = createAgentGroupPreferenceStore();
   return sharedStore;

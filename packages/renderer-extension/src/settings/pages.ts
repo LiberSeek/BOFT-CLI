@@ -122,6 +122,8 @@ export interface RendererUpdateClient {
   checkUpdate(): Promise<UpdateCheckResult | null>;
   startUpdate(): Promise<UpdateStartResult>;
   readUpdateStatus(): Promise<UpdateStatusResult>;
+  /** Opens the local codexhost console; absent on Hosts that cannot. */
+  openConsole?(): Promise<unknown>;
 }
 
 function panelIconName(view: string): RendererSettingsIconName {
@@ -218,7 +220,46 @@ function formatUpdateBytes(value: number): string {
   return `${scaled.toFixed(scaled >= 10 ? 0 : 1)} ${unit}`;
 }
 
-function aboutPage(messages: RendererSettingsMessages): RendererSettingsPageDefinition {
+function consoleSection(
+  document: Document,
+  messages: RendererSettingsMessages,
+  client: RendererUpdateClient | null,
+): HTMLElement | null {
+  if (!client?.openConsole) return null;
+  const openConsole = client.openConsole.bind(client);
+  const section = document.createElement("div");
+  section.className = "settings-about-repository";
+  const copy = document.createElement("p");
+  copy.textContent = messages.aboutConsole;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "settings-command-button settings-command-button--secondary";
+  button.textContent = messages.aboutConsoleOpen;
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  status.hidden = true;
+  button.addEventListener("click", () => {
+    button.disabled = true;
+    button.textContent = messages.aboutConsoleOpening;
+    status.hidden = true;
+    void openConsole()
+      .catch((error: unknown) => {
+        status.textContent = `${messages.aboutConsoleFailed}: ${error instanceof Error ? error.message : String(error)}`;
+        status.hidden = false;
+      })
+      .finally(() => {
+        button.disabled = false;
+        button.textContent = messages.aboutConsoleOpen;
+      });
+  });
+  section.append(copy, button, status);
+  return section;
+}
+
+function aboutPage(
+  messages: RendererSettingsMessages,
+  getClient: () => RendererUpdateClient | null = () => null,
+): RendererSettingsPageDefinition {
   return Object.freeze({
     id: "about",
     label: messages.pageLabels.about,
@@ -319,6 +360,8 @@ function aboutPage(messages: RendererSettingsMessages): RendererSettingsPageDefi
       brand.append(brandVideo, brandCopy);
 
       page.append(heading, introPanel, repositoryPanel, brand);
+      const consoleEntry = consoleSection(document, messages, getClient());
+      if (consoleEntry) page.append(consoleEntry);
       context.content.append(page);
       return undefined;
     },
@@ -753,7 +796,7 @@ export function createDefaultRendererSettingsPages(
   getDiagnostics: () => RendererConnectionDiagnostics | null = () => null,
   getAccountClient: () => RendererCodexAccountClient | null = () => null,
   getSessionImportClient: () => RendererSessionImportClient | null = () => null,
-  openImportedThread: RendererImportedThreadOpener = () =>
+  openImportedThread: RendererImportedThreadOpener | null = () =>
     Promise.reject(new Error("Imported Thread navigation is unavailable")),
   getLoadedSessionsClient: () => LoadedSessionsClient | null = () => null,
 ): readonly RendererSettingsPageDefinition[] {
@@ -764,7 +807,7 @@ export function createDefaultRendererSettingsPages(
     createAppearanceSettingsPage(messages, getLoadedSessionsClient),
     createPluginsSettingsPage(messages, getDiagnostics),
     updatesPage(messages, getUpdateClient),
-    aboutPage(messages),
+    aboutPage(messages, getUpdateClient),
   ]);
 }
 

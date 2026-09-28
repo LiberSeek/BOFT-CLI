@@ -84,6 +84,10 @@ xattr -d com.apple.quarantine /Applications/BOFT.app
 <details>
 <summary>其他安装问题</summary>
 
+**BOFT 无法启动，或 Codex 打开后没有 BOFT CLI 功能**
+
+运行 `boft console`（Windows：开始菜单 → “BOFT console”），打开本地控制台 `http://127.0.0.1:26339/`。可以查看上次启动失败的原因、Codex Desktop 版本、Host Runtime 日志，并在 Codex 未运行时更新 BOFT CLI。控制台随 BOFT 一起启动：安装包启动时会在浏览器打开，终端启动时会输出访问地址。
+
 **Windows** - 绿色解压版 Codex Desktop
 
 如使用绿色版本，将 `CODEXHOST_INSTALL_ROOT` 设置为 Codex Desktop 的解压目录：

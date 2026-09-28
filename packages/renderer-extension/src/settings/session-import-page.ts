@@ -48,7 +48,8 @@ function createAccessibleText(document: Document, message: string): HTMLElement 
 export function createSessionImportSettingsPage(
   messages: RendererSettingsMessages,
   getClient: () => RendererSessionImportClient | null,
-  openImportedThread: RendererImportedThreadOpener,
+  // Web imports end at a success message; Desktop supplies its native navigator.
+  openImportedThread: RendererImportedThreadOpener | null,
 ): RendererSettingsPageDefinition {
   return Object.freeze({
     id: "session-import",
@@ -115,6 +116,8 @@ export function createSessionImportSettingsPage(
         }
       };
       harness.append(harnessOptions);
+      const importStatus = document.createElement("div");
+      importStatus.setAttribute("role", "status");
       const content = document.createElement("section");
       content.className = "settings-session-import-content";
       const listControls = createSessionImportListControls(document, messages, () => load());
@@ -122,6 +125,7 @@ export function createSessionImportSettingsPage(
         header,
         harness,
         listControls.searchForm,
+        importStatus,
         content,
         listControls.pagination,
       );
@@ -188,6 +192,7 @@ export function createSessionImportSettingsPage(
         threadId: HostThreadId,
         hostId: string | undefined,
       ): void => {
+        if (!openImportedThread) return;
         actions = [];
         refresh.disabled = false;
         const recovery = document.createElement("section");
@@ -355,17 +360,23 @@ export function createSessionImportSettingsPage(
             let committedThreadId: HostThreadId | null = null;
             void context.runLatest(
               async (signal) => {
+                importStatus.replaceChildren();
                 const result = await client.importHarnessSession({
                   harnessId,
                   nativeSessionId: candidate.nativeSessionId,
                 });
                 committedThreadId = result.threadId;
-                if (!signal.aborted) {
+                if (!signal.aborted && openImportedThread) {
                   await openImportedThread(result.threadId, signal, client.hostId);
                 }
               },
               {
                 success() {
+                  if (!openImportedThread) {
+                    importStatus.replaceChildren(
+                      createStatus(document, messages.sessionImportImportedInCodex),
+                    );
+                  }
                   importingId = null;
                   refresh.disabled = false;
                   updateImportActions();

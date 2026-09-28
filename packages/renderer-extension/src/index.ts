@@ -236,7 +236,6 @@ export type {
 export {
   SETTINGS_SHELL_ATTRIBUTE,
   installRendererSettingsShell,
-  isRendererSettingsDialogSupported,
   mountRendererSettingsShell,
   resolveRendererSettingsTheme,
 } from "./settings/shell.js";

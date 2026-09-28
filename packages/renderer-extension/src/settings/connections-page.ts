@@ -243,8 +243,11 @@ function createConnectionIdentityIcon(
 }
 
 interface ConnectionRowGroupController {
+  readonly disabled: boolean;
   readonly section: AgentGroupSection;
+  readonly moveLabel: string;
   readonly dragHandleTitle: string;
+  toggleSection(): void;
   onDragStart(event: DragEvent): void;
   onDragOver(event: DragEvent): void;
   onDragLeave(event: DragEvent): void;
@@ -521,6 +524,22 @@ function createConnectionBlock(
     });
     action.append(viewError);
   }
+  if (group) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.disabled = group.disabled;
+    toggle.className = "settings-connection-row__group-toggle";
+    toggle.title = group.moveLabel;
+    toggle.setAttribute("aria-label", group.moveLabel);
+    toggle.append(
+      createRendererSettingsIcon(group.section === "main" ? "chevron-down" : "chevron-up", 15),
+    );
+    toggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      group.toggleSection();
+    });
+    action.append(toggle);
+  }
 
   row.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -529,7 +548,7 @@ function createConnectionBlock(
     toggleExpand();
   });
   if (group) {
-    row.draggable = true;
+    row.draggable = !group.disabled;
     row.dataset.connectionGroupSection = group.section;
     row.addEventListener("dragstart", group.onDragStart);
     row.addEventListener("dragover", group.onDragOver);
@@ -610,7 +629,7 @@ function createGroupResetButton(
   document: Document,
   messages: RendererSettingsMessages,
   onReset: () => void,
-): HTMLElement {
+): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "settings-connection-group-reset";
@@ -648,7 +667,10 @@ export function createConnectionsSettingsPage(
       header.append(headingCopy, refresh);
       const content = document.createElement("div");
       content.className = "settings-connections-content";
-      context.content.append(header, content);
+      const syncMessage = document.createElement("p");
+      syncMessage.className = "settings-page-description";
+      syncMessage.setAttribute("role", "status");
+      context.content.append(header, syncMessage, content);
 
       let pending = false;
       let selectedHostId: string | null = null;
@@ -726,6 +748,15 @@ export function createConnectionsSettingsPage(
       };
 
       const render = (snapshot: RendererConnectionSnapshot | null): void => {
+        const syncStatus = groupPreference.syncStatus();
+        const groupDisabled = syncStatus === "loading" || syncStatus === "saving";
+        syncMessage.hidden = syncStatus === "ready";
+        syncMessage.textContent =
+          syncStatus === "error"
+            ? messages.connectionGroupSyncFailed
+            : syncStatus === "saving"
+              ? messages.connectionGroupSaving
+              : messages.connectionGroupLoading;
         latestSnapshot = snapshot;
         content.replaceChildren();
         if (!snapshot) {
@@ -885,9 +916,21 @@ export function createConnectionsSettingsPage(
           agent: ExternalRendererAgent,
           section: AgentGroupSection,
         ): ConnectionRowGroupController => ({
+          disabled: groupDisabled,
           section,
+          moveLabel:
+            section === "main"
+              ? messages.connectionGroupMoveToMore
+              : messages.connectionGroupMoveToMain,
           dragHandleTitle: messages.connectionGroupDragHandle,
+          toggleSection() {
+            groupPreference.moveAgent(agent, section === "main" ? "more" : "main", null);
+          },
           onDragStart(event) {
+            if (groupDisabled) {
+              event.preventDefault();
+              return;
+            }
             draggingAgent = agent;
             event.dataTransfer?.setData("text/plain", agent);
             if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
@@ -1041,11 +1084,11 @@ export function createConnectionsSettingsPage(
           }
           rows.append(zone);
 
-          rows.append(
-            createGroupResetButton(document, messages, () => {
-              groupPreference.resetToDefault();
-            }),
-          );
+          const reset = createGroupResetButton(document, messages, () => {
+            groupPreference.resetToDefault();
+          });
+          reset.disabled = groupDisabled;
+          rows.append(reset);
         }
 
         list.append(tableHeader, rows);
