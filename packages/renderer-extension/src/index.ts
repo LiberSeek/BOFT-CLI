@@ -244,12 +244,12 @@ export type { RendererSettingsShell } from "./settings/shell.js";
 export {
   SETTINGS_TRIGGER_ATTRIBUTE,
   inspectRendererSettingsContract,
-  installRendererSettingsRailTrigger,
+  installRendererSettingsHeaderTrigger,
   mountRendererSettingsTrigger,
 } from "./settings/trigger.js";
 export type {
   RendererSettingsContractInspection,
-  RendererSettingsRailTriggerControl,
+  RendererSettingsHeaderTriggerControl,
   RendererSettingsTriggerControl,
 } from "./settings/trigger.js";
 export {

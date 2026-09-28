@@ -17,8 +17,8 @@ import type {
 } from "./settings/session-import-page.js";
 import { installRendererSettingsShell, type RendererSettingsShell } from "./settings/shell.js";
 import {
-  installRendererSettingsRailTrigger,
-  type RendererSettingsRailTriggerControl,
+  installRendererSettingsHeaderTrigger,
+  type RendererSettingsHeaderTriggerControl,
 } from "./settings/trigger.js";
 
 const UPDATE_CHECK_TIMEOUT_MS = 5_000;
@@ -47,7 +47,7 @@ export function installRendererSettingsLifecycle(
   const lifecycleController = new AbortController();
   let locale = resolveRendererSettingsLocale(ownerWindow.navigator.languages);
   let shell: RendererSettingsShell | null = null;
-  let trigger: RendererSettingsRailTriggerControl | null = null;
+  let trigger: RendererSettingsHeaderTriggerControl | null = null;
   let localeRequest: Promise<void> | null = null;
   let checkedUpdateClient: RendererUpdateClient | null = null;
   let retryUpdateClient: RendererUpdateClient | null = null;
@@ -60,7 +60,7 @@ export function installRendererSettingsLifecycle(
 
   const mount = (): {
     shell: RendererSettingsShell;
-    trigger: RendererSettingsRailTriggerControl;
+    trigger: RendererSettingsHeaderTriggerControl;
   } => {
     const messages = rendererSettingsMessages(locale);
     const definitions = createDefaultRendererSettingsPages(
@@ -79,7 +79,7 @@ export function installRendererSettingsLifecycle(
       options.getLoadedSessionsClient ?? (() => null),
     );
     const nextShell = installRendererSettingsShell(definitions, messages, ownerWindow.document);
-    const nextTrigger = installRendererSettingsRailTrigger({
+    const nextTrigger = installRendererSettingsHeaderTrigger({
       available: nextShell.supported,
       messages,
       ownerDocument: ownerWindow.document,

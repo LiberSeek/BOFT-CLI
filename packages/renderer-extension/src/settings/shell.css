@@ -270,22 +270,6 @@
   white-space: nowrap;
 }
 
-.settings-nav-star-link {
-  margin-top: 0;
-  color: var(--settings-text);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.settings-nav-star-link .codexhost-settings-icon {
-  color: var(--settings-warning);
-}
-
-.settings-nav-star-link:hover {
-  color: var(--settings-warning);
-  background: var(--settings-warning-bg);
-}
-
 .settings-icon-button {
   display: inline-flex;
   align-items: center;

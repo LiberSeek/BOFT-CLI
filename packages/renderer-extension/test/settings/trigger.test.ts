@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   inspectRendererSettingsContract,
-  installRendererSettingsRailTrigger,
+  installRendererSettingsHeaderTrigger,
   mountRendererSettingsTrigger,
 } from "../../src/settings/trigger.js";
 
@@ -12,16 +12,20 @@ class FakeElement {
   readonly listeners = new Map<string, (event: { stopPropagation(): void }) => void>();
   readonly classList = { add: vi.fn() };
   readonly style: Record<string, string | ((name: string, value: string) => void)> = {};
+  readonly nodeType = 1;
   disabled = false;
   isConnected = true;
   parentElement: FakeElement | null = null;
   title = "";
   type = "";
+  textContent = "";
+  left = 0;
+  top = 0;
+  width = 40;
+  height = 28;
+  marginInlineStart = "0px";
 
-  constructor(
-    readonly tagName = "DIV",
-    readonly height = 36,
-  ) {
+  constructor(readonly tagName = "DIV") {
     this.style.setProperty = (name: string, value: string) => {
       this.style[name] = value;
     };
@@ -29,9 +33,6 @@ class FakeElement {
 
   get firstElementChild(): FakeElement | null {
     return this.children[0] ?? null;
-  }
-  get lastElementChild(): FakeElement | null {
-    return this.children.at(-1) ?? null;
   }
   get nextSibling(): FakeElement | null {
     if (!this.parentElement) return null;
@@ -44,14 +45,18 @@ class FakeElement {
   append(...children: FakeElement[]): void {
     for (const child of children) this.insertBefore(child, null);
   }
-  appendChild(child: FakeElement): FakeElement {
-    return this.insertBefore(child, null);
-  }
   dispatch(name: string): void {
     this.listeners.get(name)?.({ stopPropagation: vi.fn() });
   }
   getBoundingClientRect(): DOMRect {
-    return { width: this.height > 0 ? 52 : 0, height: this.height } as DOMRect;
+    return {
+      left: this.left,
+      right: this.left + this.width,
+      top: this.top,
+      bottom: this.top + this.height,
+      width: this.width,
+      height: this.height,
+    } as DOMRect;
   }
   hasAttribute(name: string): boolean {
     return this.attributes.has(name);
@@ -105,45 +110,72 @@ class FakeElement {
   }
 }
 
-interface FakeRail {
-  rail: FakeElement;
-  destinations: FakeElement;
-  home: FakeElement;
-  more: FakeElement;
+interface FakeHeader {
+  header: FakeElement;
+  cluster: FakeElement;
+  menu: FakeElement;
+  actions: FakeElement;
 }
 
-// Mirrors Codex Desktop 26.924: nav > [border, destinations (Home … More), footer].
-function createFakeRail(options: { visible?: boolean; destinations?: boolean } = {}): FakeRail {
-  const rail = new FakeElement("NAV", options.visible === false ? 0 : 837);
-  rail.setAttribute("data-app-navigation-rail", "true");
-  const destinations = new FakeElement();
-  const home = new FakeElement("BUTTON");
-  if (options.destinations !== false) {
-    home.setAttribute("data-sidebar-destination", "builtin:home");
-  }
-  const more = new FakeElement("BUTTON");
-  more.setAttribute("aria-haspopup", "dialog");
-  destinations.append(home, more);
-  rail.append(new FakeElement(), destinations, new FakeElement());
-  return { rail, destinations, home, more };
+// Header 0–1000. Toolbar title sits on the left; the right cluster uses an auto inline margin.
+function createFakeHeader(options: { visible?: boolean; cluster?: boolean } = {}): FakeHeader {
+  const header = new FakeElement("HEADER");
+  header.setAttribute("data-pip-obstacle", "app-shell-header");
+  header.left = 0;
+  header.width = 1000;
+  header.height = options.visible === false ? 0 : 44;
+  const toolbar = new FakeElement();
+  toolbar.setAttribute("data-app-shell-header-toolbar", "true");
+  toolbar.left = 200;
+  toolbar.width = 800;
+  toolbar.height = header.height;
+  const title = new FakeElement();
+  title.left = 210;
+  title.width = 120;
+  const cluster = new FakeElement();
+  cluster.left = 860;
+  cluster.width = 80;
+  cluster.marginInlineStart = "auto";
+  const menu = new FakeElement("BUTTON");
+  menu.left = 860;
+  menu.width = 28;
+  const actions = new FakeElement("BUTTON");
+  actions.setAttribute("aria-pressed", "false");
+  actions.left = 894;
+  actions.width = 28;
+  cluster.append(menu, actions);
+  toolbar.append(title);
+  if (options.cluster !== false) toolbar.append(cluster);
+  header.append(toolbar);
+  return { header, cluster, menu, actions };
 }
 
-function stubRailDocument(current: () => FakeElement): Document {
+function stubHeaderDocument(current: () => FakeElement): Document {
+  const matches = (selector: string) => {
+    const found: FakeElement[] = [];
+    const visit = (element: FakeElement): void => {
+      if (element.matches(selector)) found.push(element);
+      for (const child of element.children) visit(child);
+    };
+    visit(current());
+    return found;
+  };
   const document = {
     createElement: (tag: string) => new FakeElement(tag.toUpperCase()),
     createElementNS: () => new FakeElement("SVG"),
-    querySelector: (selector: string) =>
-      selector === "nav[data-app-navigation-rail]" ? current() : null,
-    querySelectorAll: (selector: string) =>
-      selector === "nav[data-app-navigation-rail]" ? [current()] : [],
+    querySelector: (selector: string) => matches(selector)[0] ?? null,
+    querySelectorAll: (selector: string) => matches(selector),
   } as unknown as Document;
   vi.stubGlobal("document", document);
+  vi.stubGlobal("getComputedStyle", (element: FakeElement) => ({
+    marginInlineStart: element.marginInlineStart,
+  }));
   return document;
 }
 
-describe("Renderer settings navigation rail trigger", () => {
+describe("Renderer settings application header trigger", () => {
   it("badges the icon for updates and opens the Updates page directly", () => {
-    const document = stubRailDocument(() => createFakeRail().rail);
+    const document = stubHeaderDocument(() => createFakeHeader().header);
     try {
       const opened = vi.fn();
       const control = mountRendererSettingsTrigger(
@@ -153,68 +185,81 @@ describe("Renderer settings navigation rail trigger", () => {
         document,
       );
       const button = control.button as unknown as FakeElement;
-      const badge = button.children[1];
+      const root = control.root as unknown as FakeElement;
+      const label = button.children[1];
+      const dot = button.children[0]?.children[1];
+      const updateButton = control.updateButton as unknown as FakeElement;
 
-      expect(button.style.width).toBe("36px");
-      expect(button.style.color).toContain("--color-text-secondary-ghost");
-      expect(button.children[0]?.children[0]?.attributes.get("stroke")).toBe("currentColor");
-      expect(badge?.style.display).toBe("none");
+      expect(button.style.height).toBe("28px");
+      expect(button.children[0]?.children[0]?.tagName).toBe("IMG");
+      expect(label?.textContent).toBe("BOFT CLI");
+      expect(label?.style.opacity).toBe("0");
+      expect(label?.style.maxWidth).toBe("0");
+      expect(dot?.style.display).toBe("none");
+      expect(dot?.style.background).toBe("#ef4444");
+      expect(updateButton.textContent).toBe("Updates");
+      expect(updateButton.style.opacity).toBe("0");
+      expect(updateButton.style.pointerEvents).toBe("none");
       button.dispatch("click");
       expect(opened).toHaveBeenLastCalledWith(control.button, undefined);
 
       control.setUpdateAvailable(true);
-      expect(badge?.style.display).toBe("block");
-      expect(control.button.title).toBe("BOFT CLI settings · A new version is available.");
+      expect(dot?.style.display).toBe("block");
+      expect(updateButton.style.opacity).toBe("0");
       expect(control.root.hasAttribute("data-update-available")).toBe(true);
-      button.dispatch("click");
-      expect(opened).toHaveBeenLastCalledWith(control.button, "updates");
+      root.dispatch("pointerenter");
+      expect(label?.style.opacity).toBe("1");
+      expect(updateButton.style.opacity).toBe("1");
+      expect(updateButton.style.pointerEvents).toBe("auto");
+      updateButton.dispatch("click");
+      expect(opened).toHaveBeenLastCalledWith(control.updateButton, "updates");
 
       control.setUpdateAvailable(false);
-      expect(badge?.style.display).toBe("none");
-      expect(control.button.title).toBe("BOFT CLI settings");
+      expect(dot?.style.display).toBe("none");
+      expect(updateButton.style.opacity).toBe("0");
       control.dispose();
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  it("mounts directly above the rail's More button", () => {
-    const shell = createFakeRail();
-    const document = stubRailDocument(() => shell.rail);
+  it("mounts immediately to the right of the summary toggle", () => {
+    const shell = createFakeHeader();
+    const document = stubHeaderDocument(() => shell.header);
     try {
-      const control = installRendererSettingsRailTrigger({
+      const control = installRendererSettingsHeaderTrigger({
         available: true,
         onOpen: vi.fn(),
         ownerDocument: document,
       });
 
-      expect(shell.destinations.children).toEqual([shell.home, control.root, shell.more]);
+      expect(shell.cluster.children).toEqual([shell.menu, shell.actions, control.root]);
       control.dispose();
-      expect(shell.destinations.children).toEqual([shell.home, shell.more]);
+      expect(shell.cluster.children).toEqual([shell.menu, shell.actions]);
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  it("remounts when Codex replaces the navigation rail", () => {
-    const shell = createFakeRail();
-    let current = shell.rail;
-    const document = stubRailDocument(() => current);
+  it("remounts when Codex replaces the application header", () => {
+    const shell = createFakeHeader();
+    let current = shell.header;
+    const document = stubHeaderDocument(() => current);
     try {
-      const control = installRendererSettingsRailTrigger({
+      const control = installRendererSettingsHeaderTrigger({
         available: true,
         onOpen: vi.fn(),
         ownerDocument: document,
       });
-      const replacement = createFakeRail();
-      current = replacement.rail;
+      const replacement = createFakeHeader();
+      current = replacement.header;
 
       expect(control.refresh()).toBe(true);
-      expect(shell.destinations.children).toEqual([shell.home, shell.more]);
-      expect(replacement.destinations.children).toEqual([
-        replacement.home,
+      expect(shell.cluster.children).toEqual([shell.menu, shell.actions]);
+      expect(replacement.cluster.children).toEqual([
+        replacement.menu,
+        replacement.actions,
         control.root,
-        replacement.more,
       ]);
       control.dispose();
     } finally {
@@ -222,58 +267,59 @@ describe("Renderer settings navigation rail trigger", () => {
     }
   });
 
-  it("mounts last when the rail has no More button", () => {
-    const shell = createFakeRail();
-    shell.more.remove();
-    const document = stubRailDocument(() => shell.rail);
+  it("stays put when another injected control mounts after the owned trigger", () => {
+    const shell = createFakeHeader();
+    const document = stubHeaderDocument(() => shell.header);
     try {
-      const control = installRendererSettingsRailTrigger({
-        available: true,
-        onOpen: vi.fn(),
-        ownerDocument: document,
-      });
-      expect(shell.destinations.children).toEqual([shell.home, control.root]);
-      expect(control.refresh()).toBe(true);
-      expect(shell.destinations.children).toEqual([shell.home, control.root]);
-      control.dispose();
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it("stays put when another injected control mounts before the owned trigger", () => {
-    const shell = createFakeRail();
-    const document = stubRailDocument(() => shell.rail);
-    try {
-      const control = installRendererSettingsRailTrigger({
+      const control = installRendererSettingsHeaderTrigger({
         available: true,
         onOpen: vi.fn(),
         ownerDocument: document,
       });
       const foreign = new FakeElement();
-      shell.destinations.insertBefore(foreign, control.root as unknown as FakeElement);
+      shell.cluster.append(foreign);
 
       expect(control.refresh()).toBe(true);
-      expect(shell.destinations.children).toEqual([shell.home, foreign, control.root, shell.more]);
+      expect(shell.cluster.children).toEqual([shell.menu, shell.actions, control.root, foreign]);
       control.dispose();
     } finally {
       vi.unstubAllGlobals();
     }
   });
 
-  it("unmounts while the rail is hidden or has no native destinations", () => {
-    for (const options of [{ visible: false }, { destinations: false }]) {
-      const shell = createFakeRail(options);
-      const document = stubRailDocument(() => shell.rail);
+  it("moves back to the right of the summary toggle when a foreign control is inserted between them", () => {
+    const shell = createFakeHeader();
+    const document = stubHeaderDocument(() => shell.header);
+    try {
+      const control = installRendererSettingsHeaderTrigger({
+        available: true,
+        onOpen: vi.fn(),
+        ownerDocument: document,
+      });
+      const foreign = new FakeElement();
+      shell.cluster.insertBefore(foreign, control.root as unknown as FakeElement);
+
+      expect(control.refresh()).toBe(true);
+      expect(shell.cluster.children).toEqual([shell.menu, shell.actions, control.root, foreign]);
+      control.dispose();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("unmounts while the header is hidden or has no right-side action cluster", () => {
+    for (const options of [{ visible: false }, { cluster: false }]) {
+      const shell = createFakeHeader(options);
+      const document = stubHeaderDocument(() => shell.header);
       try {
-        const control = installRendererSettingsRailTrigger({
+        const control = installRendererSettingsHeaderTrigger({
           available: true,
           onOpen: vi.fn(),
           ownerDocument: document,
         });
         expect(control.refresh()).toBe(false);
         expect(control.root?.isConnected ?? false).toBe(false);
-        expect(shell.destinations.children).toEqual([shell.home, shell.more]);
+        expect(shell.cluster.children).toEqual([shell.menu, shell.actions]);
         control.dispose();
       } finally {
         vi.unstubAllGlobals();
@@ -281,17 +327,17 @@ describe("Renderer settings navigation rail trigger", () => {
     }
   });
 
-  it("counts visible rails with a destination column for the contract audit", () => {
-    const visible = createFakeRail();
-    expect(inspectRendererSettingsContract(stubRailDocument(() => visible.rail))).toEqual({
-      railCount: 1,
-      visibleRailCount: 1,
+  it("counts visible headers with a right-side action cluster for the contract audit", () => {
+    const visible = createFakeHeader();
+    expect(inspectRendererSettingsContract(stubHeaderDocument(() => visible.header))).toEqual({
+      headerCount: 1,
+      visibleHeaderCount: 1,
       insertionPointCount: 1,
     });
-    const hidden = createFakeRail({ visible: false });
-    expect(inspectRendererSettingsContract(stubRailDocument(() => hidden.rail))).toEqual({
-      railCount: 1,
-      visibleRailCount: 0,
+    const hidden = createFakeHeader({ visible: false });
+    expect(inspectRendererSettingsContract(stubHeaderDocument(() => hidden.header))).toEqual({
+      headerCount: 1,
+      visibleHeaderCount: 0,
       insertionPointCount: 0,
     });
     vi.unstubAllGlobals();
