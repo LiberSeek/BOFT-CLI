@@ -7,12 +7,14 @@ export const OFFICIAL_API_ACCOUNT_ID = "codex-api";
 function officialApiAccount(
   identity: string,
   accountId = OFFICIAL_API_ACCOUNT_ID,
+  siteUrl?: string,
 ): CodexAccountSummary {
   return {
     accountId,
     label: identity,
     authKind: "api",
     authIdentity: identity,
+    ...(siteUrl ? { siteUrl } : {}),
   };
 }
 
@@ -27,6 +29,7 @@ export function projectCodexAccountAuth(
     const apiAccount = officialApiAccount(
       identity,
       snapshot.currentAccountId ?? OFFICIAL_API_ACCOUNT_ID,
+      homeAuth.siteUrl,
     );
     return {
       ...snapshot,
@@ -43,6 +46,7 @@ export function projectCodexAccountAuth(
             authKind: "api" as const,
             authIdentity: identity,
             ...(account.email ? {} : { label: identity }),
+            ...(homeAuth.siteUrl ? { siteUrl: homeAuth.siteUrl } : {}),
           }
         : account,
     ),

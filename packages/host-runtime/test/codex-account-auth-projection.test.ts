@@ -56,4 +56,14 @@ describe("Codex Account auth projection", () => {
     });
     expect(JSON.stringify(projected)).not.toContain("codexHome");
   });
+
+  it("copies the API site onto the current Account", () => {
+    expect(
+      projectCodexAccountAuth(snapshot, {
+        kind: "api",
+        identity: "BANK OF TOKEN",
+        siteUrl: "https://example.invalid",
+      }).accounts[0],
+    ).toMatchObject({ authKind: "api", siteUrl: "https://example.invalid" });
+  });
 });

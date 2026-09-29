@@ -11,6 +11,14 @@ const nonBlankTextSchema = z.string().trim().min(1);
 export const codexAccountAuthKindSchema = z.enum(["api", "chatgpt"]);
 export type CodexAccountAuthKind = z.infer<typeof codexAccountAuthKindSchema>;
 
+const codexAccountSiteUrlPattern =
+  /^https?:\/\/(?:\[[0-9a-fA-F:]+\]|[^/\s:@?#]+)(?::\d{1,5})?(?:[/?#][^\s]*)?$/u;
+
+/** A browser destination for an API Account. Credentials and non-web schemes never qualify. */
+export function isCodexAccountSiteUrl(value: string): boolean {
+  return value.length > 0 && value.length <= 2_048 && codexAccountSiteUrlPattern.test(value);
+}
+
 export const codexAccountPlanTypeSchema = z.enum([
   "free",
   "go",
@@ -40,6 +48,10 @@ export const codexAccountSchema = z
     planType: codexAccountPlanTypeSchema.optional(),
     authKind: codexAccountAuthKindSchema.optional(),
     authIdentity: nonBlankTextSchema.max(256).optional(),
+    siteUrl: z
+      .string()
+      .refine(isCodexAccountSiteUrl, "Account site URL must be http(s)")
+      .optional(),
   })
   .strict();
 export type CodexAccountSummary = z.infer<typeof codexAccountSchema>;

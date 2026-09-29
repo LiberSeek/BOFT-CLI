@@ -49,7 +49,6 @@
   <a href="#开发">开发</a>
 </p>
 
-
 ## 界面预览
 
 无需切换应用，**Pi、Claude Code、OpenCode、OMP、Grok Build、DeepSeek Harness、Antigravity、Hermes、Meta Muse Code 和 Kiro CLI** 都可以在同一个 Codex Desktop 窗口中直接使用。Muse 的原生版本、权限与恢复限制见[接入说明](docs/muse-harness.md)。

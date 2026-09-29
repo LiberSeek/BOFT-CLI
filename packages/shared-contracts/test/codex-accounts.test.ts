@@ -67,6 +67,18 @@ describe("Codex Account browser contracts", () => {
       ],
     };
     expect(codexAccountListResultSchema.parse(snapshot)).toEqual(snapshot);
+    expect(
+      codexAccountListResultSchema.parse({
+        ...snapshot,
+        accounts: [{ ...snapshot.accounts[0], siteUrl: "https://example.invalid" }],
+      }).accounts[0],
+    ).toMatchObject({ siteUrl: "https://example.invalid" });
+    expect(
+      codexAccountListResultSchema.safeParse({
+        ...snapshot,
+        accounts: [{ ...snapshot.accounts[0], siteUrl: "javascript:alert(1)" }],
+      }).success,
+    ).toBe(false);
     expect(() =>
       codexAccountListResultSchema.parse({
         ...snapshot,

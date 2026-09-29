@@ -47,7 +47,6 @@
   <a href="#개발">개발</a>
 </p>
 
-
 ## 인터페이스 미리보기
 
 앱을 전환하지 않고도 **Pi, Claude Code, OpenCode, OMP, Grok Build, DeepSeek Harness**를 하나의 Codex Desktop 창에서 바로 사용할 수 있습니다.

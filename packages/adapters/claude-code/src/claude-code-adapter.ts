@@ -103,6 +103,7 @@ import { claudeDynamicCommandPrompt, claudeLiveCommandCatalog } from "./slash-co
 import { claudePlanReviewResponse, createClaudePlanReview } from "./plan-review.js";
 import { ClaudeSubagentLifecycle } from "./subagent-lifecycle.js";
 import { ClaudeTaskTracker } from "./task-tracker.js";
+import { ClaudeBackgroundCommandItems } from "./background-command-items.js";
 import { ClaudeToolLifecycle } from "./tool-lifecycle.js";
 import { estimateClaudeRequestCostUsd } from "./usage-estimate.js";
 import type {
@@ -540,6 +541,7 @@ class ClaudeHarnessSession implements HarnessSession {
   readonly #readSessionMessages: ClaudeAdapterDependencies["readSessionMessages"];
   readonly #sessionId: string;
   readonly #toolOutputLimit: number;
+  readonly #backgroundCommands: ClaudeBackgroundCommandItems;
   readonly #continuationQuiescenceMs: number;
   readonly #taskTracker = new ClaudeTaskTracker();
   #acceptingTurn = false;
@@ -617,6 +619,10 @@ class ClaudeHarnessSession implements HarnessSession {
     this.#requestedThinkingOptionId = options.requestedThinkingOptionId;
     this.#sessionId = options.sessionId;
     this.#toolOutputLimit = options.toolOutputLimit;
+    this.#backgroundCommands = new ClaudeBackgroundCommandItems({
+      outputLimit: options.toolOutputLimit,
+      emit: (event) => this.#event(event),
+    });
     this.#continuationQuiescenceMs = options.continuationQuiescenceMs;
     this.#nativeRef =
       options.nativeRef ??
@@ -857,8 +863,10 @@ class ClaudeHarnessSession implements HarnessSession {
         cwd: this.#cwd,
         outputLimit: this.#toolOutputLimit,
         taskTracker: this.#taskTracker,
+        nativeTurnKey,
         newItemId: () => hostItemIdSchema.parse(this.#randomUUID()),
         emit: (event) => this.#event(event),
+        onDetached: (command) => this.#backgroundCommands.follow(command),
       }),
       interactions: new Map(),
       interactionByRequestId: new Map(),
@@ -991,8 +999,10 @@ class ClaudeHarnessSession implements HarnessSession {
         cwd: this.#cwd,
         outputLimit: this.#toolOutputLimit,
         taskTracker: this.#taskTracker,
+        nativeTurnKey,
         newItemId: () => hostItemIdSchema.parse(this.#randomUUID()),
         emit: (event) => this.#event(event),
+        onDetached: (command) => this.#backgroundCommands.follow(command),
       }),
       interactions: new Map(),
       interactionByRequestId: new Map(),
@@ -1041,6 +1051,31 @@ class ClaudeHarnessSession implements HarnessSession {
       this.#finishFailed(active, faultError());
     }
     return { ok: true, value: { turnId: command.turnId } };
+  }
+
+  /** Closing the native process stops its background tasks, so they keep the Session. */
+  hasBackgroundWork(): boolean {
+    return this.#transport?.hasBackgroundTasks() ?? false;
+  }
+
+  async stopBackgroundWork(): Promise<HarnessResult<void>> {
+    const transport = this.#transport;
+    if (!transport) return { ok: true, value: undefined };
+    try {
+      await Promise.all(
+        this.#backgroundCommands.taskIds().map((taskId) => transport.stopBackgroundTask(taskId)),
+      );
+      return { ok: true, value: undefined };
+    } catch (error) {
+      return {
+        ok: false,
+        error: {
+          code: "nativeFailure",
+          message: error instanceof Error ? error.message : String(error),
+          retryable: true,
+        },
+      };
+    }
   }
 
   refreshUsage(): Promise<void> {
@@ -1427,6 +1462,7 @@ class ClaudeHarnessSession implements HarnessSession {
     const active = this.#active;
     if (active)
       this.#finishFailed(active, invalidState("Claude Code Session closed during active Turn"));
+    this.#backgroundCommands.abandonAll("Claude Code Session closed");
     this.#phase = "closed";
     this.#channel.end();
     this.#onClosed();
@@ -1478,14 +1514,7 @@ class ClaudeHarnessSession implements HarnessSession {
       transport.setThreadEventHandler((event) => {
         // Thread-level events (e.g. a background Subagent settling) are not
         // Turn-scoped and must not be gated on an active Turn.
-        if (event.type === "subagent.settled") {
-          this.#settleBackgroundSubagent(
-            event.status,
-            event.nativeSubagentId,
-            event.callId,
-            event.resultSummary,
-          );
-        }
+        if (event.type === "subagent.settled") this.#settleNativeTask(event);
       });
       transport.setIdleTurnHandler({
         onEvent: (event) => {
@@ -1494,14 +1523,7 @@ class ClaudeHarnessSession implements HarnessSession {
             this.#handleTurnEvent(active, event);
             return;
           }
-          if (event.type === "subagent.settled") {
-            this.#settleBackgroundSubagent(
-              event.status,
-              event.nativeSubagentId,
-              event.callId,
-              event.resultSummary,
-            );
-          }
+          if (event.type === "subagent.settled") this.#settleNativeTask(event);
         },
         onTerminal: (result) => {
           const active = this.#active;
@@ -1701,12 +1723,7 @@ class ClaudeHarnessSession implements HarnessSession {
         return;
       }
       case "subagent.settled":
-        this.#settleBackgroundSubagent(
-          event.status,
-          event.nativeSubagentId,
-          event.callId,
-          event.resultSummary,
-        );
+        this.#settleNativeTask(event);
         return;
       case "subagent.transcript.changed": {
         const nativeSubagentId = active.subagents.nativeSubagentId(event.callId);
@@ -2009,8 +2026,10 @@ class ClaudeHarnessSession implements HarnessSession {
         cwd: this.#cwd,
         outputLimit: this.#toolOutputLimit,
         taskTracker: this.#taskTracker,
+        nativeTurnKey,
         newItemId: () => hostItemIdSchema.parse(this.#randomUUID()),
         emit: (event) => this.#event(event),
+        onDetached: (command) => this.#backgroundCommands.follow(command),
       }),
       interactions: new Map(),
       interactionByRequestId: new Map(),
@@ -2072,6 +2091,20 @@ class ClaudeHarnessSession implements HarnessSession {
       this.#replayObservedAtMs = null;
     }
     this.#finishResult(active, turn.result);
+  }
+
+  /**
+   * A native `task_notification` names the tool call that started its task: a
+   * followed background command settles here, anything else is a Subagent.
+   */
+  #settleNativeTask(event: Extract<ClaudeTurnEvent, { type: "subagent.settled" }>): void {
+    if (this.#backgroundCommands.settle(event)) return;
+    this.#settleBackgroundSubagent(
+      event.status,
+      event.nativeSubagentId,
+      event.callId,
+      event.resultSummary,
+    );
   }
 
   #settleBackgroundSubagent(
@@ -2595,6 +2628,7 @@ class ClaudeHarnessSession implements HarnessSession {
     this.#contextRefreshWake = null;
     const active = this.#active;
     if (active) this.#finishFailed(active, error);
+    this.#backgroundCommands.abandonAll("Claude Code Session faulted");
     this.#phase = "faulted";
     this.#event({ type: "session.faulted", error });
     this.#channel.end();

@@ -335,6 +335,12 @@
 .settings-account-usage > button {
   justify-self: start;
 }
+.settings-account-site-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
 .settings-account-action {
   padding: 4px 5px;
   min-height: 30px;

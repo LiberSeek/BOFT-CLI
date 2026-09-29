@@ -1620,6 +1620,7 @@ describe("Renderer Codex Accounts page", () => {
             label: "BANK OF TOKEN",
             authKind: "api" as const,
             authIdentity: "BANK OF TOKEN",
+            siteUrl: "https://bank.example",
           },
         ]),
       ),
@@ -1646,6 +1647,12 @@ describe("Renderer Codex Accounts page", () => {
     expect(visibleText(content)).toContain("API 接入");
     expect(visibleText(content)).toContain("API - BANK OF TOKEN");
     expect(visibleText(content)).toContain("$42.125");
+    const siteLink = descendants(content).find((element) =>
+      element.className.includes("settings-account-site-link"),
+    );
+    expect(siteLink?.getAttribute("href")).toBe("https://bank.example");
+    expect(siteLink?.getAttribute("target")).toBe("_blank");
+    expect(siteLink?.children).toContain("前往站点");
     expect(
       descendants(content)
         .filter((element) => element.tagName === "button")

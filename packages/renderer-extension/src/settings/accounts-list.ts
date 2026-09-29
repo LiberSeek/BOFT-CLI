@@ -1,4 +1,8 @@
-import type { CodexAccountSummary, HarnessAccountListResult } from "@codexhost/shared-contracts";
+import {
+  isCodexAccountSiteUrl,
+  type CodexAccountSummary,
+  type HarnessAccountListResult,
+} from "@codexhost/shared-contracts";
 
 import { KNOWN_RENDERER_AGENTS } from "../agent-selection-state.js";
 import { createRendererAgentIcon } from "../renderer-agent-icon.js";
@@ -14,6 +18,7 @@ import {
   type AccountUsageDisplay,
   type AccountUsageViewState,
 } from "./accounts-usage.js";
+import { createRendererSettingsIcon } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
 
 let resetDetailsSequence = 0;
@@ -184,8 +189,8 @@ function createAccountPerson(
 }
 
 /**
- * The last column only ever holds the Harness target mark(s) a login can be copied to. Rows with no
- * verified-compatible target keep an empty cell so the table columns stay aligned.
+ * The last column holds either a Harness copy target or, for an API Account, a link to its site.
+ * Rows with neither keep an empty cell so the table columns stay aligned.
  */
 function createTargetCell(
   document: Document,
@@ -197,6 +202,25 @@ function createTargetCell(
     : "settings-account-management-cell settings-account-management-cell--empty";
   if (action) cell.append(action);
   return cell;
+}
+
+function createApiSiteLink(
+  document: Document,
+  messages: RendererSettingsMessages,
+  accountId: string,
+  siteUrl: string,
+  label: string,
+): HTMLAnchorElement {
+  const link = document.createElement("a");
+  link.className = "settings-account-action settings-account-site-link";
+  link.setAttribute("href", siteUrl);
+  link.setAttribute("target", "_blank");
+  link.setAttribute("rel", "noopener noreferrer");
+  link.dataset.accountFocus = `${accountId}:site`;
+  link.title = siteUrl;
+  link.setAttribute("aria-label", `${messages.accountOpenSite}: ${label}`);
+  link.append(messages.accountOpenSite, createRendererSettingsIcon("external-link", 14));
+  return link;
 }
 
 export function renderAccountRows(
@@ -247,7 +271,17 @@ export function renderAccountRows(
     filter: account.planType === "pro" ? "weekly-only" : "all",
   });
   if (usage.additional) personCell.append(usage.additional);
-  const actionsCell = createTargetCell(document, input.importAction);
+  const siteUrl =
+    authKind === "api" && account.siteUrl && isCodexAccountSiteUrl(account.siteUrl)
+      ? account.siteUrl
+      : null;
+  const actionsCell = createTargetCell(
+    document,
+    input.importAction ??
+      (siteUrl
+        ? createApiSiteLink(document, messages, account.accountId, siteUrl, titleName)
+        : null),
+  );
   if (input.importAction) row.className += " settings-account-row--targets";
   const continuationRows = usage.continuationCells.map((cells) => {
     const continuation = document.createElement("tr");

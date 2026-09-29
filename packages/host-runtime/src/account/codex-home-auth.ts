@@ -8,6 +8,36 @@ export type CodexHomeAuthKind = "api" | "chatgpt";
 export interface CodexHomeAuthInspection {
   readonly kind: CodexHomeAuthKind;
   readonly identity: string;
+  /** Provider site for an API Account. Absent when no public web origin is known. */
+  readonly siteUrl?: string;
+}
+
+const OFFICIAL_OPENAI_API_SITE = "https://platform.openai.com";
+
+/** Public site for an API provider. Official OpenAI uses its console; others use the base URL origin. */
+export function codexApiSiteUrl(input: {
+  readonly providerId?: string;
+  readonly baseUrl?: string;
+}): string | undefined {
+  const baseUrl = input.baseUrl?.trim();
+  if (!baseUrl) {
+    return !input.providerId || isBuiltInOpenAiProvider(input.providerId)
+      ? OFFICIAL_OPENAI_API_SITE
+      : undefined;
+  }
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return undefined;
+  if (!url.hostname) return undefined;
+  if (url.hostname === "api.openai.com" || url.hostname === "openai.com") {
+    return OFFICIAL_OPENAI_API_SITE;
+  }
+  // Origin drops userinfo, path, query, and hash, so a credential in the base URL is not forwarded.
+  return url.origin;
 }
 
 function tomlUnquote(value: string): string {
@@ -160,9 +190,14 @@ export function inspectCodexAuthDocuments(input: {
               ? "api"
               : "chatgpt";
   if (kind === "api") {
+    const siteUrl = codexApiSiteUrl({
+      ...(provider?.id ? { providerId: provider.id } : {}),
+      ...(provider?.baseUrl ? { baseUrl: provider.baseUrl } : {}),
+    });
     return {
       kind,
       identity: provider?.name?.trim() || CODEX_API_AUTH_IDENTITY_FALLBACK,
+      ...(siteUrl ? { siteUrl } : {}),
     };
   }
   return { kind, identity: "" };

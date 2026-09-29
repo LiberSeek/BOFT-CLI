@@ -22,7 +22,11 @@ describe("Codex home auth inspection", () => {
     const inspection = inspectCodexAuthDocuments({
       authJson: JSON.stringify({ api_key: "sk-secret" }),
     });
-    expect(inspection).toEqual({ kind: "api", identity: CODEX_API_AUTH_IDENTITY_FALLBACK });
+    expect(inspection).toEqual({
+      kind: "api",
+      identity: CODEX_API_AUTH_IDENTITY_FALLBACK,
+      siteUrl: "https://platform.openai.com",
+    });
     expect(JSON.stringify(inspection)).not.toMatch(/sk-secret/u);
   });
 
@@ -71,7 +75,11 @@ base_url = "https://example.invalid/v1"
 `,
         authJson: JSON.stringify({ api_key: "sk-secret" }),
       }),
-    ).toEqual({ kind: "api", identity: "BANK OF TOKEN" });
+    ).toEqual({
+      kind: "api",
+      identity: "BANK OF TOKEN",
+      siteUrl: "https://example.invalid",
+    });
   });
 
   it("reads API usage credentials from the provider table without exposing them in the auth summary", () => {
@@ -84,7 +92,11 @@ requires_openai_auth = false
 experimental_bearer_token = "sk-fixture-token"
 `;
     const inspection = inspectCodexAuthDocuments({ configToml });
-    expect(inspection).toEqual({ kind: "api", identity: "BANK OF TOKEN" });
+    expect(inspection).toEqual({
+      kind: "api",
+      identity: "BANK OF TOKEN",
+      siteUrl: "https://example.invalid",
+    });
     expect(JSON.stringify(inspection)).not.toMatch(/sk-fixture-token/u);
     expect(inspectCodexApiUsageSource({ configToml })).toEqual({
       baseUrl: "https://example.invalid",
@@ -106,8 +118,39 @@ requires_openai_auth = false
 experimental_bearer_token = "sk-fixture-token"
 `,
     });
-    expect(inspection).toEqual({ kind: "api", identity: "BANK OF TOKEN" });
+    expect(inspection).toEqual({
+      kind: "api",
+      identity: "BANK OF TOKEN",
+      siteUrl: "https://example.invalid",
+    });
     expect(JSON.stringify(inspection)).not.toMatch(/sk-fixture-token/u);
+  });
+
+  it("opens the provider origin and drops credentials carried in the base URL", () => {
+    const inspection = inspectCodexAuthDocuments({
+      configToml: `
+model_provider = "relay"
+[model_providers.relay]
+name = "Relay"
+base_url = "https://user:secret@api.relay.example/v1?token=secret"
+requires_openai_auth = false
+`,
+    });
+    expect(inspection.siteUrl).toBe("https://api.relay.example");
+    expect(JSON.stringify(inspection)).not.toMatch(/secret/u);
+  });
+
+  it("sends the official OpenAI API host to the OpenAI console", () => {
+    expect(
+      inspectCodexAuthDocuments({
+        configToml: `
+model_provider = "openai"
+[model_providers.openai]
+base_url = "https://api.openai.com/v1"
+`,
+        authJson: JSON.stringify({ api_key: "sk-secret" }),
+      }).siteUrl,
+    ).toBe("https://platform.openai.com");
   });
 
   it("reads CODEX_HOME config.toml and auth.json from disk", async () => {
@@ -124,6 +167,7 @@ experimental_bearer_token = "sk-fixture-token"
     await expect(inspectCodexHomeAuth(directory)).resolves.toEqual({
       kind: "api",
       identity: CODEX_API_AUTH_IDENTITY_FALLBACK,
+      siteUrl: "https://platform.openai.com",
     });
   });
 });

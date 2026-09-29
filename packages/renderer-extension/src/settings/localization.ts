@@ -114,6 +114,7 @@ export interface RendererSettingsMessages {
   readonly accountConnected: string;
   readonly accountDefaultBadge: string;
   readonly accountColumnActions: string;
+  readonly accountOpenSite: string;
   readonly accountColumnCredits: string;
   readonly accountSearch: string;
   readonly accountEmpty: string;
@@ -385,6 +386,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountDefaultBadge: "Current",
   accountColumnAccount: "Account",
   accountColumnActions: "Manage",
+  accountOpenSite: "Open site",
   accountColumnCredits: "Quota",
   accountSearch: "Search accounts or Agents…",
   accountEmpty:
@@ -690,6 +692,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   accountDefaultBadge: "当前",
   accountColumnAccount: "账号",
   accountColumnActions: "管理",
+  accountOpenSite: "前往站点",
   accountColumnCredits: "额度",
   accountSearch: "搜索账号或 Agent…",
   accountEmpty: "尚未识别到当前身份，请在 Codex Desktop 或对应 Harness 的原生客户端登录。",

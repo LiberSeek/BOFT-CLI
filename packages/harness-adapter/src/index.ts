@@ -80,6 +80,7 @@ export type {
   InteractionRespondAccepted,
   InteractionRespondCommand,
   ItemCompletedEvent,
+  ItemDetachedEvent,
   ItemStartedEvent,
   InspectHarnessInput,
   ItemUpdatedEvent,
