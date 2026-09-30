@@ -205,7 +205,7 @@ export async function fetchGrokCredits(
 ): Promise<GrokCreditsSnapshot | null> {
   const account = await fetchGrokAccount(input);
   const usedPercent = account?.credits.usedPercent;
-  if (!account || usedPercent === undefined) return null;
+  if (!account?.credits || usedPercent === undefined) return null;
   const { credits } = account;
   return {
     usedPercent,

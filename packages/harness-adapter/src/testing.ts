@@ -40,6 +40,7 @@ import type {
   HostApprovalInteraction,
   HostCommand,
   HostCommandExecutionItem,
+  HostContextCompactionItem,
   HostEvent,
   HostFileChange,
   HostItem,
@@ -521,6 +522,15 @@ export class FakeHarnessSession implements HarnessSession {
     return item.itemId;
   }
 
+  startContextCompaction(): HostItemId {
+    const item: HostContextCompactionItem = {
+      type: "contextCompaction",
+      itemId: this.#nextItemId(),
+    };
+    this.#startItem(item);
+    return item.itemId;
+  }
+
   /** The command keeps running after its Turn; native history records its start result. */
   detachItem(itemId: HostItemId): void {
     const active = this.#requireActive();
@@ -531,11 +541,6 @@ export class FakeHarnessSession implements HarnessSession {
     active.items.delete(itemId);
     active.completedItems.push({ item, outcome: { status: "succeeded" } });
     this.#event({ type: "item.detached", turnId: active.command.turnId, itemId });
-  }
-
-  /** Emits an event outside the scripted Turn, e.g. a detached Item's later output. */
-  emitEvent(event: HostEvent): void {
-    this.#event(event);
   }
 
   appendCommandOutput(itemId: HostItemId, text: string): void {

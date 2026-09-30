@@ -536,7 +536,7 @@ export function renderRendererCreditsControl(
   accountCredits: AccountCreditsSnapshot | null,
   locale: RendererSettingsLocale = "en",
 ): boolean {
-  if (!composerCreditsChipVisible(accountCredits)) {
+  if (!composerCreditsChipVisible(accountCredits) || !control.anchor?.parentElement) {
     control.root.style.display = "none";
     closePopover(control);
     return false;

@@ -4,7 +4,7 @@ import {
   type ThreadOwnershipListParams,
   type ThreadOwnershipListResult,
 } from "@codexhost/shared-contracts";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RendererAgent } from "../src/agent-selection-state.js";
 import type { RendererModelClient } from "../src/renderer-model-client.js";
@@ -117,6 +117,7 @@ function clientWith(
 
 async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 function fiberRow(
@@ -153,6 +154,16 @@ function fiberRow(
 }
 
 describe("Renderer sidebar Agent ownership", () => {
+  beforeEach(() => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+      setTimeout(() => callback(performance.now()), 0),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("persists the native pin button action for a decorated External Thread", async () => {
     const attributes = {
       "data-app-action-sidebar-thread-row": "",

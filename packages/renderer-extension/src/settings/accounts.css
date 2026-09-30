@@ -314,6 +314,20 @@
 .settings-account-usage__message {
   color: var(--settings-muted);
 }
+.settings-account-balance {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-account-balance strong {
+  font-size: 14px;
+  line-height: 20px;
+}
+.settings-account-balance__caption {
+  color: var(--settings-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
 .settings-account-usage__missing {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -477,7 +491,8 @@
   .settings-account-person-cell,
   .settings-account-management-cell,
   .settings-account-usage-cell--message,
-  .settings-account-table--api .settings-account-usage-cell {
+  .settings-account-table--api .settings-account-usage-cell,
+  .settings-account-balance-cell {
     grid-column: 1 / -1;
   }
   .settings-account-table .settings-account-row > td.settings-account-management-cell--empty {
