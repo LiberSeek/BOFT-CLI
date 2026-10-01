@@ -1,3 +1,8 @@
+import { catalogModelForRef } from "@codexhost/shared-contracts";
+import {
+  mountRendererModelFastControl,
+  type RendererModelFastControl,
+} from "./renderer-model-fast-control.js";
 import type {
   HarnessModelCatalog,
   HarnessModelRef,
@@ -74,6 +79,7 @@ interface ThinkingOptionControl {
 
 export interface RendererModelPickerControl {
   root: HTMLElement;
+  fast: RendererModelFastControl;
   trigger: HTMLButtonElement;
   label: HTMLElement;
   thinkingLabel: HTMLElement;
@@ -135,9 +141,7 @@ export function thinkingOptionsForModel(
   catalog: HarnessModelCatalog | undefined,
   selected: HarnessModelRef | undefined,
 ): HarnessThinkingOption[] {
-  const supported = catalog?.models.find(
-    (model) => model.ref.id === selected?.id,
-  )?.supportedThinkingOptionIds;
+  const supported = catalogModelForRef(catalog, selected)?.supportedThinkingOptionIds;
   if (!supported) return [];
   return catalog?.thinkingOptions.filter((option) => supported.includes(option.id)) ?? [];
 }
@@ -163,7 +167,7 @@ function isTransientPickerState(view: RendererModelControlView): boolean {
 export function rendererModelPickerPresentation(
   view: RendererModelControlView,
 ): RendererModelPickerPresentation {
-  const selectedModel = view.catalog?.models.find((model) => model.ref.id === view.selected?.id);
+  const selectedModel = catalogModelForRef(view.catalog, view.selected);
   const thinkingOptions =
     view.thinkingSelectionSupported === false
       ? []
@@ -313,6 +317,7 @@ export function mountRendererModelPicker(
   root.style.display = "none";
   applyRendererTriggerChipSqueezeRoot(root, rendererModelTriggerMaxWidth());
 
+  const fast = mountRendererModelFastControl(document, onSelectModel);
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.setAttribute("aria-haspopup", "menu");
@@ -588,6 +593,7 @@ export function mountRendererModelPicker(
 
   const control: RendererModelPickerControl = {
     root,
+    fast,
     trigger,
     label,
     thinkingLabel,
@@ -604,6 +610,7 @@ export function mountRendererModelPicker(
     close,
     dispose() {
       close();
+      fast.dispose();
       trigger.removeEventListener("click", onTriggerClick);
       menu.removeEventListener("toggle", onToggle);
       modelMenu.removeEventListener("toggle", onModelToggle);
@@ -719,6 +726,7 @@ export function renderRendererModelPicker(
   view: RendererModelControlView,
   visible: boolean,
   harnessId = "",
+  locale = "en",
 ): void {
   if (control.harnessId !== harnessId) {
     control.close();
@@ -734,6 +742,7 @@ export function renderRendererModelPicker(
   applyRendererTriggerChipSqueezeRoot(control.root, rendererModelTriggerMaxWidth());
   if (!visible) {
     control.close();
+    control.fast.close();
     return;
   }
   const presentation = rendererModelPickerPresentation(view);
@@ -768,6 +777,11 @@ export function renderRendererModelPicker(
     String(view.status === "loading" || view.status === "selecting"),
   );
   control.trigger.disabled = isRendererModelPickerDisabled(view);
+  control.fast.render(view.catalog, view.selected, control.trigger.disabled, locale === "zh-CN");
+  control.trigger.style.paddingLeft = control.fast.button.hidden ? "8px" : "2px";
+  if (control.fast.button.hidden) control.fast.button.remove();
+  else if (control.fast.button.parentElement !== control.root)
+    control.root.prepend(control.fast.button);
   if (shouldCloseRendererModelPicker(view) && !keepOpenMenu) control.close();
   control.modelButton.disabled = control.trigger.disabled;
   // The search input must not mirror the trigger's disabled state: disabling a
@@ -775,7 +789,7 @@ export function renderRendererModelPicker(
   // transient states (e.g. "selecting"). Filtering is client-side and safe.
 
   for (const [modelId, option] of control.options) {
-    const selected = modelId === view.selected?.id;
+    const selected = modelId === catalogModelForRef(view.catalog, view.selected)?.ref.id;
     option.button.setAttribute("aria-checked", String(selected));
     option.button.classList.toggle("bg-token-list-hover-background", selected);
     option.button.disabled = control.trigger.disabled;

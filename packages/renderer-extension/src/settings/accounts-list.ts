@@ -80,12 +80,19 @@ export function createAccountsTable(
     "aria-label",
     kind === "api" ? messages.accountSectionApi : messages.accountSectionChat,
   );
+  const columns = document.createElement("colgroup");
+  for (const width of kind === "api" ? [48, 32, 20] : [32, 24, 24, 20]) {
+    const column = document.createElement("col");
+    column.style.width = `${width}%`;
+    columns.append(column);
+  }
   const head = document.createElement("thead");
   const row = document.createElement("tr");
-  const columnCount = kind === "api" ? 3 : 4;
-  const headers = Array.from({ length: columnCount }, () => {
+  const headers = Array.from({ length: 3 }, (_, index) => {
     const cell = document.createElement("th");
-    cell.scope = "col";
+    const spansQuota = kind !== "api" && index === 1;
+    cell.scope = spansQuota ? "colgroup" : "col";
+    if (spansQuota) cell.colSpan = 2;
     row.append(cell);
     return cell;
   });
@@ -99,8 +106,7 @@ export function createAccountsTable(
           ]
         : [
             messages.accountColumnAccount,
-            accountUsageColumnLabel("five_hour", display, messages),
-            accountUsageColumnLabel("seven_day", display, messages),
+            accountUsageColumnLabel(display, messages),
             messages.credentialImports.column,
           ];
     headers.forEach((cell, index) => {
@@ -110,7 +116,7 @@ export function createAccountsTable(
   updateDisplay("remaining");
   head.append(row);
   const body = document.createElement("tbody");
-  table.append(head, body);
+  table.append(columns, head, body);
   return { table, body, updateDisplay };
 }
 
@@ -244,7 +250,7 @@ function renderAccountBalance(
     root.append(amount, caption);
   }
   cell.append(root);
-  return { cells: [cell], continuationCells: [], additional: null };
+  return { cells: [cell], continuationCells: [] };
 }
 
 export function renderAccountRows(
@@ -294,7 +300,6 @@ export function renderAccountRows(
     usageColumns: authKind === "api" ? 1 : 2,
     filter: account.planType === "pro" ? "weekly-only" : "all",
   });
-  if (usage.additional) personCell.append(usage.additional);
   const siteUrl =
     authKind === "api" && account.siteUrl && isCodexAccountSiteUrl(account.siteUrl)
       ? account.siteUrl
@@ -384,7 +389,6 @@ export function renderHarnessAccountRows(
         { filter: account.harnessId === "grok" ? "weekly-only" : "all" },
       )
     : renderAccountBalance(document, messages, account.balance);
-  if (usage.additional) personCell.append(usage.additional);
   const managementCell = createTargetCell(document, importAction);
   if (importAction) row.className += " settings-account-row--targets";
   personCell.title = messages.accountNativeManagementHint.replace("{harness}", account.harnessName);

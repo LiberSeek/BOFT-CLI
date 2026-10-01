@@ -37,7 +37,10 @@ export function creditsPeriodLabel(
 
 export function creditsProductLabel(product: string, messages: RendererSettingsMessages): string {
   if (product === "GrokBuild" || product === "Build") return messages.accountCreditsBuild;
+  if (product === "5-hour window") return messages.accountCreditsPeriodFiveHour;
   if (product === "7-day window") return messages.accountCreditsPeriodSevenDay;
+  if (product.endsWith(" · monthly"))
+    return `${product.slice(0, -" · monthly".length)} · ${messages.accountCreditsPeriodMonthly}`;
   if (product === "GrokChat") return "Chat";
   if (product === "GrokImagine") return "Imagine";
   if (product === "GrokVoice") return "Voice";
@@ -100,13 +103,12 @@ interface AccountUsageRow {
 }
 
 export function accountUsageColumnLabel(
-  period: AccountUsagePeriod,
   display: AccountUsageDisplay,
   messages: RendererSettingsMessages,
 ): string {
-  const mode =
-    display === "remaining" ? messages.accountCreditsRemaining : messages.accountCreditsUsed;
-  return `${creditsPeriodLabel(period, messages)}${messages.locale === "zh-CN" ? "" : " "}${mode}`;
+  return display === "remaining"
+    ? messages.accountCreditsRemainingQuota
+    : messages.accountCreditsUsedQuota;
 }
 
 function comparisonPeriod(
@@ -157,7 +159,11 @@ function splitUsageWindows(
       rows.push(row);
       scopedRows.set(scope, rows);
     }
-    row.columns[period] = { ...window, label: scope, scoped: true };
+    row.columns[period] = {
+      ...window,
+      label: `${scope} · ${creditsPeriodLabel(period, messages)}`,
+      scoped: true,
+    };
   };
   const addWindow = (
     window: AccountUsageWindow,
@@ -171,7 +177,9 @@ function splitUsageWindows(
 
   if (credits.usedPercent !== undefined) {
     const primary: AccountUsageWindow = {
-      label: credits.label ?? creditsPeriodLabel(credits.periodType, messages),
+      label: credits.label
+        ? creditsProductLabel(credits.label, messages)
+        : creditsPeriodLabel(credits.periodType, messages),
       usedPercent: credits.usedPercent,
       amount: credits,
       resetsAt: credits.resetsAt,
@@ -285,7 +293,6 @@ export function renderAccountUsage(
 ): {
   cells: HTMLTableCellElement[];
   continuationCells: HTMLTableCellElement[][];
-  additional: HTMLElement | null;
 } {
   const usageColumns = options.usageColumns ?? 2;
   const filter = options.filter ?? "all";
@@ -316,7 +323,7 @@ export function renderAccountUsage(
       usage.append(retry);
     }
     cell.append(usage);
-    return { cells: [cell], continuationCells: [], additional: null };
+    return { cells: [cell], continuationCells: [] };
   }
   const credits = state.credits;
   if (credits.remaining !== undefined && credits.unit && credits.usedPercent === undefined) {
@@ -340,9 +347,22 @@ export function renderAccountUsage(
     meter.append(value);
     usage.append(meter);
     cell.append(usage);
-    return { cells: [cell], continuationCells: [], additional: null };
+    return { cells: [cell], continuationCells: [] };
   }
   const { rows, additional } = splitUsageWindows(credits, messages, filter);
+  // Non-comparison quotas use the same two physical columns, without inventing periods.
+  const onlyRow = rows.length === 1 ? rows[0] : undefined;
+  if (additional.length && onlyRow && !Object.keys(onlyRow.columns).length) rows.pop();
+  for (let index = 0; index < additional.length; index += 2) {
+    const first = additional[index];
+    const second = additional[index + 1];
+    rows.push({
+      columns: {
+        ...(first ? { five_hour: first } : {}),
+        ...(second ? { seven_day: second } : {}),
+      },
+    });
+  }
   const renderCells = (row: AccountUsageRow): HTMLTableCellElement[] =>
     (["five_hour", "seven_day"] as const).map((period) => {
       const cell = document.createElement("td");
@@ -352,13 +372,10 @@ export function renderAccountUsage(
       else {
         const missing = document.createElement("div");
         missing.className = "settings-account-usage__missing";
-        const label = document.createElement("span");
-        label.className = "settings-account-usage__title";
-        label.textContent = row.scope ?? creditsPeriodLabel(period, messages);
         const dash = document.createElement("span");
         dash.textContent = "—";
         dash.setAttribute("aria-hidden", "true");
-        missing.append(label, dash);
+        missing.append(dash);
         cell.append(missing);
       }
       return cell;
@@ -366,12 +383,7 @@ export function renderAccountUsage(
   const [firstRow = { columns: {} }, ...continuations] = rows;
   const cells = renderCells(firstRow);
   const continuationCells = continuations.map(renderCells);
-  if (!additional.length) return { cells, continuationCells, additional: null };
-  const extra = document.createElement("div");
-  extra.className = "settings-account-extra-usage";
-  for (const window of additional)
-    extra.append(renderUsageWindow(document, window, messages, display));
-  return { cells, continuationCells, additional: extra };
+  return { cells, continuationCells };
 }
 
 export function renderAccountResetCredits(
