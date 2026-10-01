@@ -1558,7 +1558,7 @@ describe("Renderer Connections page", () => {
   });
 
   it("expands the requested Agent row when another surface asks to focus it", () => {
-    const groupPreference = createAgentGroupPreferenceStore({
+    const storage = {
       data: new Map<string, string>(),
       getItem(key: string) {
         return this.data.get(key) ?? null;
@@ -1578,7 +1578,8 @@ describe("Renderer Connections page", () => {
       get length() {
         return this.data.size;
       },
-    } satisfies Storage);
+    } satisfies Storage;
+    const groupPreference = createAgentGroupPreferenceStore(storage);
     const diagnostics: RendererConnectionDiagnostics = {
       snapshot: vi.fn((): RendererConnectionSnapshot => ({
         adapter: {
@@ -1708,6 +1709,7 @@ describe("Renderer Codex Accounts page", () => {
       email?: string;
       authKind?: "api" | "chatgpt";
       authIdentity?: string;
+      siteUrl?: string;
     }[],
     currentAccountId: string | null = accounts[0]?.accountId ?? null,
     revision = 1,

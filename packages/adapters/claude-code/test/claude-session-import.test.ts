@@ -94,6 +94,7 @@ describe("Claude native Session import discovery", () => {
     const listSessions = vi.fn(async () => [native]);
     const adapter = new ClaudeCodeAdapter({}, {
       randomUUID: () => "new-session",
+      bypassPermissionsAvailable: () => true,
       getSessionInfo,
       listSessions,
       readSessionMessages: async () => [],
