@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   HARNESS_LONG_CONTEXT_GET_METHOD,
   HARNESS_LONG_CONTEXT_SET_METHOD,
+  type JsonObject,
 } from "@codexhost/shared-contracts";
 
 import { createFixture, requestId, stopFixture, writeRequest } from "./app-server-host-fixture.js";
@@ -41,7 +42,7 @@ describe("Host 1M context routing", () => {
     const fixture = createFixture();
     try {
       await fixture.ready;
-      const send = async (id: number, method: string, params: unknown) => {
+      const send = async (id: number, method: string, params: JsonObject) => {
         writeRequest(fixture.desktopInput, { id, method, params });
         return fixture.collector.waitFor((message) => requestId(message, id));
       };

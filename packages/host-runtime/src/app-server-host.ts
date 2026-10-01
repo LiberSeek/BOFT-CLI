@@ -257,6 +257,7 @@ import {
   projectCodexRateLimitsToCredits,
   observeCodexRateLimits,
   observeCodexTokenUsage,
+  observeDeletedProject,
   parseJsonFrame,
   projectCodexThreadUsage,
   readLfFrames,
@@ -1509,32 +1510,38 @@ export class AppServerHost {
       return;
     }
     if (request.method === "thread/metadata/update") {
-      let threadId: string;
-      let decoded: DecodedThreadMetadataUpdateRequest;
+      let update: DecodedThreadMetadataUpdateRequest;
       try {
-        const parsed = decodeThreadMetadataUpdateRequest(request);
-        if (!parsed) throw new Error("Expected thread/metadata/update request");
-        decoded = parsed;
-        threadId = decoded.threadId;
+        const decoded = decodeThreadMetadataUpdateRequest(request);
+        if (!decoded) throw new Error("Expected thread/metadata/update request");
+        update = decoded;
       } catch (error) {
         await this.#writer.json(rpcError(request, -32602, errorMessage(error)));
         return;
       }
-      const location = await this.#locateExternalThread(threadId);
+      const location = await this.#locateExternalThread(update.threadId);
       if (await this.#writeResolutionError(request, location)) return;
       if (location.kind === "official") {
         await this.#forwardOfficialRequest(request, frame);
         return;
       }
-      if (location.kind !== "external") return;
-      // External Thread 仅接受纯置顶更新；其他元数据继续失败关闭，禁止误转发官方 Codex。
-      if (decoded.isPinned === undefined || decoded.gitInfo !== undefined) {
-        await this.#writer.json(
-          rpcError(request, -32078, "External Thread metadata updates are unsupported"),
-        );
-        return;
+      if (location.kind === "external") {
+        // A pin-only update is BOFT metadata. Codex project, daybreak, and git
+        // patches stay on the Desktop metadata path and reject isPinned so a
+        // mixed request cannot write one field and drop the other.
+        const pinOnly =
+          update.isPinned !== undefined &&
+          update.unsupportedFields.length === 1 &&
+          update.unsupportedFields[0] === "isPinned" &&
+          update.projectId === undefined &&
+          update.daybreakEnabled === undefined &&
+          update.gitInfo === undefined;
+        if (pinOnly) {
+          await this.#setExternalThreadPinned(request, location, update.isPinned ?? false);
+        } else {
+          await this.#updateExternalThreadMetadata(request, location, update);
+        }
       }
-      await this.#setExternalThreadPinned(request, location, decoded.isPinned ?? false);
       return;
     }
     let createRoute: CreateRequestRouteObservation | null;
@@ -1930,6 +1937,12 @@ export class AppServerHost {
     if (forwarded === parsed) await this.#writer.frame(input.frame);
     else await this.#writer.json(forwarded);
     this.#nativeAccountObserver?.observe(parsed);
+    const deletedProjectId = observeDeletedProject(parsed);
+    if (deletedProjectId) {
+      await this.#clearDeletedProjectAssignments(deletedProjectId).catch((error: unknown) =>
+        this.#diagnose(error),
+      );
+    }
   }
 
   async #requestOfficial(method: string, params: JsonObject): Promise<JsonObject> {
@@ -2677,9 +2690,125 @@ export class AppServerHost {
     location: Extract<ExternalThreadLocation, { kind: "external" }>,
     archived: boolean,
   ): Promise<void> {
-    if (location.record.state !== "ready" || !location.record.nativeSessionRef) {
-      await this.#writer.json(rpcError(request, -32079, "External Native Session is unavailable"));
+    const updated = await this.#persistExternalThreadRecord(
+      request,
+      location,
+      (hostThreadId) => this.#repository.setArchived(hostThreadId, archived),
+      "External Thread archive state could not be persisted",
+    );
+    if (!updated) return;
+    await this.#writer.json(
+      rpcEnvelope(request, { result: archived ? {} : { thread: updated.thread } }),
+    );
+    await this.#writer.json({
+      method: archived ? "thread/archived" : "thread/unarchived",
+      params: { threadId: updated.record.hostThreadId },
+    });
+  }
+
+  async #updateExternalThreadMetadata(
+    request: JsonRpcRequest,
+    location: Extract<ExternalThreadLocation, { kind: "external" }>,
+    update: DecodedThreadMetadataUpdateRequest,
+  ): Promise<void> {
+    if (update.unsupportedFields.length > 0) {
+      await this.#writer.json(
+        rpcError(
+          request,
+          -32078,
+          `External Thread metadata fields are unsupported: ${update.unsupportedFields.join(", ")}`,
+        ),
+      );
       return;
+    }
+    if (typeof update.projectId === "string") {
+      // Projects belong to official Codex; only assign one it can still read.
+      const exists = await this.#requestOfficial("project/read", {
+        projectId: update.projectId,
+      }).then(
+        (response) =>
+          !isRecord(response.error) &&
+          isRecord(response.result) &&
+          isRecord(response.result.project) &&
+          response.result.project.id === update.projectId,
+        () => false,
+      );
+      if (!exists) {
+        await this.#writer.json(rpcError(request, -32602, "Project is unavailable"));
+        return;
+      }
+    }
+    const patch = {
+      ...(update.projectId !== undefined ? { projectId: update.projectId } : {}),
+      ...(update.daybreakEnabled !== undefined ? { daybreakEnabled: update.daybreakEnabled } : {}),
+      ...(update.gitInfo !== undefined ? { gitInfo: update.gitInfo } : {}),
+    };
+    const previousProjectId = location.record.projectId ?? null;
+    const updated = await this.#persistExternalThreadRecord(
+      request,
+      location,
+      (hostThreadId) => this.#repository.updateMetadata(hostThreadId, patch),
+      "External Thread metadata could not be persisted",
+      true,
+    );
+    if (!updated) return;
+    await this.#writer.json(rpcEnvelope(request, { result: { thread: updated.thread } }));
+    const projectId = updated.record.projectId ?? null;
+    if (projectId !== previousProjectId) {
+      await this.#writer.json({
+        method: "thread/project/updated",
+        params: { threadId: updated.record.hostThreadId, projectId },
+      });
+    }
+  }
+
+  /** Clear External assignments to a project official Codex reported as deleted. */
+  async #clearDeletedProjectAssignments(projectId: string): Promise<void> {
+    const records = await this.#repository.list();
+    for (const record of records) {
+      if (record.projectId !== projectId) continue;
+      // A concurrent Desktop update may have reassigned the Thread since the listing.
+      const updated = await this.#repository.updateMetadata(
+        record.hostThreadId,
+        { projectId: null },
+        { ifProjectId: projectId },
+      );
+      if (updated.projectId !== undefined) continue;
+      const loaded = this.#externalRuntime.get(updated.hostThreadId);
+      if (loaded) this.#syncLoadedExternalThread(loaded, updated);
+      await this.#writer.json({
+        method: "thread/project/updated",
+        params: { threadId: updated.hostThreadId, projectId: null },
+      });
+    }
+  }
+
+  #syncLoadedExternalThread(thread: ExternalThread, record: StoredThreadRecordV1): JsonObject {
+    const projected = externalThreadValue({
+      record,
+      turns: [],
+      sessionId: thread.sessionId,
+      running: thread.running,
+    });
+    thread.record = record;
+    thread.thread = { ...thread.thread, ...projected, turns: thread.thread.turns ?? [] };
+    return projected;
+  }
+
+  async #persistExternalThreadRecord(
+    request: JsonRpcRequest,
+    location: Extract<ExternalThreadLocation, { kind: "external" }>,
+    write: (hostThreadId: StoredThreadRecordV1["hostThreadId"]) => Promise<StoredThreadRecordV1>,
+    failureMessage: string,
+    allowProvisional = false,
+  ): Promise<{ record: StoredThreadRecordV1; thread: JsonObject } | null> {
+    const hasNativeSession =
+      location.record.state === "ready" && location.record.nativeSessionRef !== undefined;
+    // Host metadata may precede a Harness's deferred native Session, but only
+    // while the loaded Thread still owns the provisional record.
+    if (!hasNativeSession && !(allowProvisional && location.thread)) {
+      await this.#writer.json(rpcError(request, -32079, "External Native Session is unavailable"));
+      return null;
     }
     const sessionId =
       location.thread?.sessionId ??
@@ -2688,40 +2817,19 @@ export class AppServerHost {
       await this.#writer.json(
         rpcError(request, -32081, "External Thread metadata could not be projected"),
       );
-      return;
+      return null;
     }
     let record: StoredThreadRecordV1;
     try {
-      record = await this.#repository.setArchived(location.record.hostThreadId, archived);
+      record = await write(location.record.hostThreadId);
     } catch {
-      await this.#writer.json(
-        rpcError(request, -32081, "External Thread archive state could not be persisted"),
-      );
-      return;
+      await this.#writer.json(rpcError(request, -32081, failureMessage));
+      return null;
     }
-    const projected = externalThreadValue({
-      record,
-      turns: [],
-      sessionId,
-      ...(location.thread ? { running: location.thread.running } : { loaded: false }),
-    });
-    if (location.thread) {
-      location.thread.record = record;
-      location.thread.thread = {
-        ...location.thread.thread,
-        ...projected,
-        turns: location.thread.thread.turns ?? [],
-      };
-    }
-    await this.#writer.json(
-      rpcEnvelope(request, {
-        result: archived ? {} : { thread: await this.#withExternalSection(projected) },
-      }),
-    );
-    await this.#writer.json({
-      method: archived ? "thread/archived" : "thread/unarchived",
-      params: { threadId: record.hostThreadId },
-    });
+    const projected = location.thread
+      ? this.#syncLoadedExternalThread(location.thread, record)
+      : externalThreadValue({ record, turns: [], sessionId, loaded: false });
+    return { record, thread: await this.#withExternalSection(projected) };
   }
 
   /** 持久化置顶变更，并向 Desktop 返回更新后的 External Thread 投影。 */

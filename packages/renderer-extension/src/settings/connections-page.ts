@@ -22,6 +22,7 @@ import {
   harnessInstallPlatform,
 } from "./harness-install.js";
 import { createHarnessInstallationPanel } from "./harness-installation-panel.js";
+import { harnessInstallStore } from "./harness-install-store.js";
 import { createHarnessLaunchControls } from "./harness-launch-controls.js";
 import { createClaudeLongContextControl } from "./claude-long-context-control.js";
 import { createHarnessVersionPanel } from "./harness-version-panel.js";
@@ -50,12 +51,12 @@ export interface RendererConnectionSnapshot {
 
 export interface RendererConnectionDiagnostics {
   snapshot(): RendererConnectionSnapshot;
-  refresh(): Promise<void>;
+  refresh(hostId?: string): Promise<void>;
   openWebUi?(hostId: string, agent: ExternalRendererAgent): Promise<void>;
   installation?(
     hostId: string,
     agent: ExternalRendererAgent,
-    action: "check" | "update",
+    action: "check" | "update" | "install",
   ): Promise<HarnessInstallationState>;
   getLaunchSettings?(hostId: string, agent: ExternalRendererAgent): Promise<HarnessLaunchSettings>;
   setLaunchSettings?(
@@ -760,6 +761,7 @@ export function createConnectionsSettingsPage(
       };
 
       const diagnostics = getDiagnostics();
+      const installs = diagnostics ? harnessInstallStore(diagnostics) : null;
       const runRefresh = (): void => {
         if (pending || !diagnostics) return;
         pending = true;
@@ -770,6 +772,7 @@ export function createConnectionsSettingsPage(
         );
         void context.runLatest(() => diagnostics.refresh(), {
           success() {
+            installs?.clearErrors();
             pending = false;
             refresh.disabled = false;
             refresh.replaceChildren(
@@ -898,6 +901,39 @@ export function createConnectionsSettingsPage(
                 runRefresh,
               ),
             );
+            const installState = installs?.get(selectedHost.hostId, agent);
+            const canInstall =
+              selectedHost.hostId === "local" &&
+              agent !== "workbuddy" &&
+              diagnostics?.installation !== undefined;
+            if (canInstall) {
+              const busy =
+                installState?.status === "installing" || installState?.status === "checking";
+              if (installState?.error) {
+                const error = document.createElement("p");
+                error.className = "settings-connection-install-error";
+                error.setAttribute("role", "alert");
+                error.textContent = installState.error;
+                nodes.push(error);
+              }
+              if (busy) {
+                const note = document.createElement("p");
+                note.textContent = messages.connectionInstallRunning;
+                nodes.push(note);
+              }
+              const installNow = document.createElement("button");
+              installNow.type = "button";
+              installNow.className = "settings-command-button";
+              installNow.dataset.connectionAction = "run-install";
+              installNow.disabled = busy;
+              installNow.textContent = busy
+                ? messages.connectionInstallRunning
+                : messages.connectionInstall;
+              installNow.addEventListener("click", () => {
+                void installs?.install(selectedHost.hostId, agent);
+              });
+              nodes.push(installNow);
+            }
           }
           const installation = diagnostics?.installation?.bind(diagnostics);
           const versionCapable = Boolean(
@@ -1206,10 +1242,14 @@ export function createConnectionsSettingsPage(
       const unsubscribeGroup = groupPreference.subscribe(() =>
         render(diagnostics?.snapshot() ?? latestSnapshot),
       );
+      const unsubscribeInstalls = installs?.subscribe(() =>
+        render(diagnostics?.snapshot() ?? latestSnapshot),
+      );
       if (!diagnostics) {
         refresh.disabled = true;
         return () => {
           unsubscribeGroup();
+          unsubscribeInstalls?.();
         };
       }
       refresh.addEventListener("click", runRefresh);
@@ -1217,6 +1257,7 @@ export function createConnectionsSettingsPage(
       return () => {
         unsubscribe();
         unsubscribeGroup();
+        unsubscribeInstalls?.();
       };
     },
   });

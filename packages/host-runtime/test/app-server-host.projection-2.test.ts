@@ -2187,7 +2187,7 @@ describe("AppServerHost HarnessAdapter projection", () => {
     await stopFixture(fixture);
   });
 
-  it("persists External pin metadata and fails other metadata updates closed", async () => {
+  it("persists External pin metadata and fails mixed metadata updates closed", async () => {
     const fixture = createFixture();
     const officialWrite = vi.fn();
     fixture.official.stdin.on("data", officialWrite);
@@ -2203,12 +2203,12 @@ describe("AppServerHost HarnessAdapter projection", () => {
     writeRequest(fixture.desktopInput, {
       id: 54,
       method: "thread/metadata/update",
-      params: { threadId, gitInfo: { branch: "main", sha: null } },
+      params: { threadId, isPinned: false, gitInfo: { branch: "main", sha: null } },
     });
     await expect(
       fixture.collector.waitFor((message) => requestId(message, 54)),
     ).resolves.toMatchObject({
-      error: { code: -32078, message: "External Thread metadata updates are unsupported" },
+      error: { code: -32078, message: "External Thread metadata fields are unsupported: isPinned" },
     });
     writeRequest(fixture.desktopInput, {
       id: 58,

@@ -150,7 +150,7 @@ class FakeElement {
     this.dispatch("scroll");
   }
 
-  scrollIntoView(): void {}
+  scrollIntoView = vi.fn();
 
   getAttribute(name: string): string | null {
     return this.attributes.get(name) ?? null;
@@ -827,15 +827,13 @@ describe("Harness CLI version panel", () => {
     expect(button("update").disabled).toBe(true);
     abort.abort();
   });
-  it("shows check failures and the installer link, and checks again when the page reopens", async () => {
+  it("shows check failures without a duplicate website link, and checks again when the page reopens", async () => {
     const run = vi.fn(async () => state).mockRejectedValueOnce(new Error("secret-native-output"));
     const { panel, button, abort } = mount(run);
     await vi.waitFor(() => expect(visibleText(panel)).toContain("Could not complete"));
     expect(visibleText(panel)).not.toContain("secret-native-output");
     expect(button("update").disabled).toBe(true);
-    expect(descendants(panel).find((element) => element.tagName === "a")?.href).toBe(
-      "https://pi.dev/",
-    );
+    expect(descendants(panel).some((element) => element.tagName === "a")).toBe(false);
     abort.abort();
     const reopened = mount(run);
     await vi.waitFor(() => expect(reopened.button("update").disabled).toBe(false));
@@ -1004,7 +1002,7 @@ describe("Renderer Connections page", () => {
     expect(visibleText(panel)).toContain(guide.command);
     expect(
       visibleText(content).includes(
-        "支持 DSH 版本：0.1.2-rc.1、0.1.5-rc.1、0.1.5-rc.2、0.1.5-rc.3、0.1.7-rc.1 和 0.1.7-rc.2。",
+        "支持 DSH 版本：0.1.7-rc.1、0.1.7-rc.2、0.2.0-rc.1 和 0.2.0-rc.2。",
       ),
     ).toBe(agent === "deepseek-harness");
     expect(refresh).not.toHaveBeenCalled();
@@ -1177,9 +1175,9 @@ describe("Renderer Connections page", () => {
     );
     if (!dshRow) throw new Error("DeepSeek Harness row is not rendered");
     dshRow.dispatch("click", { target: null });
-    expect(visibleText(content)).toContain("0.1.7-rc.2");
+    expect(visibleText(content)).toContain("0.2.0-rc.2");
     expect(visibleText(content)).toContain(
-      "其他版本可以在通过原生协议检查后尝试连接，但尚未列入支持列表。",
+      "高于 0.2.0-rc.2 的版本可以尝试连接，但适配度可能有限；低于 0.1.7-rc.1 的版本需要先升级。",
     );
     const open = descendants(content).find(
       ({ dataset }) => dataset.connectionAction === "open-web-ui",

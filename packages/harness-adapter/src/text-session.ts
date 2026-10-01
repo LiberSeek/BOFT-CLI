@@ -606,6 +606,8 @@ export interface HarnessAdapter {
    * starts a model Turn, or restarts existing Sessions. Commands are Adapter-owned.
    */
   installation?(action: "check" | "update"): Promise<HarnessInstallationState>;
+  /** Explicit first-time CLI installation using an Adapter-owned official source. */
+  install?(): Promise<void>;
   /**
    * Host-local 1M context preference. Missing means the Adapter does not offer
    * the switch. It must not start a Turn or change the stored Model Ref.

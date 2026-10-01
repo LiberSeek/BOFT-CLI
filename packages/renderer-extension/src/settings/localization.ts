@@ -170,11 +170,13 @@ export interface RendererSettingsMessages {
   readonly connectionDiagnostic: string;
   readonly connectionNoRuntime: string;
   readonly connectionStatusReady: string;
+  readonly connectionStatusConnected: string;
   readonly connectionStatusChecking: string;
   readonly connectionStatusNotInstalled: string;
   readonly connectionStatusUnavailable: string;
   readonly connectionStatusError: string;
   readonly connectionStatusInstalling: string;
+  readonly connectionStatusUpdating: string;
   readonly connectionStatusUnsupported: string;
   readonly connectionComponent: string;
   readonly connectionStatus: string;
@@ -193,7 +195,7 @@ export interface RendererSettingsMessages {
   readonly launchPathLoading: string;
   readonly launchPathLoadError: string;
   readonly launchPathSaveError: string;
-  readonly connectionOpenInstallation: string;
+  readonly connectionOfficialWebsite: string;
   readonly connectionOpenHarnessWeb: string;
   readonly connectionDeepSeekTestedVersions: string;
   readonly connectionInstall: string;
@@ -202,9 +204,11 @@ export interface RendererSettingsMessages {
   readonly connectionLongContextOff: string;
   readonly connectionLongContextModelsLabel: string;
   readonly connectionInstallDescription: string;
+  readonly connectionOpenInstallation: string;
   readonly connectionInstallCommand: string;
   readonly connectionCopyPrompt: string;
   readonly connectionInstallPrompt: string;
+  readonly connectionInstallRunning: string;
   readonly harnessVersionTitle: string;
   readonly harnessVersionCurrent: string;
   readonly harnessVersionLatest: string;
@@ -460,11 +464,13 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionDiagnostic: "Diagnostic",
   connectionNoRuntime: "The renderer request bridge is not available yet.",
   connectionStatusReady: "Ready",
+  connectionStatusConnected: "Connected",
   connectionStatusChecking: "Checking",
   connectionStatusNotInstalled: "Not installed",
   connectionStatusUnavailable: "Unavailable",
   connectionStatusError: "Error",
   connectionStatusInstalling: "Installing",
+  connectionStatusUpdating: "Updating",
   connectionStatusUnsupported: "Unsupported",
   connectionComponent: "Component",
   connectionStatus: "Status",
@@ -486,10 +492,11 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   launchPathLoadError: "Could not load launch settings. Reopen this detail panel to retry.",
   launchPathSaveError:
     "Could not save. Enter an existing absolute installation folder on this Host and check configuration permissions.",
+  connectionOfficialWebsite: "Visit official website",
   connectionOpenInstallation: "Open official installation page",
   connectionOpenHarnessWeb: "Open DeepSeek Harness Web",
   connectionDeepSeekTestedVersions:
-    "Supported DSH versions: 0.1.2-rc.1, 0.1.5-rc.1, 0.1.5-rc.2, 0.1.5-rc.3, 0.1.7-rc.1 and 0.1.7-rc.2. Other versions may connect after native protocol checks, but are not listed as supported.",
+    "Supported DSH versions: 0.1.7-rc.1, 0.1.7-rc.2, 0.2.0-rc.1 and 0.2.0-rc.2. Versions newer than 0.2.0-rc.2 can be tried, but compatibility may be limited; versions older than 0.1.7-rc.1 must be upgraded first.",
   connectionInstall: "Install",
   connectionLongContextLabel: "1M",
   connectionLongContextOn:
@@ -502,6 +509,8 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionCopyPrompt: "Copy prompt",
   connectionInstallPrompt:
     "Please install {name} (CLI command: {binary}) on this machine.\n\nUse the official install method and run:\n{command}\n\nOfficial installation page: {url}\n\nAfter installation, verify that `{binary}` is available in the terminal and report the result.",
+  connectionInstallRunning:
+    "Installing on the selected Host. You can leave this page; login or setup may still be required afterward.",
   harnessVersionTitle: "Harness CLI version",
   harnessVersionCurrent: "Current version",
   harnessVersionLatest: "Latest version",
@@ -784,11 +793,13 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionDiagnostic: "诊断信息",
   connectionNoRuntime: "Renderer 请求桥尚未可用。",
   connectionStatusReady: "正常",
+  connectionStatusConnected: "已连接",
   connectionStatusChecking: "检查中",
   connectionStatusNotInstalled: "未安装",
   connectionStatusUnavailable: "不可用",
   connectionStatusError: "错误",
   connectionStatusInstalling: "安装中",
+  connectionStatusUpdating: "更新中",
   connectionStatusUnsupported: "不支持",
   connectionComponent: "组件",
   connectionStatus: "状态",
@@ -808,10 +819,11 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   launchPathLoading: "正在读取启动设置…",
   launchPathLoadError: "无法读取启动设置，请重新打开此详情面板重试。",
   launchPathSaveError: "保存失败。请填写此 Host 上实际存在的安装目录绝对路径，并确认配置目录可写。",
+  connectionOfficialWebsite: "访问官网",
   connectionOpenInstallation: "前往官方安装页面",
   connectionOpenHarnessWeb: "打开 DeepSeek Harness Web",
   connectionDeepSeekTestedVersions:
-    "支持 DSH 版本：0.1.2-rc.1、0.1.5-rc.1、0.1.5-rc.2、0.1.5-rc.3、0.1.7-rc.1 和 0.1.7-rc.2。其他版本可以在通过原生协议检查后尝试连接，但尚未列入支持列表。",
+    "支持 DSH 版本：0.1.7-rc.1、0.1.7-rc.2、0.2.0-rc.1 和 0.2.0-rc.2。高于 0.2.0-rc.2 的版本可以尝试连接，但适配度可能有限；低于 0.1.7-rc.1 的版本需要先升级。",
   connectionInstall: "安装",
   connectionLongContextLabel: "1M",
   connectionLongContextOn:
@@ -824,6 +836,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionCopyPrompt: "复制 Prompt",
   connectionInstallPrompt:
     "请帮我在本机安装 {name}（CLI 命令：{binary}）。\n\n请按官方安装方式执行以下命令，并处理 PATH、权限和依赖问题：\n{command}\n\n官方安装页面：{url}\n\n安装完成后请验证 `{binary}` 可以在终端中运行，并告诉我结果。",
+  connectionInstallRunning: "正在所选 Host 上安装，离开页面不会中断。安装后可能仍需登录或配置。",
   harnessVersionTitle: "Harness CLI 版本",
   harnessVersionCurrent: "当前版本",
   harnessVersionLatest: "最新版本",

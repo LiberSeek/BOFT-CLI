@@ -1085,21 +1085,26 @@ describe("AppServerHost installed Harness plugins", () => {
     await expect(
       fixture.mappingStore.getThread(hostThreadIdSchema.parse(threadId)),
     ).resolves.toMatchObject({ isPinned: true });
-    for (const [id, patch] of [
-      [54, { gitInfo: { branch: "main", sha: null } }],
-      [55, { isPinned: false, gitInfo: { branch: "main", sha: null } }],
-    ] as const) {
-      writeRequest(fixture.desktopInput, {
-        id,
-        method: "thread/metadata/update",
-        params: { threadId, ...patch },
-      });
-      await expect(
-        fixture.collector.waitFor((message) => requestId(message, id)),
-      ).resolves.toMatchObject({
-        error: { code: -32078, message: "External Thread metadata updates are unsupported" },
-      });
-    }
+    writeRequest(fixture.desktopInput, {
+      id: 54,
+      method: "thread/metadata/update",
+      params: { threadId, gitInfo: { branch: "main", sha: null } },
+    });
+    await expect(
+      fixture.collector.waitFor((message) => requestId(message, 54)),
+    ).resolves.toMatchObject({
+      result: { thread: { id: threadId, isPinned: true, gitInfo: { branch: "main" } } },
+    });
+    writeRequest(fixture.desktopInput, {
+      id: 55,
+      method: "thread/metadata/update",
+      params: { threadId, isPinned: false, gitInfo: { branch: "main", sha: null } },
+    });
+    await expect(
+      fixture.collector.waitFor((message) => requestId(message, 55)),
+    ).resolves.toMatchObject({
+      error: { code: -32078, message: "External Thread metadata fields are unsupported: isPinned" },
+    });
     writeRequest(fixture.desktopInput, {
       id: 58,
       method: "thread/future/manage",
@@ -1112,8 +1117,7 @@ describe("AppServerHost installed Harness plugins", () => {
     });
     expect(officialWrite).not.toHaveBeenCalled();
     const stored = await fixture.mappingStore.getThread(hostThreadIdSchema.parse(threadId));
-    expect(stored).toMatchObject({ isPinned: true });
-    expect(stored).not.toHaveProperty("gitInfo");
+    expect(stored).toMatchObject({ isPinned: true, gitInfo: { branch: "main" } });
     await stopFixture(fixture);
   });
 
