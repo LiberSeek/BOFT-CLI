@@ -158,12 +158,12 @@ class FakeElement {
 
   closest(selector: string): FakeElement | null {
     const tokens = selector.split(",").map((token) => token.trim().toLowerCase());
-    let current: FakeElement | undefined = this;
-    while (current) {
-      if (tokens.includes(current.tagName.toLowerCase())) return current;
-      current = current.parent;
-    }
-    return null;
+    const match = (element: FakeElement | undefined): FakeElement | null => {
+      if (!element) return null;
+      if (tokens.includes(element.tagName.toLowerCase())) return element;
+      return match(element.parent);
+    };
+    return match(this);
   }
 
   replaceChildren(...children: unknown[]): void {
@@ -1696,7 +1696,9 @@ describe("Renderer Connections page", () => {
       element.className.split(" ").includes("settings-connection-long-context"),
     );
     expect(switches).toHaveLength(1);
-    expect(descendants(claude)).toContain(switches[0]);
+    const longContextSwitch = switches[0];
+    if (!longContextSwitch) throw new Error("Expected 1M switch");
+    expect(descendants(claude)).toContain(longContextSwitch);
     expect(descendants(pi).some((element) => element.className.includes("long-context"))).toBe(
       false,
     );
@@ -1705,19 +1707,18 @@ describe("Renderer Connections page", () => {
         element.className.split(" ").includes("settings-connection-install-link"),
       ),
     ).toBe(false);
-    const input = descendants(switches[0]!).find((element) => element.tagName === "input");
+    const input = descendants(longContextSwitch).find((element) => element.tagName === "input");
     if (!input) throw new Error("Expected 1M switch");
     expect(input.checked).toBe(true);
     expect(input.getAttribute("aria-checked")).toBe("true");
     expect(input.getAttribute("role")).toBe("switch");
-    const tooltip = descendants(switches[0]!).find(
+    const tooltip = descendants(longContextSwitch).find(
       (element) => element.getAttribute("role") === "tooltip",
     );
-    expect(tooltip?.hidden).toBe(true);
+    if (!tooltip) throw new Error("Expected 1M tooltip");
+    expect(tooltip.hidden).toBe(true);
     expect(
-      descendants(tooltip!).flatMap((element) =>
-        element.textContent ? [element.textContent] : [],
-      ),
+      descendants(tooltip).flatMap((element) => (element.textContent ? [element.textContent] : [])),
     ).toEqual([
       messages.connectionLongContextOn,
       messages.connectionLongContextOff,
