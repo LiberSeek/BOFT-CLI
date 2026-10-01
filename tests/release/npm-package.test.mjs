@@ -720,7 +720,7 @@ describe("npm package release", () => {
         );
         // Recovery must not depend on the resources used to launch Desktop.
         for (const relative of [
-          "libexec/codexhost-shim",
+          "libexec/boft-shim",
           "app/host-runtime.mjs",
           "app/desktop-controller.mjs",
           "app/renderer-extension.js",
@@ -728,7 +728,7 @@ describe("npm package release", () => {
           await rm(path.join(packageRoot, relative));
         }
         await writeExecutable(
-          path.join(packageRoot, "bin", "codexhost"),
+          path.join(packageRoot, "bin", "boft"),
           '#!/bin/sh\necho "early-launcher-reached" >&2\nexit 23\n',
         );
         const launch = spawnCodexhost(cellarNode, userBin, []);
@@ -739,7 +739,7 @@ describe("npm package release", () => {
         const reported = JSON.parse(result.stdout);
         expect(reported.args).toEqual(["open"]);
         const realPackageRoot = await realpath(packageRoot);
-        expect(reported.launcher).toBe(path.join(realPackageRoot, "bin", "codexhost"));
+        expect(reported.launcher).toBe(path.join(realPackageRoot, "bin", "boft"));
         expect(reported.packageRoot).toBe(realPackageRoot);
         expect(spawnCodexhost(cellarNode, userBin, ["console", "extra"]).status).toBe(1);
       } finally {
