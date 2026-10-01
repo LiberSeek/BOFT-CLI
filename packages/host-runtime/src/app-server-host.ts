@@ -1,6 +1,11 @@
 import { HarnessLaunchSettingsStore } from "@codexhost/harness-plugin-files";
-import { HARNESS_INSTALLATION_METHOD } from "@codexhost/shared-contracts";
+import {
+  HARNESS_INSTALLATION_METHOD,
+  HARNESS_LONG_CONTEXT_GET_METHOD,
+  HARNESS_LONG_CONTEXT_SET_METHOD,
+} from "@codexhost/shared-contracts";
 import { handleHarnessInstallation, HarnessInstallationError } from "./harness-installation.js";
+import { handleHarnessLongContext, HarnessLongContextError } from "./harness-long-context.js";
 import {
   isConsoleHostMethod,
   CONSOLE_OPEN_METHOD,
@@ -1292,6 +1297,33 @@ export class AppServerHost {
               error instanceof HarnessInstallationError
                 ? error.message
                 : "Harness version management failed",
+            ),
+          );
+        }
+      });
+      return;
+    }
+    if (
+      request.method === HARNESS_LONG_CONTEXT_GET_METHOD ||
+      request.method === HARNESS_LONG_CONTEXT_SET_METHOD
+    ) {
+      this.#dispatchDesktopRequest(async () => {
+        await this.#waitForPlugins();
+        try {
+          const result = await handleHarnessLongContext(
+            request.method,
+            request.params,
+            this.#externalAdapters,
+          );
+          await this.#writer.json(rpcEnvelope(request, { result: jsonValueSchema.parse(result) }));
+        } catch (error) {
+          await this.#writer.json(
+            rpcError(
+              request,
+              error instanceof HarnessLongContextError ? error.code : -32077,
+              error instanceof HarnessLongContextError
+                ? error.message
+                : "Could not read or save the 1M context setting",
             ),
           );
         }

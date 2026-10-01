@@ -5782,4 +5782,55 @@ describe("Claude Code HarnessAdapter", () => {
       undefined,
     ]);
   });
+
+  it("passes Opus 5.5 to Claude CLI with [1m] while the switch is on", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "claude-long-context-adapter-"));
+    try {
+      const { adapter, dependencies, transports } = fixture({
+        environment: { CODEXHOST_DATA_DIR: directory },
+      });
+      await expect(adapter.getLongContext()).resolves.toEqual({ enabled: true });
+      const session = await openSession(adapter);
+      const iterator = session.outputs[Symbol.asyncIterator]();
+      const opus = encodeClaudeModelRef("claude-opus-5-5");
+      await expect(session.execute({ type: "model.select", model: opus })).resolves.toEqual({
+        ok: true,
+        value: { completed: true },
+      });
+      expect(await nextEvent(iterator)).toMatchObject({
+        type: "session.state.changed",
+        state: { effectiveModel: opus },
+      });
+      await expect(session.execute(textTurn("opus"))).resolves.toMatchObject({ ok: true });
+      expect(dependencies.createTransport).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "claude-opus-5-5[1m]" }),
+      );
+      expect(transports[0]?.setModel).not.toHaveBeenCalled();
+      expect((await nextEvent(iterator)).type).toBe("session.state.changed");
+      expect((await nextEvent(iterator)).type).toBe("turn.started");
+      expect((await nextEvent(iterator)).type).toBe("item.started");
+      transports[0]?.delta("hello");
+      await nextEvent(iterator);
+      transports[0]?.event({
+        type: "message.completed",
+        messageId: "synthetic-assistant",
+        checkpointId: "native-assistant",
+      });
+      transports[0]?.finish({ status: "succeeded" });
+      for (let index = 0; index < 6; index += 1) {
+        if ((await nextEvent(iterator)).type === "turn.completed") break;
+      }
+      await expect(adapter.setLongContext(false)).resolves.toEqual({ enabled: false });
+      expect(transports[0]?.setModel).toHaveBeenCalledWith("claude-opus-5-5");
+      await expect(adapter.setLongContext(true)).resolves.toEqual({ enabled: true });
+      await expect(
+        session.execute({ type: "model.select", model: encodeClaudeModelRef("sonnet") }),
+      ).resolves.toEqual({ ok: true, value: { completed: true } });
+      expect(transports[0]?.setModel).toHaveBeenLastCalledWith("sonnet");
+      await session.close();
+      await adapter.close();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });

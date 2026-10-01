@@ -17,6 +17,14 @@ import {
   externalUrlOpenParamsSchema,
   HARNESS_LAUNCH_SETTINGS_GET_METHOD,
   HARNESS_LAUNCH_SETTINGS_SET_METHOD,
+  HARNESS_LONG_CONTEXT_GET_METHOD,
+  HARNESS_LONG_CONTEXT_SET_METHOD,
+  harnessLongContextGetSchema,
+  harnessLongContextSchema,
+  harnessLongContextSetSchema,
+  type HarnessLongContext,
+  type HarnessLongContextGet,
+  type HarnessLongContextSet,
   harnessLaunchSettingsGetSchema,
   harnessLaunchSettingsSetSchema,
   harnessLaunchSettingsSchema,
@@ -195,6 +203,8 @@ export interface RendererModelClient extends Partial<RendererSessionImportClient
   setHarnessDisplaySettings?(input: HarnessDisplaySet): Promise<HarnessDisplaySettings>;
   getHarnessLaunchSettings?(input: HarnessLaunchSettingsGet): Promise<HarnessLaunchSettings>;
   setHarnessLaunchSettings?(input: HarnessLaunchSettingsSet): Promise<HarnessLaunchSettings>;
+  getHarnessLongContext?(input: HarnessLongContextGet): Promise<HarnessLongContext>;
+  setHarnessLongContext?(input: HarnessLongContextSet): Promise<HarnessLongContext>;
   setIdleReleaseSettings?(settings: IdleReleaseSettings): Promise<IdleReleaseSettings>;
   listLoadedSessions?(): Promise<LoadedSession[]>;
   currentHostId?(): string | null;
@@ -403,6 +413,22 @@ export function createRendererModelClient(
         await manager.sendRequest(
           HARNESS_LAUNCH_SETTINGS_SET_METHOD,
           harnessLaunchSettingsSetSchema.parse(input),
+        ),
+      );
+    },
+    async getHarnessLongContext(input: HarnessLongContextGet): Promise<HarnessLongContext> {
+      return harnessLongContextSchema.parse(
+        await manager.sendRequest(
+          HARNESS_LONG_CONTEXT_GET_METHOD,
+          harnessLongContextGetSchema.parse(input),
+        ),
+      );
+    },
+    async setHarnessLongContext(input: HarnessLongContextSet): Promise<HarnessLongContext> {
+      return harnessLongContextSchema.parse(
+        await manager.sendRequest(
+          HARNESS_LONG_CONTEXT_SET_METHOD,
+          harnessLongContextSetSchema.parse(input),
         ),
       );
     },

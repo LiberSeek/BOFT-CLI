@@ -82,6 +82,7 @@ export type {
 } from "./harness-plugins.js";
 export * from "./harness-launch-settings.js";
 export * from "./harness-installation.js";
+export * from "./harness-long-context.js";
 export { codexhostErrorSchema } from "./errors.js";
 export {
   codexAccountUsageParamsSchema,

@@ -64,19 +64,30 @@ describe("console connection diagnostics", () => {
       restartRequired: true,
     }));
     const openHarnessWebUi = vi.fn(async () => ({}));
+    const getHarnessLongContext = vi.fn(async () => ({ enabled: true }));
+    const setHarnessLongContext = vi.fn(async () => ({ enabled: false }));
     const diagnostics = createConsoleConnectionDiagnostics(
       client({
         inspectHarness: vi.fn(async () => ({ status: "ready" })) as never,
         getHarnessLaunchSettings: getHarnessLaunchSettings as never,
         setHarnessLaunchSettings: setHarnessLaunchSettings as never,
+        getHarnessLongContext: getHarnessLongContext as never,
+        setHarnessLongContext: setHarnessLongContext as never,
         openHarnessWebUi: openHarnessWebUi as never,
       }),
     );
     await diagnostics.getLaunchSettings?.("local", "pi");
     await diagnostics.setLaunchSettings?.("local", "pi", "/opt/pi");
+    await diagnostics.getLongContext?.("local", "claude-code");
+    await diagnostics.setLongContext?.("local", "claude-code", false);
     await diagnostics.openWebUi?.("local", "pi");
     expect(getHarnessLaunchSettings).toHaveBeenCalledWith({ harnessId: "pi" });
     expect(setHarnessLaunchSettings).toHaveBeenCalledWith({ harnessId: "pi", path: "/opt/pi" });
+    expect(getHarnessLongContext).toHaveBeenCalledWith({ harnessId: "claude-code" });
+    expect(setHarnessLongContext).toHaveBeenCalledWith({
+      harnessId: "claude-code",
+      enabled: false,
+    });
     expect(openHarnessWebUi).toHaveBeenCalledWith({ harnessId: "pi" });
   });
 });

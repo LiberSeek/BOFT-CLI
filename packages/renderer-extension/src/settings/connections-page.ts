@@ -23,6 +23,7 @@ import {
 } from "./harness-install.js";
 import { createHarnessInstallationPanel } from "./harness-installation-panel.js";
 import { createHarnessLaunchControls } from "./harness-launch-controls.js";
+import { createClaudeLongContextControl } from "./claude-long-context-control.js";
 import { createHarnessVersionPanel } from "./harness-version-panel.js";
 import { createRendererSettingsIcon, type RendererSettingsIconName } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
@@ -62,6 +63,12 @@ export interface RendererConnectionDiagnostics {
     agent: ExternalRendererAgent,
     path: string | null,
   ): Promise<HarnessLaunchSettings>;
+  getLongContext?(hostId: string, agent: ExternalRendererAgent): Promise<{ enabled: boolean }>;
+  setLongContext?(
+    hostId: string,
+    agent: ExternalRendererAgent,
+    enabled: boolean,
+  ): Promise<{ enabled: boolean }>;
   subscribe(listener: () => void): () => void;
 }
 
@@ -470,6 +477,7 @@ function createConnectionBlock(
   launchControls: HTMLElement | null = null,
   versionCapable = false,
   detailNodes: readonly HTMLElement[] = [],
+  longContext: HTMLElement | null = null,
 ): { block: HTMLElement; row: HTMLElement } {
   const block = document.createElement("div");
   block.className = "settings-connection-block";
@@ -538,6 +546,7 @@ function createConnectionBlock(
     });
     action.append(viewError);
   }
+  if (longContext) action.append(longContext);
   if (group) {
     const toggle = document.createElement("button");
     toggle.type = "button";
@@ -557,6 +566,8 @@ function createConnectionBlock(
 
   row.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
+    const keyTarget = event.target as Element | null;
+    if (keyTarget?.closest?.("a, button, label, input")) return;
     if (!canExpand) return;
     event.preventDefault();
     toggleExpand();
@@ -581,7 +592,7 @@ function createConnectionBlock(
   // Expand from the connectionItem container; ignore nested action controls.
   block.addEventListener("click", (event) => {
     const target = event.target as Element | null;
-    if (target?.closest?.("a, button")) return;
+    if (target?.closest?.("a, button, label, input")) return;
     if (!canExpand) return;
     toggleExpand();
   });
@@ -696,6 +707,7 @@ export function createConnectionsSettingsPage(
       // Panels are owned by the page and keyed by Host + Harness, not by each
       // diagnostic render. Keep in-flight updates and check results across row switches.
       const versionPanels = new Map<string, HTMLElement>();
+      const longContextControls = new Map<string, HTMLElement>();
 
       const launchControlsFor = (hostId: string, item: ConnectionListItem): HTMLElement | null => {
         const getLaunchSettings = diagnostics?.getLaunchSettings;
@@ -716,6 +728,34 @@ export function createConnectionsSettingsPage(
           set: (path) => setLaunchSettings(hostId, "workbuddy", path),
         });
         launchControls = { hostId, itemKey: item.key, element };
+        return element;
+      };
+
+      const longContextControlFor = (
+        hostId: string,
+        item: ConnectionListItem,
+      ): HTMLElement | null => {
+        const agent = item.agentSnapshot?.agent;
+        const availability = item.agentSnapshot?.availability;
+        const getLongContext = diagnostics?.getLongContext;
+        const setLongContext = diagnostics?.setLongContext;
+        if (
+          agent !== "claude-code" ||
+          availability === "notInstalled" ||
+          availability === "checking" ||
+          !getLongContext ||
+          !setLongContext
+        ) {
+          return null;
+        }
+        const key = JSON.stringify([hostId, agent]);
+        const cached = longContextControls.get(key);
+        if (cached) return cached;
+        const element = createClaudeLongContextControl(document, messages, {
+          get: () => getLongContext(hostId, agent),
+          set: (enabled) => setLongContext(hostId, agent, enabled),
+        });
+        longContextControls.set(key, element);
         return element;
       };
 
@@ -1061,6 +1101,7 @@ export function createConnectionsSettingsPage(
             launchControlsFor(selectedHost.hostId, item),
             supplements.versionCapable,
             supplements.nodes,
+            longContextControlFor(selectedHost.hostId, item),
           );
           rowElements.set(item.key, row);
           rows.append(block);
@@ -1140,6 +1181,7 @@ export function createConnectionsSettingsPage(
                 launchControlsFor(selectedHost.hostId, item),
                 supplements.versionCapable,
                 supplements.nodes,
+                longContextControlFor(selectedHost.hostId, item),
               );
               rowElements.set(item.key, row);
               zone.append(block);

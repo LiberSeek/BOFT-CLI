@@ -120,6 +120,14 @@ export function createConsoleConnectionDiagnostics(
       if (!client.setHarnessLaunchSettings) throw new Error("Launch settings are unavailable");
       return client.setHarnessLaunchSettings({ harnessId: agent as never, path });
     },
+    async getLongContext(_hostId, agent) {
+      if (!client.getHarnessLongContext) throw new Error("1M context is unavailable");
+      return client.getHarnessLongContext({ harnessId: agent as never });
+    },
+    async setLongContext(_hostId, agent, enabled) {
+      if (!client.setHarnessLongContext) throw new Error("1M context is unavailable");
+      return client.setHarnessLongContext({ harnessId: agent as never, enabled });
+    },
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

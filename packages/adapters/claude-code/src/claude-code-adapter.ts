@@ -81,6 +81,7 @@ import { ClaudeSessionImportIndex } from "./claude-session-import.js";
 import { mapClaudeSnapshot, mapClaudeSubagentSnapshot } from "./claude-history.js";
 import { claudeTranscriptItemId } from "./item-identity.js";
 import { readClaudeSubagentTranscript, readClaudeTranscript } from "./claude-transcript.js";
+import { claudeSessionModel, readClaudeLongContext, writeClaudeLongContext } from "./long-context.js";
 import {
   CLAUDE_DEFAULT_MODEL_REF,
   decodeClaudeModelRef,
@@ -577,6 +578,8 @@ class ClaudeHarnessSession implements HarnessSession {
   #startupTask: Promise<ClaudeTurnTransport> | null = null;
   readonly #randomUUID: () => string;
   #requestedModel: HarnessModelRef | undefined;
+  #sdkModel: string | undefined;
+  readonly #longContextEnabled: () => Promise<boolean>;
   #requestedPermissionModeId: HarnessPermissionModeId;
   #requestedThinkingOptionId: HarnessThinkingOptionId;
   readonly #readSessionMessages: ClaudeAdapterDependencies["readSessionMessages"];
@@ -636,6 +639,7 @@ class ClaudeHarnessSession implements HarnessSession {
       pendingSessions: ClaudePendingSessions;
       knownConfiguration?: boolean;
       requestedModel?: HarnessModelRef;
+      longContextEnabled: () => Promise<boolean>;
       requestedPermissionModeId: HarnessPermissionModeId;
       requestedThinkingOptionId: HarnessThinkingOptionId;
       toolOutputLimit: number;
@@ -658,6 +662,7 @@ class ClaudeHarnessSession implements HarnessSession {
     this.#onPlanLimitObserved = onPlanLimitObserved;
     this.#openMode = options.openMode;
     this.#requestedModel = options.requestedModel;
+    this.#longContextEnabled = options.longContextEnabled;
     this.#requestedPermissionModeId = options.requestedPermissionModeId;
     this.#requestedThinkingOptionId = options.requestedThinkingOptionId;
     this.#sessionId = options.sessionId;
@@ -1121,6 +1126,28 @@ class ClaudeHarnessSession implements HarnessSession {
     }
   }
 
+  async applyLongContext(enabled: boolean): Promise<void> {
+    const transport = this.#transport;
+    if (!transport || this.#phase !== "open") return;
+    if (this.#acceptingTurn || this.#configurationTask || this.#readingHistory || this.#active) {
+      return;
+    }
+    let decoded: string | undefined;
+    try {
+      decoded = this.#requestedModel ? decodeClaudeModelRef(this.#requestedModel) : undefined;
+    } catch {
+      return;
+    }
+    const sessionModel = claudeSessionModel(decoded, enabled);
+    if (sessionModel === this.#sdkModel) return;
+    await transport.setModel(sessionModel);
+    this.#sdkModel = sessionModel;
+    this.#usageGeneration += 1;
+    this.#contextUsageFreshUntilMs = 0;
+    this.#contextUsageCooldownUntilMs = 0;
+    this.#requestContextUsage(transport, undefined, CONTEXT_USAGE_RETRY_DELAYS_MS);
+  }
+
   refreshUsage(): Promise<void> {
     if (this.#phase !== "open" || !this.#transport) return Promise.resolve();
     const now = Date.now();
@@ -1190,7 +1217,9 @@ class ClaudeHarnessSession implements HarnessSession {
       const transport = this.#transport;
       if (transport) {
         try {
-          await transport.setModel(model);
+          const sessionModel = claudeSessionModel(model, await this.#longContextEnabled());
+          await transport.setModel(sessionModel);
+          this.#sdkModel = sessionModel;
         } catch {
           return {
             ok: false,
@@ -1546,7 +1575,11 @@ class ClaudeHarnessSession implements HarnessSession {
     }
     const selectedModel =
       this.#requestedModel ?? (this.#openMode === "create" ? CLAUDE_DEFAULT_MODEL_REF : undefined);
-    const model = selectedModel ? decodeClaudeModelRef(selectedModel) : undefined;
+    const model = claudeSessionModel(
+      selectedModel ? decodeClaudeModelRef(selectedModel) : undefined,
+      await this.#longContextEnabled(),
+    );
+    this.#sdkModel = model;
     const permissionMode = decodeClaudePermissionModeId(this.#requestedPermissionModeId);
     let transport: ClaudeTurnTransport;
     try {
@@ -2786,12 +2819,14 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #inspectionInFlight = new Map<string, Promise<HarnessInspection>>();
   readonly #inspectors = new Set<ClaudeModelInspector>();
   readonly #sessions = new Set<ClaudeHarnessSession>();
+  readonly #environment: NodeJS.ProcessEnv;
   #closePromise: Promise<void> | null = null;
   #latestPlanLimit: ClaudePlanLimitEvent | null = null;
   #accountInspection: Promise<HarnessAccountSnapshot | null> | null = null;
 
   constructor(options: ClaudeCodeAdapterOptions = {}, dependencies?: ClaudeAdapterDependencies) {
     const environment = options.environment ?? process.env;
+    this.#environment = environment;
     this.#pendingSessions = new ClaudePendingSessions(environment);
     this.#closeTimeoutMs = options.closeTimeoutMs ?? DEFAULT_CLOSE_TIMEOUT_MS;
     this.#cancelTimeoutMs = options.cancelTimeoutMs ?? DEFAULT_CANCEL_TIMEOUT_MS;
@@ -3239,6 +3274,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
             ? nativeRef.data.nativeSessionId
             : this.#dependencies.randomUUID(),
         ...(requestedModel ? { requestedModel } : {}),
+        longContextEnabled: () => readClaudeLongContext(this.#environment),
         requestedPermissionModeId,
         requestedThinkingOptionId,
         toolOutputLimit: this.#toolOutputLimit,
@@ -3269,6 +3305,20 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   credits(): AccountCreditsSnapshot | null {
     return projectClaudePlanLimitToCredits(this.#latestPlanLimit);
+  }
+
+  async getLongContext(): Promise<{ enabled: boolean }> {
+    return { enabled: await readClaudeLongContext(this.#environment) };
+  }
+
+  async setLongContext(enabled: boolean): Promise<{ enabled: boolean }> {
+    const stored = await writeClaudeLongContext(this.#environment, enabled);
+    await Promise.all(
+      [...this.#sessions].map((session) =>
+        session.applyLongContext(stored).catch(() => undefined),
+      ),
+    );
+    return { enabled: stored };
   }
 
   close(): Promise<void> {

@@ -606,6 +606,12 @@ export interface HarnessAdapter {
    * starts a model Turn, or restarts existing Sessions. Commands are Adapter-owned.
    */
   installation?(action: "check" | "update"): Promise<HarnessInstallationState>;
+  /**
+   * Host-local 1M context preference. Missing means the Adapter does not offer
+   * the switch. It must not start a Turn or change the stored Model Ref.
+   */
+  getLongContext?(): Promise<{ enabled: boolean }>;
+  setLongContext?(enabled: boolean): Promise<{ enabled: boolean }>;
   readonly credentialExport?: HarnessCredentialExport;
   readonly credentialImports?: HarnessCredentialImports;
   readonly harnessId: HarnessId;

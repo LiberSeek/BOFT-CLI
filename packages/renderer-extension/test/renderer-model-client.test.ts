@@ -2,6 +2,8 @@ import {
   HARNESS_INSTALLATION_METHOD,
   HARNESS_LAUNCH_SETTINGS_GET_METHOD,
   HARNESS_LAUNCH_SETTINGS_SET_METHOD,
+  HARNESS_LONG_CONTEXT_GET_METHOD,
+  HARNESS_LONG_CONTEXT_SET_METHOD,
   harnessIdSchema,
   harnessModelRefSchema,
   harnessPermissionModeIdSchema,
@@ -136,6 +138,27 @@ describe("Renderer fixed Model request client", () => {
     ).rejects.toThrow();
     sendRequest.mockResolvedValueOnce({ path: 42 });
     await expect(client.getHarnessLaunchSettings?.({ harnessId })).rejects.toThrow();
+  });
+
+  it("validates 1M context requests and responses", async () => {
+    const harnessId = harnessIdSchema.parse("claude-code");
+    const sendRequest = vi.fn().mockResolvedValue({ enabled: true });
+    const client = createRendererModelClient([{ sendRequest }]);
+    if (!client) throw new Error("Expected a model client");
+    expect(await client.getHarnessLongContext?.({ harnessId })).toEqual({ enabled: true });
+    expect(sendRequest).toHaveBeenLastCalledWith(HARNESS_LONG_CONTEXT_GET_METHOD, { harnessId });
+    expect(await client.setHarnessLongContext?.({ harnessId, enabled: false })).toEqual({
+      enabled: true,
+    });
+    expect(sendRequest).toHaveBeenLastCalledWith(HARNESS_LONG_CONTEXT_SET_METHOD, {
+      harnessId,
+      enabled: false,
+    });
+    await expect(
+      client.setHarnessLongContext?.({ harnessId, enabled: "yes" as never }),
+    ).rejects.toThrow();
+    sendRequest.mockResolvedValueOnce({ enabled: "yes" });
+    await expect(client.getHarnessLongContext?.({ harnessId })).rejects.toThrow();
   });
   it("reads draft quota for the selected Account without activating it", async () => {
     const result = {
@@ -393,6 +416,7 @@ describe("Renderer fixed Model request client", () => {
       "forkThread",
       "getHarnessDisplaySettings",
       "getHarnessLaunchSettings",
+      "getHarnessLongContext",
       "importHarnessSession",
       "inspectCodexAccountUsage",
       "inspectHarness",
@@ -420,6 +444,7 @@ describe("Renderer fixed Model request client", () => {
       "selectThreadThinking",
       "setHarnessDisplaySettings",
       "setHarnessLaunchSettings",
+      "setHarnessLongContext",
       "setIdleReleaseSettings",
       "startUpdate",
       "subscribeCodexAccounts",

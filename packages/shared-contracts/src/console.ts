@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  HARNESS_LONG_CONTEXT_GET_METHOD,
+  HARNESS_LONG_CONTEXT_SET_METHOD,
+} from "./harness-long-context.js";
+
 /** A validated, visible project announcement; disabled documents become null. */
 export const consoleAnnouncementSchema = z.strictObject({
   title: z.string().trim().min(1).max(200),
@@ -39,6 +44,8 @@ export const CONSOLE_HOST_METHODS = Object.freeze([
   "codexhost/harness/inspect",
   "codexhost/harness/launch-settings/get",
   "codexhost/harness/launch-settings/set",
+  HARNESS_LONG_CONTEXT_GET_METHOD,
+  HARNESS_LONG_CONTEXT_SET_METHOD,
   "codexhost/harness/web-ui/open",
   "codexhost/harness/accounts/sources",
   "codexhost/harness/accounts/list",

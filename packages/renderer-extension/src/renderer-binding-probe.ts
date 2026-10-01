@@ -2476,6 +2476,16 @@ export function installRendererBindingProbe(
       if (!client?.setHarnessLaunchSettings) throw new Error("Launch settings are unavailable");
       return client.setHarnessLaunchSettings({ harnessId: externalHarnessIds[agent], path });
     },
+    async getLongContext(hostId, agent) {
+      const client = modelClientForHost(hostId);
+      if (!client?.getHarnessLongContext) throw new Error("1M context is unavailable");
+      return client.getHarnessLongContext({ harnessId: externalHarnessIds[agent] });
+    },
+    async setLongContext(hostId, agent, enabled) {
+      const client = modelClientForHost(hostId);
+      if (!client?.setHarnessLongContext) throw new Error("1M context is unavailable");
+      return client.setHarnessLongContext({ harnessId: externalHarnessIds[agent], enabled });
+    },
     async openWebUi(hostId: string, agent: ExternalRendererAgent): Promise<void> {
       const state = hostHarnessAvailabilityState(hostId);
       const client = hostId === "local" ? modelClientForHost(hostId) : null;

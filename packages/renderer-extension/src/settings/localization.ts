@@ -197,6 +197,10 @@ export interface RendererSettingsMessages {
   readonly connectionOpenHarnessWeb: string;
   readonly connectionDeepSeekTestedVersions: string;
   readonly connectionInstall: string;
+  readonly connectionLongContextLabel: string;
+  readonly connectionLongContextOn: string;
+  readonly connectionLongContextOff: string;
+  readonly connectionLongContextModelsLabel: string;
   readonly connectionInstallDescription: string;
   readonly connectionInstallCommand: string;
   readonly connectionCopyPrompt: string;
@@ -487,6 +491,11 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionDeepSeekTestedVersions:
     "Supported DSH versions: 0.1.2-rc.1, 0.1.5-rc.1, 0.1.5-rc.2, 0.1.5-rc.3, 0.1.7-rc.1 and 0.1.7-rc.2. Other versions may connect after native protocol checks, but are not listed as supported.",
   connectionInstall: "Install",
+  connectionLongContextLabel: "1M",
+  connectionLongContextOn:
+    "On: Claude models use a 1M context window. Claude CLI uses that larger window locally.",
+  connectionLongContextOff: "Off: Claude models use the 200k window.",
+  connectionLongContextModelsLabel: "Models:",
   connectionInstallDescription:
     "This Harness was not detected. Copy the official install command, copy an install prompt for another Agent, or open the official installation page. After installing, return here and run the check again.",
   connectionInstallCommand: "Install command",
@@ -804,6 +813,11 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionDeepSeekTestedVersions:
     "支持 DSH 版本：0.1.2-rc.1、0.1.5-rc.1、0.1.5-rc.2、0.1.5-rc.3、0.1.7-rc.1 和 0.1.7-rc.2。其他版本可以在通过原生协议检查后尝试连接，但尚未列入支持列表。",
   connectionInstall: "安装",
+  connectionLongContextLabel: "1M",
+  connectionLongContextOn:
+    "开启后: Claude 模型使用 1M 上下文。Claude CLI 会在本地按这个更大的窗口工作。",
+  connectionLongContextOff: "关闭后: Claude 模型将使用 200k 窗口。",
+  connectionLongContextModelsLabel: "适配模型:",
   connectionInstallDescription:
     "尚未检测到该 Harness。可以复制官方安装命令、复制安装 Prompt 交给其他 Agent 执行，或前往官方安装页面。安装完成后请返回此页面重新检查。",
   connectionInstallCommand: "安装命令",

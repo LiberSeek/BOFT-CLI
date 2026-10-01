@@ -29,6 +29,7 @@ vi.mock("../../src/assets/logo-animated.mp4", () => ({
 }));
 
 import { createAgentGroupPreferenceStore } from "../../src/agent-group-preference.js";
+import { CLAUDE_LONG_CONTEXT_MODELS } from "../../src/settings/claude-long-context-control.js";
 import { RendererSettingsPageScope } from "../../src/settings/core.js";
 import {
   createConnectionsSettingsPage,
@@ -78,6 +79,7 @@ class FakeElement {
   value = "";
   tabIndex = 0;
   disabled = false;
+  checked = false;
   focused = false;
   open = false;
   parent: FakeElement | undefined;
@@ -152,6 +154,16 @@ class FakeElement {
 
   getAttribute(name: string): string | null {
     return this.attributes.get(name) ?? null;
+  }
+
+  closest(selector: string): FakeElement | null {
+    const tokens = selector.split(",").map((token) => token.trim().toLowerCase());
+    let current: FakeElement | undefined = this;
+    while (current) {
+      if (tokens.includes(current.tagName.toLowerCase())) return current;
+      current = current.parent;
+    }
+    return null;
   }
 
   replaceChildren(...children: unknown[]): void {
@@ -1632,6 +1644,144 @@ describe("Renderer Connections page", () => {
     ).toBe(true);
 
     cleanup?.();
+  });
+
+  it("shows the 1M switch after Claude CLI is installed and keeps the download button before that", async () => {
+    const messages = rendererSettingsMessages("zh-CN");
+    let resolveGet: (value: { enabled: boolean }) => void = () => undefined;
+    const getLongContext = vi.fn(
+      () =>
+        new Promise<{ enabled: boolean }>((resolve) => {
+          resolveGet = resolve;
+        }),
+    );
+    const setLongContext = vi.fn(async (_hostId: string, _agent: string, enabled: boolean) => ({
+      enabled,
+    }));
+    const diagnostics: RendererConnectionDiagnostics = {
+      snapshot: () => ({
+        adapter: { state: "ready", reason: "ready", modelUpdates: 1, hook: "request-bridge" },
+        hosts: [
+          {
+            hostId: "local",
+            active: true,
+            agents: [
+              { agent: "claude-code", availability: "ready", error: null },
+              { agent: "pi", availability: "ready", error: null },
+            ],
+          },
+        ],
+      }),
+      refresh: vi.fn(async () => undefined),
+      installation: vi.fn(async () => {
+        throw new Error("version check is not part of this interaction");
+      }),
+      getLongContext,
+      setLongContext,
+      subscribe: () => () => undefined,
+    };
+    const page = createConnectionsSettingsPage(messages, () => diagnostics);
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+    const claude = descendants(content).find(
+      (element) => element.dataset.connectionItem === "claude-code",
+    );
+    const pi = descendants(content).find((element) => element.dataset.connectionItem === "pi");
+    if (!claude || !pi) throw new Error("Expected Claude and Pi rows");
+    const switches = descendants(content).filter((element) =>
+      element.className.split(" ").includes("settings-connection-long-context"),
+    );
+    expect(switches).toHaveLength(1);
+    expect(descendants(claude)).toContain(switches[0]);
+    expect(descendants(pi).some((element) => element.className.includes("long-context"))).toBe(
+      false,
+    );
+    expect(
+      descendants(content).some((element) =>
+        element.className.split(" ").includes("settings-connection-install-link"),
+      ),
+    ).toBe(false);
+    const input = descendants(switches[0]!).find((element) => element.tagName === "input");
+    if (!input) throw new Error("Expected 1M switch");
+    expect(input.checked).toBe(true);
+    expect(input.getAttribute("aria-checked")).toBe("true");
+    expect(input.getAttribute("role")).toBe("switch");
+    const tooltip = descendants(switches[0]!).find(
+      (element) => element.getAttribute("role") === "tooltip",
+    );
+    expect(tooltip?.hidden).toBe(true);
+    expect(
+      descendants(tooltip!).flatMap((element) =>
+        element.textContent ? [element.textContent] : [],
+      ),
+    ).toEqual([
+      messages.connectionLongContextOn,
+      messages.connectionLongContextOff,
+      messages.connectionLongContextModelsLabel,
+      ...CLAUDE_LONG_CONTEXT_MODELS.map((model) => `${model.id} (${model.window})`),
+    ]);
+    resolveGet({ enabled: false });
+    await vi.waitFor(() => expect(input.checked).toBe(false));
+    input.checked = true;
+    input.dispatch("change");
+    await vi.waitFor(() =>
+      expect(setLongContext).toHaveBeenCalledWith("local", "claude-code", true),
+    );
+    await vi.waitFor(() => expect(input.disabled).toBe(false));
+    expect(input.checked).toBe(true);
+    claude.dispatch("click", { target: input });
+    expect(claude.dataset.connectionExpanded).toBe("false");
+    expect(diagnostics.installation).not.toHaveBeenCalled();
+    setLongContext.mockRejectedValueOnce(new Error("save failed"));
+    input.checked = false;
+    input.dispatch("change");
+    await vi.waitFor(() => expect(input.checked).toBe(true));
+    expect(input.disabled).toBe(false);
+    cleanup?.();
+    scope.dispose();
+
+    const missing: RendererConnectionDiagnostics = {
+      snapshot: () => ({
+        adapter: { state: "ready", reason: "ready", modelUpdates: 1, hook: "request-bridge" },
+        hosts: [
+          {
+            hostId: "local",
+            active: true,
+            agents: [{ agent: "claude-code", availability: "notInstalled", error: null }],
+          },
+        ],
+      }),
+      refresh: vi.fn(async () => undefined),
+      getLongContext,
+      setLongContext,
+      subscribe: () => () => undefined,
+    };
+    const missingPage = createConnectionsSettingsPage(messages, () => missing);
+    const missingContent = document.createElement("main");
+    const missingScope = new RendererSettingsPageScope();
+    const missingCleanup = missingPage.mount({
+      content: missingContent as unknown as HTMLElement,
+      signal: missingScope.signal,
+      runLatest: (operation, handlers) => missingScope.runLatest(operation, handlers),
+    });
+    expect(
+      descendants(missingContent).some((element) =>
+        element.className.split(" ").includes("settings-connection-install-link"),
+      ),
+    ).toBe(true);
+    expect(
+      descendants(missingContent).some((element) =>
+        element.className.split(" ").includes("settings-connection-long-context"),
+      ),
+    ).toBe(false);
+    missingCleanup?.();
+    missingScope.dispose();
   });
 });
 
