@@ -81,7 +81,11 @@ import { ClaudeSessionImportIndex } from "./claude-session-import.js";
 import { mapClaudeSnapshot, mapClaudeSubagentSnapshot } from "./claude-history.js";
 import { claudeTranscriptItemId } from "./item-identity.js";
 import { readClaudeSubagentTranscript, readClaudeTranscript } from "./claude-transcript.js";
-import { claudeSessionModel, readClaudeLongContext, writeClaudeLongContext } from "./long-context.js";
+import {
+  claudeSessionModel,
+  readClaudeLongContext,
+  writeClaudeLongContext,
+} from "./long-context.js";
 import {
   CLAUDE_DEFAULT_MODEL_REF,
   decodeClaudeModelRef,
@@ -3314,9 +3318,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   async setLongContext(enabled: boolean): Promise<{ enabled: boolean }> {
     const stored = await writeClaudeLongContext(this.#environment, enabled);
     await Promise.all(
-      [...this.#sessions].map((session) =>
-        session.applyLongContext(stored).catch(() => undefined),
-      ),
+      [...this.#sessions].map((session) => session.applyLongContext(stored).catch(() => undefined)),
     );
     return { enabled: stored };
   }
