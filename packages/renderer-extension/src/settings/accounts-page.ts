@@ -33,6 +33,8 @@ export interface RendererCodexAccountClient
   refreshCodexAccounts?(): Promise<CodexAccountListResult>;
   inspectCodexAccountUsage?(input: CodexAccountUsageParams): Promise<CodexAccountUsageResult>;
   subscribeCodexAccounts?(listener: (result: CodexAccountChanged) => void): () => void;
+  /** Opens an API Account site in the operating-system browser. */
+  openExternalUrl?(url: string): Promise<void>;
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -205,6 +207,16 @@ export function createAccountsSettingsPage(
                   onRetry: () => {
                     usageByAccountId.delete(account.accountId);
                     loadUsage(accounts);
+                  },
+                  onOpenSite: (url) => {
+                    const open = getClient()?.openExternalUrl;
+                    if (!open) {
+                      document.defaultView?.open(url, "_blank", "noopener,noreferrer");
+                      return;
+                    }
+                    void open(url).catch(() => {
+                      document.defaultView?.open(url, "_blank", "noopener,noreferrer");
+                    });
                   },
                   onResetExpanded: (open) => {
                     if (open) expandedResetAccounts.add(account.accountId);

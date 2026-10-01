@@ -7,6 +7,8 @@ import ChevronDown from "lucide/dist/esm/icons/chevron-down.mjs";
 import ChevronLeft from "lucide/dist/esm/icons/chevron-left.mjs";
 import ChevronRight from "lucide/dist/esm/icons/chevron-right.mjs";
 import ChevronUp from "lucide/dist/esm/icons/chevron-up.mjs";
+import ChevronsDown from "lucide/dist/esm/icons/chevrons-down.mjs";
+import ChevronsUp from "lucide/dist/esm/icons/chevrons-up.mjs";
 import CircleArrowUp from "lucide/dist/esm/icons/circle-arrow-up.mjs";
 import CircleOff from "lucide/dist/esm/icons/circle-off.mjs";
 import Copy from "lucide/dist/esm/icons/copy.mjs";
@@ -73,6 +75,8 @@ export const RENDERER_SETTINGS_ICON_NAMES = [
   "chevron-right",
   "chevron-down",
   "chevron-up",
+  "chevrons-down",
+  "chevrons-up",
   "grip-vertical",
   "undo",
   "ticket",
@@ -128,6 +132,8 @@ const iconNodes = {
   "chevron-right": ChevronRight,
   "chevron-down": ChevronDown,
   "chevron-up": ChevronUp,
+  "chevrons-down": ChevronsDown,
+  "chevrons-up": ChevronsUp,
   "grip-vertical": GripVertical,
   undo: RotateCcw,
   ticket: Ticket,

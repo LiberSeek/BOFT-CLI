@@ -131,7 +131,7 @@ impl Error for UnmanagedDesktopConflict {}
 
 fn usage() {
     eprintln!(
-        "usage:\n  boft\n  boft inspect [--json] [--custom-install <absolute-directory>]\n  boft console\n  boft launch [--shim <absolute-file>] [--node <absolute-file>] [--host-runtime <absolute-file>] [--desktop-controller <absolute-file>] [--renderer <absolute-file>] [--pi <absolute-file>] [--custom-install <absolute-directory>]\n  boft broker install|status|stop|uninstall\n  boft delegate --help\n  boft harness inspect ...\n  boft delegate start ...\n  boft thread send|cancel|read|wait|list ..."
+        "usage:\n  boft\n  boft inspect [--json] [--custom-install <absolute-directory>]\n  boft console\n  boft launch [--shim <absolute-file>] [--node <absolute-file>] [--host-runtime <absolute-file>] [--desktop-controller <absolute-file>] [--renderer <absolute-file>] [--pi <absolute-file>] [--custom-install <absolute-directory>]\n  boft open-http-url\n  boft broker install|status|stop|uninstall\n  boft delegate --help\n  boft harness inspect ...\n  boft delegate start ...\n  boft thread send|cancel|read|wait|list ..."
     );
 }
 
@@ -160,6 +160,53 @@ fn validate_loopback_root_url(value: &str) -> Result<(), &'static str> {
         });
     if !loopback {
         return Err("native URL must target a loopback authority with an explicit port");
+    }
+    Ok(())
+}
+
+fn validate_external_http_url(value: &str) -> Result<(), &'static str> {
+    if value.is_empty() || value.len() > 2048 {
+        return Err("external URL must be an http(s) address");
+    }
+    let rest = value
+        .strip_prefix("https://")
+        .or_else(|| value.strip_prefix("http://"))
+        .ok_or("external URL must use HTTP or HTTPS")?;
+    if rest.is_empty() || rest.contains('@') || rest.contains('\\') || rest.contains(' ') {
+        return Err("external URL must be an uncredentialed HTTP address");
+    }
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    if authority.is_empty() || authority.contains('%') {
+        return Err("external URL must include a host");
+    }
+    if let Some(host) = authority.strip_prefix('[') {
+        let (host, port) = host
+            .split_once(']')
+            .ok_or("external URL must include a host")?;
+        if host.is_empty() {
+            return Err("external URL must include a host");
+        }
+        if port.is_empty() {
+            return Ok(());
+        }
+        let port = port
+            .strip_prefix(':')
+            .ok_or("external URL port is invalid")?;
+        if port.parse::<u16>().is_err() {
+            return Err("external URL port is invalid");
+        }
+        return Ok(());
+    }
+    if let Some((host, port)) = authority.rsplit_once(':')
+        && port.chars().all(|character| character.is_ascii_digit())
+    {
+        if host.is_empty() || port.parse::<u16>().is_err() {
+            return Err("external URL port is invalid");
+        }
+        return Ok(());
+    }
+    if authority.contains(':') {
+        return Err("external URL must include a host");
     }
     Ok(())
 }
@@ -1319,6 +1366,12 @@ fn run(arguments: &[String]) -> Result<(), Box<dyn Error>> {
             codexhost_platform::open_external_url(&url).map_err(Into::into)
         }
         Some("open-loopback-url") => Err("open-loopback-url accepts no arguments".into()),
+        Some("open-http-url") if arguments.len() == 1 => {
+            let url = read_bounded_loopback_url(std::io::stdin().lock())?;
+            validate_external_http_url(&url)?;
+            codexhost_platform::open_external_url(&url).map_err(Into::into)
+        }
+        Some("open-http-url") => Err("open-http-url accepts no arguments".into()),
         Some("broker") => run_native_harness_broker_cli(&arguments[1..]),
         Some("harness") | Some("delegate") | Some("thread") => run_delegation_cli(arguments),
         _ => {
@@ -1407,7 +1460,7 @@ mod tests {
         allocate_runtime_control, delegation_node, desktop_controller_command, desktop_environment,
         emit_ready_line, managed_desktop_data_directory, npm_update_runtime_environment,
         parse_inspect_options, parse_launch_options, read_bounded_controller_line,
-        read_bounded_loopback_url, validate_loopback_root_url,
+        read_bounded_loopback_url, validate_external_http_url, validate_loopback_root_url,
     };
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     use super::{DESKTOP_TREE_REFRESH_INTERVAL, desktop_tree_refresh_due};
@@ -1450,6 +1503,31 @@ mod tests {
         ] {
             assert!(validate_loopback_root_url(&rejected).is_err(), "{rejected}");
         }
+    }
+
+    #[test]
+    fn external_http_url_accepts_public_sites_only() {
+        for accepted in [
+            "https://platform.openai.com",
+            "https://bank.example/path?q=1#usage",
+            "http://127.0.0.1:43123/",
+            "https://[::1]",
+            "https://[::1]:443/",
+        ] {
+            assert!(validate_external_http_url(accepted).is_ok(), "{accepted}");
+        }
+        for rejected in [
+            "file:///tmp/page",
+            "javascript:alert(1)",
+            "https://user:secret@bank.example",
+            "https://user@bank.example",
+            "https://bank.example\\windows",
+            "https://",
+            "https://bank.example:abc",
+        ] {
+            assert!(validate_external_http_url(rejected).is_err(), "{rejected}");
+        }
+        assert!(validate_external_http_url(&"https://bank.example/".repeat(200)).is_err());
     }
 
     #[test]

@@ -6,6 +6,9 @@ import {
   CONSOLE_OPEN_METHOD,
   consoleOpenParamsSchema,
   consoleOpenResultSchema,
+  EXTERNAL_URL_OPEN_METHOD,
+  externalUrlOpenParamsSchema,
+  externalUrlOpenResultSchema,
 } from "@codexhost/shared-contracts";
 import {
   DELEGATION_MENTION_PATH_PREFIX,
@@ -305,6 +308,8 @@ export interface AppServerHostOptions {
   updateCoordinator?: HostUpdateCoordinator;
   /** Present only on the local Host started by the Launcher. */
   consoleOpener?: HostConsoleOpener;
+  /** Opens an http(s) URL in the OS browser. Local Host only. */
+  externalUrlOpener?: (url: string) => Promise<void>;
   onDelegationApi?: (api: DelegationControlRegistration) => (() => void) | undefined;
 }
 
@@ -1167,6 +1172,10 @@ export class AppServerHost {
     }
     if (request.method === CONSOLE_OPEN_METHOD) {
       this.#dispatchDesktopRequest(() => this.#handleConsoleOpen(request));
+      return;
+    }
+    if (request.method === EXTERNAL_URL_OPEN_METHOD) {
+      this.#dispatchDesktopRequest(() => this.#handleExternalUrlOpen(request));
       return;
     }
     if (
@@ -2743,6 +2752,29 @@ export class AppServerHost {
     try {
       const result = consoleOpenResultSchema.parse(await opener.open());
       await this.#writer.json(rpcEnvelope(request, { result }));
+    } catch (error) {
+      await this.#writer.json(rpcError(request, -32092, errorMessage(error).slice(0, 500)));
+    }
+  }
+
+  async #handleExternalUrlOpen(request: JsonRpcRequest): Promise<void> {
+    const params = externalUrlOpenParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      await this.#writer.json(rpcError(request, -32602, "External URL must be http(s)"));
+      return;
+    }
+    const opener = this.#options.externalUrlOpener;
+    if (!opener) {
+      await this.#writer.json(
+        rpcError(request, -32090, "Opening a site is available on the local Host only"),
+      );
+      return;
+    }
+    try {
+      await opener(params.data.url);
+      await this.#writer.json(
+        rpcEnvelope(request, { result: externalUrlOpenResultSchema.parse({}) }),
+      );
     } catch (error) {
       await this.#writer.json(rpcError(request, -32092, errorMessage(error).slice(0, 500)));
     }

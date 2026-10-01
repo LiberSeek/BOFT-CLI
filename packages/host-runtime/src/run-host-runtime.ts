@@ -38,6 +38,7 @@ import { watchRemoteListenerSupervisor } from "./remote-listener-supervisor.js";
 import { remoteOfficialAppServerSocketPath } from "./remote-official-app-server.js";
 import { startConsoleControlServer } from "./console-control-server.js";
 import { consoleEntrypoint, createHostConsoleOpener } from "./console-opener.js";
+import { createLauncherExternalUrlOpener } from "./launcher-url-opener.js";
 import { createHostUpdateCoordinator, type HostUpdateCoordinator } from "./update-coordinator.js";
 
 const STOCK_CODEX_PATH_ENV = "CODEXHOST_STOCK_CODEX_PATH";
@@ -194,6 +195,10 @@ export async function runHostRuntime(input: {
   const consoleOpener = consoleEntry
     ? createHostConsoleOpener({ entrypoint: consoleEntry, environment: input.environment })
     : undefined;
+  const externalUrlOpener =
+    input.environment.CODEXHOST_REMOTE_SSH_MANAGED === "1"
+      ? undefined
+      : createLauncherExternalUrlOpener(input.environment);
 
   if (!isRemoteUnixListenerInvocation(input.arguments)) {
     const remoteControlPlan = createRemoteControlAppServerPlan({
@@ -227,6 +232,7 @@ export async function runHostRuntime(input: {
               onDelegationApi,
               ...(updateCoordinator ? { updateCoordinator } : {}),
               ...(consoleOpener ? { consoleOpener } : {}),
+              ...(externalUrlOpener ? { externalUrlOpener } : {}),
             });
             return await runWithConsoleControl(
               host,
@@ -251,6 +257,7 @@ export async function runHostRuntime(input: {
             closeMappingStoreOnExit: false,
             ...(updateCoordinator ? { updateCoordinator } : {}),
             ...(consoleOpener ? { consoleOpener } : {}),
+            ...(externalUrlOpener ? { externalUrlOpener } : {}),
           };
           const host = new AppServerHost({
             ...common,

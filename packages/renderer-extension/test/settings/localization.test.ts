@@ -34,8 +34,6 @@ describe("Renderer settings localization", () => {
     expect(english.title).toBe("Settings");
     expect(chinese.title).toBe("设置");
     expect(chinese.openSettings).toBe("打开 BOFT CLI 设置");
-    expect(chinese.starOnGitHub).toBe("Star 支持");
-    expect(english.starOnGitHub).toBe("Star to support");
     expect(chinese.updateInstallation).toBe("安装方式");
     expect(chinese.updateInstallationWindowsInstaller).toBe("Windows 安装程序");
     expect(english.updateInstallationMacOsDmg).toBe("macOS DMG");

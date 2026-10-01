@@ -546,7 +546,7 @@ function createConnectionBlock(
     toggle.title = group.moveLabel;
     toggle.setAttribute("aria-label", group.moveLabel);
     toggle.append(
-      createRendererSettingsIcon(group.section === "main" ? "chevron-down" : "chevron-up", 15),
+      createRendererSettingsIcon(group.section === "main" ? "chevrons-down" : "chevrons-up", 17),
     );
     toggle.addEventListener("click", (event) => {
       event.stopPropagation();

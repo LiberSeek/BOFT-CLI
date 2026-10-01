@@ -13,6 +13,8 @@ import {
   consoleOpenParamsSchema,
   consoleOpenResultSchema,
   type ConsoleOpenResult,
+  EXTERNAL_URL_OPEN_METHOD,
+  externalUrlOpenParamsSchema,
   HARNESS_LAUNCH_SETTINGS_GET_METHOD,
   HARNESS_LAUNCH_SETTINGS_SET_METHOD,
   harnessLaunchSettingsGetSchema,
@@ -225,6 +227,7 @@ export interface RendererModelClient extends Partial<RendererSessionImportClient
   startUpdate(): Promise<UpdateStartResult>;
   readUpdateStatus(): Promise<UpdateStatusResult>;
   openConsole?(): Promise<ConsoleOpenResult>;
+  openExternalUrl?(url: string): Promise<void>;
   inspectCodexAccountUsage?(input: CodexAccountUsageParams): Promise<CodexAccountUsageResult>;
   listHarnessAccountSources?(): Promise<HarnessAccountSourceListResult>;
   inspectHarnessAccount?(input: HarnessAccountInspectParams): Promise<HarnessAccountInspectResult>;
@@ -549,6 +552,12 @@ export function createRendererModelClient(
         consoleOpenParamsSchema.parse({}),
       );
       return consoleOpenResultSchema.parse(result);
+    },
+    async openExternalUrl(url: string): Promise<void> {
+      await manager.sendRequest(
+        EXTERNAL_URL_OPEN_METHOD,
+        externalUrlOpenParamsSchema.parse({ url }),
+      );
     },
     async inspectCodexAccountUsage(
       input: CodexAccountUsageParams,

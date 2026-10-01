@@ -109,7 +109,8 @@
   line-height: 16px;
   text-align: left;
 }
-.settings-account-table th:last-child {
+.settings-account-table th:last-child,
+.settings-account-table td.settings-account-management-cell {
   text-align: right;
 }
 .settings-account-table--api th:nth-child(1) {

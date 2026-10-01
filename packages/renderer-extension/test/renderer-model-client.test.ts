@@ -300,6 +300,18 @@ describe("Renderer fixed Model request client", () => {
     await expect(client.openConsole()).rejects.toThrow();
   });
 
+  it("opens an account site through the local Host and rejects non-web addresses", async () => {
+    const sendRequest = vi.fn().mockResolvedValue({});
+    const client = createRendererModelClient([{ addNotificationCallback: vi.fn(), sendRequest }]);
+    if (!client?.openExternalUrl) throw new Error("Synthetic Model client cannot open a site");
+    await expect(client.openExternalUrl("https://platform.openai.com")).resolves.toBeUndefined();
+    expect(sendRequest).toHaveBeenCalledWith("codexhost/external-url/open", {
+      url: "https://platform.openai.com",
+    });
+    await expect(client.openExternalUrl("file:///tmp/secret")).rejects.toThrow();
+    await expect(client.openExternalUrl("https://user:secret@bank.example")).rejects.toThrow();
+  });
+
   it("calls only the fixed inspect and select methods with validated params", async () => {
     let usageNotification: ((notification: unknown) => void) | undefined;
     const removeUsageNotification = vi.fn();
@@ -399,6 +411,7 @@ describe("Renderer fixed Model request client", () => {
       "listSessionImportSources",
       "listThreadOwnership",
       "openConsole",
+      "openExternalUrl",
       "openHarnessWebUi",
       "readUpdateStatus",
       "refreshCodexAccounts",

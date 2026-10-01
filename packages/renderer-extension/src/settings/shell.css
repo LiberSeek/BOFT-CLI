@@ -773,6 +773,7 @@
 .settings-segmented__item:focus-visible,
 .settings-connection-row:focus-visible,
 .settings-connection-install-link:focus-visible,
+.settings-connection-row__group-toggle:focus-visible,
 .settings-connection-view-error:focus-visible {
   outline: 2px solid var(--settings-focus);
   outline-offset: 1px;
@@ -1132,6 +1133,33 @@
   color: var(--settings-focus);
   background: var(--settings-active);
   border-color: var(--settings-border);
+}
+
+.settings-connection-row__group-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  padding: 0;
+  color: var(--settings-muted);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.settings-connection-row__group-toggle:hover,
+.settings-connection-row__group-toggle:focus-visible {
+  color: var(--settings-text);
+  background: var(--settings-hover);
+}
+
+.settings-connection-row__group-toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .settings-connection-view-error {
@@ -1497,11 +1525,30 @@
   border-radius: 12px;
 }
 
+.settings-about-product-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .settings-about-product {
+  min-width: 0;
   color: var(--settings-text);
   font-size: 24px;
   font-weight: 700;
   line-height: 32px;
+}
+
+.settings-about-product-row .settings-command-button {
+  flex: none;
+}
+
+.settings-about-console-status {
+  margin: -8px 0 0;
+  color: var(--settings-danger);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .settings-about-tagline {

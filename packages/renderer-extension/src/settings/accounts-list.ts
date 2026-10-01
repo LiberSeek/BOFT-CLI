@@ -216,6 +216,7 @@ function createApiSiteLink(
   accountId: string,
   siteUrl: string,
   label: string,
+  onOpenSite: (url: string) => void,
 ): HTMLAnchorElement {
   const link = document.createElement("a");
   link.className = "settings-account-action settings-account-site-link";
@@ -225,6 +226,11 @@ function createApiSiteLink(
   link.dataset.accountFocus = `${accountId}:site`;
   link.title = siteUrl;
   link.setAttribute("aria-label", `${messages.accountOpenSite}: ${label}`);
+  link.addEventListener("click", (event) => {
+    // Codex keeps target=_blank inside the Desktop window. The Host opens the OS browser.
+    event.preventDefault();
+    onOpenSite(siteUrl);
+  });
   link.append(messages.accountOpenSite, createRendererSettingsIcon("external-link", 14));
   return link;
 }
@@ -264,6 +270,7 @@ export function renderAccountRows(
     resetExpanded: boolean;
     onRetry: () => void;
     importAction?: HTMLElement | null;
+    onOpenSite?: (url: string) => void;
     onResetExpanded: (open: boolean) => void;
   },
 ): HTMLTableRowElement[] {
@@ -308,7 +315,13 @@ export function renderAccountRows(
     document,
     input.importAction ??
       (siteUrl
-        ? createApiSiteLink(document, messages, account.accountId, siteUrl, titleName)
+        ? createApiSiteLink(document, messages, account.accountId, siteUrl, titleName, (url) => {
+            if (input.onOpenSite) {
+              input.onOpenSite(url);
+              return;
+            }
+            document.defaultView?.open(url, "_blank", "noopener,noreferrer");
+          })
         : null),
   );
   if (input.importAction) row.className += " settings-account-row--targets";

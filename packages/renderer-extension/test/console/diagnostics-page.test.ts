@@ -69,23 +69,23 @@ describe("overview startup diagnostics", () => {
     } as unknown as RendererSettingsPageMountContext;
     createOverviewPage(consoleMessages("zh-CN"), state, vi.fn(), "zh-CN").mount(context);
     const initial = JSON.stringify(replaceChildren.mock.calls.at(-1));
-    expect(initial).toContain("codexhost 正在启动");
+    expect(initial).toContain("BOFT CLI 正在启动");
     expect(initial).not.toContain('"tag":"button"');
     expect(initial).not.toContain("启动成功");
-    expect(initial).not.toContain("codexhost 未运行");
+    expect(initial).not.toContain("BOFT CLI 未运行");
 
     state.overview.summary = { state: "startup-failed", detail: "failed to start" };
     latest.outcome = "failed";
     refresh?.();
     const failed = JSON.stringify(replaceChildren.mock.calls.at(-1));
     expect(failed).toContain('"tag":"button"');
-    expect(failed).toContain("启动 codexhost");
+    expect(failed).toContain("启动 BOFT CLI");
 
     state.overview.summary = { state: "running", detail: null };
     latest.outcome = "ready";
     refresh?.();
     const ready = JSON.stringify(replaceChildren.mock.calls.at(-1));
-    expect(ready).toContain("codexhost 正在运行");
+    expect(ready).toContain("BOFT CLI 正在运行");
     expect(ready).not.toContain('"tag":"button"');
   });
 

@@ -18,7 +18,7 @@ import {
   type ConsoleInstallation,
   type InspectDocument,
 } from "./installation.js";
-import { buildDiagnosticReport, issueUrl, serializeDiagnosticReport } from "./diagnostic-report.js";
+import { buildDiagnosticReport, serializeDiagnosticReport } from "./diagnostic-report.js";
 import { ConsoleHarnessError, type ConsoleHarnesses } from "./harnesses.js";
 import { HostUnavailableError, type ConsoleHostClient } from "./host-client.js";
 import { CONSOLE_PAGE_CSS, CONSOLE_PAGE_HTML } from "./page.js";
@@ -26,6 +26,8 @@ import type { ConsolePaths } from "./paths.js";
 import { ConsoleUpdateError, type ConsoleUpdates } from "./updates.js";
 
 export const CONSOLE_SERVICE = "codexhost-console";
+/** Overview “提交 Issue” opens the issues list. */
+const ISSUE_LIST_URL = "https://github.com/LiberSeek/BOFT-CLI/issues";
 const MAX_BODY_BYTES = 16 * 1024;
 const INSPECT_CACHE_MS = 2_000;
 
@@ -202,8 +204,6 @@ export function startConsoleServer(options: ConsoleServerOptions): Promise<Runni
   async function overview(): Promise<unknown> {
     const collected = await collect();
     const { inspectDocument, startup, controller, summary } = collected;
-    // A plain link opens reliably; a window opened after a request can be blocked.
-    const reportIssueUrl = issueUrl(await diagnosticReport(collected, false));
     return {
       console: {
         version: options.version,
@@ -214,7 +214,7 @@ export function startConsoleServer(options: ConsoleServerOptions): Promise<Runni
       controller,
       launchAvailable: launchCommand(options.installation, environment) !== null,
       summary,
-      issueUrl: reportIssueUrl,
+      issueUrl: ISSUE_LIST_URL,
       hostAvailable: await options.host.available(),
     };
   }

@@ -5,7 +5,10 @@ import { PassThrough } from "node:stream";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { createLauncherUrlOpener } from "../src/launcher-url-opener.js";
+import {
+  createLauncherExternalUrlOpener,
+  createLauncherUrlOpener,
+} from "../src/launcher-url-opener.js";
 
 type SpawnLauncher = NonNullable<Parameters<typeof createLauncherUrlOpener>[1]>;
 
@@ -92,5 +95,27 @@ describe("Launcher URL opener", () => {
 
     await expect(open?.(new URL("http://127.0.0.1:4567/"))).resolves.toBeUndefined();
     expect(() => child.stdin?.emit("error", new Error("late EPIPE"))).not.toThrow();
+  });
+
+  it("hands one public http(s) URL to the native Launcher", async () => {
+    const launcher = path.resolve("fixture-codexhost");
+    const child = childThatExits(0);
+    let input = "";
+    child.stdin?.on("data", (chunk) => (input += chunk.toString()));
+    const spawnLauncher = vi.fn<SpawnLauncher>(() => child);
+    const open = createLauncherExternalUrlOpener(
+      { CODEXHOST_LAUNCHER_EXECUTABLE: launcher, CODEXHOST_CONTROL_NONCE: "secret" },
+      spawnLauncher,
+    );
+
+    await expect(open?.("https://platform.openai.com")).resolves.toBeUndefined();
+    expect(spawnLauncher).toHaveBeenCalledWith(launcher, ["open-http-url"], {
+      env: {},
+      stdio: ["pipe", "ignore", "ignore"],
+      windowsHide: true,
+    });
+    expect(input).toBe("https://platform.openai.com");
+    await expect(open?.("javascript:alert(1)")).rejects.toThrow("http(s)");
+    expect(spawnLauncher).toHaveBeenCalledOnce();
   });
 });

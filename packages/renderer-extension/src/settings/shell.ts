@@ -14,7 +14,6 @@ import {
   type RendererSettingsMessages,
 } from "./localization.js";
 import {
-  CODEXHOST_GITHUB_REPOSITORY_URL,
   RENDERER_SETTINGS_NAV_SECTIONS,
   createDefaultRendererSettingsRegistry,
   rendererSettingsNavSectionLabel,
@@ -250,18 +249,6 @@ export function mountRendererSettingsShell(
     for (const definition of pages) appendNavigationButton(definition);
     for (const definition of leftovers) appendNavigationButton(definition);
   }
-  const starLink = ownerDocument.createElement("a");
-  starLink.className = "settings-nav-button settings-nav-star-link";
-  starLink.href = CODEXHOST_GITHUB_REPOSITORY_URL;
-  starLink.target = "_blank";
-  starLink.rel = "noopener noreferrer";
-  starLink.setAttribute("aria-label", messages.starOnGitHub);
-  starLink.title = messages.starOnGitHub;
-  starLink.append(createRendererSettingsIcon("github", 17));
-  const starLabel = ownerDocument.createElement("span");
-  starLabel.textContent = messages.starOnGitHub;
-  starLink.append(starLabel);
-  navigation.append(starLink);
   const supported = true;
   const focusActiveNavigation = (): void => {
     navigationButtons

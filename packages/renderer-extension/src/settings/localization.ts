@@ -235,7 +235,6 @@ export interface RendererSettingsMessages {
   readonly enabled: string;
   readonly disabled: string;
   readonly openSettings: string;
-  readonly starOnGitHub: string;
   readonly settingsButtonTitle: string;
   readonly settingsUnavailableTitle: string;
   readonly updateCurrentVersion: string;
@@ -283,7 +282,6 @@ export interface RendererSettingsMessages {
   readonly aboutBrand: string;
   readonly aboutBrandTagline: string;
   readonly aboutRepository: string;
-  readonly aboutConsole: string;
   readonly aboutConsoleOpen: string;
   readonly aboutConsoleOpening: string;
   readonly aboutConsoleFailed: string;
@@ -295,7 +293,6 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "en",
   title: "Settings",
   close: "Close settings",
-  starOnGitHub: "Star to support",
   sectionsLabel: "Settings sections",
   connectionSection: "Connections",
   generalSection: "General",
@@ -602,8 +599,6 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   aboutBrand: "LIBERSEEK",
   aboutBrandTagline: "Explore toward the future",
   aboutRepository: "Open-source repository",
-  aboutConsole:
-    "The BOFT CLI console runs outside Codex Desktop. It shows startup diagnostics and logs, and can update BOFT CLI even when Codex cannot start. You can also run boft console.",
   aboutConsoleOpen: "Open console",
   aboutConsoleOpening: "Opening…",
   aboutConsoleFailed: "The console could not be opened",
@@ -623,7 +618,6 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   locale: "zh-CN",
   title: "设置",
   close: "关闭设置",
-  starOnGitHub: "Star 支持",
   sectionsLabel: "设置分类",
   connectionSection: "连接",
   generalSection: "通用",
@@ -915,8 +909,6 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   aboutBrand: "LIBERSEEK",
   aboutBrandTagline: "向未来探索",
   aboutRepository: "开源仓库",
-  aboutConsole:
-    "BOFT CLI 控制台独立于 Codex Desktop 运行，可以查看启动诊断和日志；即使 Codex 无法启动，也能在控制台更新 BOFT CLI。也可以运行 boft console。",
   aboutConsoleOpen: "打开控制台",
   aboutConsoleOpening: "正在打开…",
   aboutConsoleFailed: "控制台打开失败",

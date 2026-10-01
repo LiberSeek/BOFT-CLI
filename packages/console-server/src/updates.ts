@@ -251,7 +251,7 @@ export function createConsoleUpdates(options: CreateConsoleUpdatesOptions): Cons
       if (target.codexhostRunning) {
         throw new ConsoleUpdateError(
           "codex-running",
-          "codexhost is running; update from Codex settings or quit Codex Desktop first",
+          "BOFT CLI is running; update from Codex settings or quit Codex Desktop first",
         );
       }
       const metadata = target.distribution;

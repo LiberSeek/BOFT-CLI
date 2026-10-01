@@ -1003,6 +1003,11 @@ export function installCurrentRendererAdapter(): {
       if (!client?.openConsole) throw new Error("The codexhost console is unavailable");
       return client.openConsole();
     },
+    openExternalUrl: async (url: string) => {
+      const client = disposed ? null : clients.forHost("local");
+      if (!client?.openExternalUrl) throw new Error("Opening a site is unavailable");
+      return client.openExternalUrl(url);
+    },
     inspectCodexAccountUsage: (
       input: Parameters<NonNullable<RendererModelClient["inspectCodexAccountUsage"]>>[0],
     ) => {

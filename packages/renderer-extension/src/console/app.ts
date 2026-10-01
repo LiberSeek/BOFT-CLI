@@ -22,10 +22,7 @@ import {
   resolveRendererSettingsLocale,
   rendererSettingsMessages,
 } from "../settings/localization.js";
-import {
-  CODEXHOST_GITHUB_REPOSITORY_URL,
-  createDefaultRendererSettingsPages,
-} from "../settings/pages.js";
+import { createDefaultRendererSettingsPages } from "../settings/pages.js";
 import settingsCss from "../settings/shell.css";
 import tailwindCss from "../settings/tailwind.css";
 
@@ -89,7 +86,7 @@ function statusCard(
         "div",
         { className: "console-status-card__meta" },
         [
-          version && `codexhost ${version}`,
+          version && `BOFT CLI ${version}`,
           overview?.inspect?.desktop && `Codex ${overview.inspect.desktop.version}`,
         ]
           .filter(Boolean)
@@ -109,7 +106,7 @@ export function startConsoleApp(document: Document): void {
   const settingsMessages = rendererSettingsMessages(locale);
   const messages = consoleMessages(locale);
   document.documentElement.lang = locale;
-  document.title = `codexhost ${messages.title}`;
+  document.title = `BOFT CLI ${messages.title}`;
 
   const state = new ConsoleState();
   const manager = hostRequestManager();
@@ -201,20 +198,6 @@ export function startConsoleApp(document: Document): void {
       navigation.append(item);
     }
   }
-  navigation.append(
-    h(
-      document,
-      "a",
-      {
-        className: "settings-nav-button settings-nav-star-link",
-        href: CODEXHOST_GITHUB_REPOSITORY_URL,
-        target: "_blank",
-        rel: "noopener noreferrer",
-      },
-      createRendererSettingsIcon("github", 17),
-      h(document, "span", {}, messages.starOnGitHub),
-    ),
-  );
 
   const brand = h(
     document,
@@ -225,7 +208,7 @@ export function startConsoleApp(document: Document): void {
       document,
       "div",
       { className: "console-brand__copy" },
-      h(document, "span", { className: "console-brand__name" }, "CodexHost"),
+      h(document, "span", { className: "console-brand__name" }, "BOFT CLI"),
       h(document, "span", { className: "console-brand__subtitle" }, messages.title),
     ),
   );

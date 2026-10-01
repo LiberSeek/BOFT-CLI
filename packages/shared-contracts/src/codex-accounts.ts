@@ -19,6 +19,17 @@ export function isCodexAccountSiteUrl(value: string): boolean {
   return value.length > 0 && value.length <= 2_048 && codexAccountSiteUrlPattern.test(value);
 }
 
+/** Opens an API Account site in the operating-system browser. Local Host only. */
+export const EXTERNAL_URL_OPEN_METHOD = "codexhost/external-url/open";
+
+export const externalUrlOpenParamsSchema = z
+  .object({
+    url: z.string().max(2_048).refine(isCodexAccountSiteUrl, "External URL must be http(s)"),
+  })
+  .strict();
+
+export const externalUrlOpenResultSchema = z.object({}).strict();
+
 export const codexAccountPlanTypeSchema = z.enum([
   "free",
   "go",

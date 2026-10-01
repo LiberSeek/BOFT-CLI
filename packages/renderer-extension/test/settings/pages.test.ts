@@ -13,8 +13,12 @@ import {
 } from "@codexhost/shared-contracts";
 import { describe, expect, it, vi } from "vitest";
 
+const { createRendererSettingsIcon } = vi.hoisted(() => ({
+  createRendererSettingsIcon: vi.fn(() => ({ classList: { add() {} } })),
+}));
+
 vi.mock("../../src/settings/icons.js", () => ({
-  createRendererSettingsIcon: () => ({ classList: { add() {} } }),
+  createRendererSettingsIcon,
   createRendererSettingsBrandIcon: () => "brand-icon",
   createRendererSettingsGitHubIcon: () => "github-icon",
   isRendererSettingsIconName: () => true,
@@ -1525,6 +1529,7 @@ describe("Renderer Connections page", () => {
     const document = new FakeDocument();
     const content = document.createElement("main");
     const scope = new RendererSettingsPageScope();
+    createRendererSettingsIcon.mockClear();
     const cleanup = page.mount({
       content: content as unknown as HTMLElement,
       signal: scope.signal,
@@ -1532,6 +1537,9 @@ describe("Renderer Connections page", () => {
     });
 
     expect(groupPreference.sectionOf("deepseek-harness")).toBe("more");
+
+    expect(createRendererSettingsIcon).toHaveBeenCalledWith("chevrons-down", 17);
+    expect(createRendererSettingsIcon).toHaveBeenCalledWith("chevrons-up", 17);
 
     const divider = elementWithClass(content, "settings-connection-group-divider");
     const dragEvent = {
@@ -1814,6 +1822,7 @@ describe("Renderer Codex Accounts page", () => {
       freshness: "live" as const,
       observedAt: "2026-09-10T03:32:00.000Z",
     }));
+    const openExternalUrl = vi.fn(async () => undefined);
     const client = {
       listCodexAccounts: vi.fn(async () =>
         accountSnapshot([
@@ -1827,6 +1836,7 @@ describe("Renderer Codex Accounts page", () => {
         ]),
       ),
       inspectCodexAccountUsage,
+      openExternalUrl,
     };
     const page = createDefaultRendererSettingsPages(
       rendererSettingsMessages("zh-CN"),
@@ -1855,6 +1865,8 @@ describe("Renderer Codex Accounts page", () => {
     expect(siteLink?.getAttribute("href")).toBe("https://bank.example");
     expect(siteLink?.getAttribute("target")).toBe("_blank");
     expect(siteLink?.children).toContain("前往站点");
+    siteLink?.dispatch("click", { preventDefault() {} });
+    expect(openExternalUrl).toHaveBeenCalledWith("https://bank.example");
     expect(
       descendants(content)
         .filter((element) => element.tagName === "button")
@@ -2409,8 +2421,9 @@ describe("Renderer Updates page", () => {
       runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
     });
 
-    expect(visibleText(content)).toContain("BOFT CLI 控制台独立于 Codex Desktop 运行");
-    const button = descendants(content).find(
+    expect(visibleText(content)).not.toContain("BOFT CLI 控制台独立于 Codex Desktop 运行");
+    const intro = elementWithClass(content, "settings-about-panel");
+    const button = descendants(intro).find(
       (element) => element.tagName === "button" && element.textContent === "打开控制台",
     );
     if (!button) throw new Error("console button is missing");

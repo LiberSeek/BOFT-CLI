@@ -220,22 +220,19 @@ function formatUpdateBytes(value: number): string {
   return `${scaled.toFixed(scaled >= 10 ? 0 : 1)} ${unit}`;
 }
 
-function consoleSection(
+function consoleAction(
   document: Document,
   messages: RendererSettingsMessages,
   client: RendererUpdateClient | null,
-): HTMLElement | null {
+): { button: HTMLButtonElement; status: HTMLElement } | null {
   if (!client?.openConsole) return null;
   const openConsole = client.openConsole.bind(client);
-  const section = document.createElement("div");
-  section.className = "settings-about-repository";
-  const copy = document.createElement("p");
-  copy.textContent = messages.aboutConsole;
   const button = document.createElement("button");
   button.type = "button";
   button.className = "settings-command-button settings-command-button--secondary";
   button.textContent = messages.aboutConsoleOpen;
   const status = document.createElement("p");
+  status.className = "settings-about-console-status";
   status.setAttribute("role", "status");
   status.hidden = true;
   button.addEventListener("click", () => {
@@ -252,8 +249,7 @@ function consoleSection(
         button.textContent = messages.aboutConsoleOpen;
       });
   });
-  section.append(copy, button, status);
-  return section;
+  return { button, status };
 }
 
 function aboutPage(
@@ -278,6 +274,11 @@ function aboutPage(
       const product = document.createElement("strong");
       product.className = "settings-about-product";
       product.textContent = "BOFT CLI";
+      const productRow = document.createElement("div");
+      productRow.className = "settings-about-product-row";
+      productRow.append(product);
+      const consoleEntry = consoleAction(document, messages, getClient());
+      if (consoleEntry) productRow.append(consoleEntry.button);
       const tagline = document.createElement("strong");
       tagline.className = "settings-about-tagline";
       tagline.textContent = messages.aboutTagline;
@@ -311,7 +312,9 @@ function aboutPage(
         closing.append(paragraph);
       }
       story.append(lead, extensionIntro, agents, closing);
-      introPanel.append(product, tagline, story);
+      introPanel.append(productRow);
+      if (consoleEntry) introPanel.append(consoleEntry.status);
+      introPanel.append(tagline, story);
 
       const repositoryPanel = document.createElement("section");
       repositoryPanel.className = "settings-about-panel settings-about-repository";
@@ -360,8 +363,6 @@ function aboutPage(
       brand.append(brandVideo, brandCopy);
 
       page.append(heading, introPanel, repositoryPanel, brand);
-      const consoleEntry = consoleSection(document, messages, getClient());
-      if (consoleEntry) page.append(consoleEntry);
       context.content.append(page);
       return undefined;
     },

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDiagnosticReport,
-  issueUrl,
   redactHome,
   serializeDiagnosticReport,
 } from "../src/diagnostic-report.js";
@@ -57,16 +56,5 @@ describe("diagnostic report", () => {
     expect(redactHome(JSON.stringify({ path: `${windowsHome}\\app` }), windowsHome)).toBe(
       JSON.stringify({ path: "~\\app" }),
     );
-  });
-
-  it("prefills an issue without logs or the home directory", async () => {
-    const url = issueUrl(await report(), home);
-    const parameters = new URL(url).searchParams;
-    expect(parameters.get("title")).toBe("codexhost failed to start");
-    const body = parameters.get("body") ?? "";
-    expect(body).toContain("codexhost: 1.2.3 (npm, macos-arm64)");
-    expect(body).toContain("~/lib/codexhost-shim");
-    expect(body).not.toContain(home);
-    expect(body).not.toContain("host-runtime-2.log");
   });
 });
