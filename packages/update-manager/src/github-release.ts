@@ -5,7 +5,7 @@ export const CODEXHOST_LATEST_RELEASE_URL =
   "https://api.github.com/repos/LiberSeek/BOFT-CLI/releases/latest";
 
 const SHA256_DIGEST_PATTERN = /^sha256:([0-9a-f]{64})$/u;
-// GitHub's canonical owner is LIBERSEEK; older responses and links use LiberSeek.
+// The organization login may be shown as LiberSeek or LIBERSEEK. Both identify this repository.
 const RELEASE_NOTES_URL_PATTERN =
   /^https:\/\/github\.com\/(LiberSeek|LIBERSEEK)\/BOFT-CLI\/releases\/tag\/(v[0-9A-Za-z.+-]+)$/u;
 const DOWNLOAD_URL_PREFIXES = [
