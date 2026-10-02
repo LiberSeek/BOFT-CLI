@@ -30,6 +30,10 @@ boft remote status
 
 设置 → 会话导入也按同一个当前 Host 隔离。选中远程输入框时，页面只列出和登记 SSH 开发机上保存的 Session，并通过该远程 Host 打开导入后的 Thread。Linux SSH Host 直接执行 Claude 会话发现；受管 macOS Host 通过 Aqua broker 执行，broker 只传递有界会话元数据和经验证的原生身份，不传输 Transcript 正文或凭据。运行状态显示未知时，应先在 Claude 原生客户端中关闭该会话再导入。两台机器需要安装相同 BOFT CLI 版本；升级后重新连接远程工作区，确保远程 runtime 与 broker 提供匹配的导入方法。
 
+本地通过 BOFT 启动时，也可以连接仅运行原生 Codex 的远程 Host：原生对话不要求远程实现 `codexhost/*` 接口，外部 Harness 才需要远程 BOFT。对话归属、Harness 可用性、模型配置请求及用量通知按输入框所属 Host 隔离；隐藏的其他 Host 输入框不能阻止当前输入框加载模型，也不能改变其 Harness 选择。原生模型的版本要求由实际运行的远程 app-server 决定，安装在磁盘上的 CLI 版本不代表运行中服务已升级。
+
+Renderer 集成就绪表示至少有一个经过原生注册表验证的 Host 连接可用，不要求整个窗口只有一个 Composer Host。本地与远程输入框同时存在时，安装和就绪检查仍可通过；没有明确目标 Host 的请求仍被拒绝，不会任意选择连接。若所有连接都不可用，安装继续等待并在超时后报告失败。
+
 ## 常用命令
 
 ```bash

@@ -4,6 +4,11 @@ import {
   type CredentialImportMessages,
 } from "./credential-import-messages.js";
 import type { DefaultRendererSettingsPageId } from "./pages.js";
+import {
+  harnessVersionEnglish,
+  harnessVersionChinese,
+  type HarnessVersionMessages,
+} from "./harness-version-messages.js";
 
 export const RENDERER_SETTINGS_LOCALES = ["en", "zh-CN"] as const;
 export type RendererSettingsLocale = (typeof RENDERER_SETTINGS_LOCALES)[number];
@@ -162,15 +167,14 @@ export interface RendererSettingsMessages {
   readonly connectionCopyDetails: string;
   readonly connectionCopied: string;
   readonly connectionCopyFailed: string;
-  readonly connectionErrorCode: string;
   readonly connectionErrorMessage: string;
-  readonly connectionRetryable: string;
-  readonly connectionFailureStage: string;
-  readonly connectionDuration: string;
-  readonly connectionDiagnostic: string;
   readonly connectionNoRuntime: string;
   readonly connectionStatusReady: string;
   readonly connectionStatusConnected: string;
+  readonly connectionLoginRequired: string;
+  readonly connectionConfigurationRequired: string;
+  readonly connectionConfigurationDescription: string;
+  readonly connectionLoginDescription: string;
   readonly connectionStatusChecking: string;
   readonly connectionStatusNotInstalled: string;
   readonly connectionStatusUnavailable: string;
@@ -209,6 +213,7 @@ export interface RendererSettingsMessages {
   readonly connectionCopyPrompt: string;
   readonly connectionInstallPrompt: string;
   readonly connectionInstallRunning: string;
+  readonly harnessVersion: HarnessVersionMessages;
   readonly harnessVersionTitle: string;
   readonly harnessVersionCurrent: string;
   readonly harnessVersionLatest: string;
@@ -456,15 +461,16 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionCopyDetails: "Copy diagnostics",
   connectionCopied: "Copied",
   connectionCopyFailed: "Copy failed",
-  connectionErrorCode: "Error code",
   connectionErrorMessage: "Error message",
-  connectionRetryable: "Retryable",
-  connectionFailureStage: "Failure stage",
-  connectionDuration: "Duration",
-  connectionDiagnostic: "Diagnostic",
   connectionNoRuntime: "The renderer request bridge is not available yet.",
   connectionStatusReady: "Ready",
   connectionStatusConnected: "Connected",
+  connectionLoginRequired: "Login required",
+  connectionConfigurationRequired: "Setup required",
+  connectionConfigurationDescription:
+    "Configure a Provider and its required credentials in this Harness on the selected Host, then check the connection again.",
+  connectionLoginDescription:
+    "Complete login or authentication setup in this Harness on the selected Host, then check the connection again.",
   connectionStatusChecking: "Checking",
   connectionStatusNotInstalled: "Not installed",
   connectionStatusUnavailable: "Unavailable",
@@ -511,6 +517,7 @@ const ENGLISH_MESSAGES: RendererSettingsMessages = Object.freeze({
     "Please install {name} (CLI command: {binary}) on this machine.\n\nUse the official install method and run:\n{command}\n\nOfficial installation page: {url}\n\nAfter installation, verify that `{binary}` is available in the terminal and report the result.",
   connectionInstallRunning:
     "Installing on the selected Host. You can leave this page; login or setup may still be required afterward.",
+  harnessVersion: harnessVersionEnglish,
   harnessVersionTitle: "Harness CLI version",
   harnessVersionCurrent: "Current version",
   harnessVersionLatest: "Latest version",
@@ -785,15 +792,15 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionCopyDetails: "复制诊断信息",
   connectionCopied: "已复制",
   connectionCopyFailed: "复制失败",
-  connectionErrorCode: "错误码",
   connectionErrorMessage: "错误信息",
-  connectionRetryable: "可重试",
-  connectionFailureStage: "失败阶段",
-  connectionDuration: "检查耗时",
-  connectionDiagnostic: "诊断信息",
   connectionNoRuntime: "Renderer 请求桥尚未可用。",
   connectionStatusReady: "正常",
   connectionStatusConnected: "已连接",
+  connectionLoginRequired: "需要登录",
+  connectionConfigurationRequired: "需要配置",
+  connectionConfigurationDescription:
+    "请在所选 Host 上配置该 Harness 的 Provider 及所需认证信息，然后重新检测连接。",
+  connectionLoginDescription: "请在所选 Host 上完成该 Harness 的登录或认证配置，然后重新检测连接。",
   connectionStatusChecking: "检查中",
   connectionStatusNotInstalled: "未安装",
   connectionStatusUnavailable: "不可用",
@@ -837,6 +844,7 @@ const CHINESE_MESSAGES: RendererSettingsMessages = Object.freeze({
   connectionInstallPrompt:
     "请帮我在本机安装 {name}（CLI 命令：{binary}）。\n\n请按官方安装方式执行以下命令，并处理 PATH、权限和依赖问题：\n{command}\n\n官方安装页面：{url}\n\n安装完成后请验证 `{binary}` 可以在终端中运行，并告诉我结果。",
   connectionInstallRunning: "正在所选 Host 上安装，离开页面不会中断。安装后可能仍需登录或配置。",
+  harnessVersion: harnessVersionChinese,
   harnessVersionTitle: "Harness CLI 版本",
   harnessVersionCurrent: "当前版本",
   harnessVersionLatest: "最新版本",

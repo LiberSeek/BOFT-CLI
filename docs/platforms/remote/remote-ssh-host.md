@@ -30,6 +30,10 @@ boft remote status
 
 Settings → Session Import is scoped to that same current Host. With a remote Composer selected, it lists and maps only Sessions stored on the SSH host, and opens the imported Thread through that remote Host. Claude discovery runs directly on Linux SSH hosts and through the Aqua broker on managed macOS hosts; only bounded Session metadata and the validated native identity cross the broker, never Transcript content or credentials. Close the Session in its native Claude client before importing when activity is reported as unknown. Install the same BOFT CLI version on both machines and reconnect after an upgrade so the remote runtime and broker expose the matching import methods.
 
+A local Desktop launched through BOFT can also connect to a stock Codex remote Host: native conversations do not require remote `codexhost/*` methods; external Harnesses require remote BOFT. Thread ownership, Harness availability, configuration requests, and usage notifications are scoped to each composer's Host. Hidden composers on other Hosts must not block model loading or change its Harness selection. Native Model version requirements depend on the running remote app-server, not merely the CLI version installed on disk.
+
+Renderer integration readiness means at least one validated native Host connection is available; it does not require a single Composer Host across the window. Installation and readiness checks can succeed with local and remote composers present together. Requests without an unambiguous target Host still fail rather than choosing a connection arbitrarily. If no connections are available, installation waits and reports failure on timeout.
+
 ## Commands
 
 ```bash

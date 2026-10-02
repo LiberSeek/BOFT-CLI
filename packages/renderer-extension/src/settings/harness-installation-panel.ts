@@ -3,13 +3,19 @@ import { harnessInstallationGuide } from "./harness-installation-guides.js";
 import { createRendererSettingsIcon } from "./icons.js";
 import type { RendererSettingsMessages } from "./localization.js";
 
+export interface HarnessInstallationAction {
+  run: () => void;
+  status: "idle" | "installing" | "checking";
+}
+
 export function createHarnessInstallationPanel(
   document: Document,
   agent: ExternalRendererAgent,
   hostId: string,
   messages: RendererSettingsMessages,
   copy: (button: HTMLButtonElement, command: string, label: string) => void,
-  refresh: () => void,
+  installation?: HarnessInstallationAction,
+  refresh?: () => void,
 ): HTMLElement {
   const zh = messages.locale === "zh-CN";
   const guide = harnessInstallationGuide(agent, messages.locale);
@@ -24,6 +30,29 @@ export function createHarnessInstallationPanel(
     paragraph(zh ? "请在远程 Host 上安装。" : "Install on the remote Host.");
   }
   if (guide.before) paragraph(guide.before);
+  const install =
+    installation && guide.commands.length > 0 ? document.createElement("button") : null;
+  if (install && installation) {
+    install.type = "button";
+    install.className = "settings-command-button";
+    install.dataset.connectionAction = "install";
+    install.disabled = installation.status !== "idle";
+    install.textContent =
+      installation.status === "installing"
+        ? messages.connectionStatusInstalling
+        : installation.status === "checking"
+          ? messages.connectionStatusChecking
+          : zh
+            ? "一键安装"
+            : "Install automatically";
+    install.addEventListener("click", () => {
+      if (install.disabled) return;
+      install.disabled = true;
+      install.textContent = messages.connectionStatusInstalling;
+      installation.run();
+    });
+    if (guide.commands.length > 1) panel.append(install);
+  }
   for (const { terminal, command } of guide.commands) {
     const block = document.createElement("div");
     block.className = "settings-harness-installation-command";
@@ -41,7 +70,11 @@ export function createHarnessInstallationPanel(
     button.setAttribute("aria-label", `${copyLabel}: ${terminal}`);
     button.append(createRendererSettingsIcon("copy", 16), copyLabel);
     button.addEventListener("click", () => copy(button, command, copyLabel));
-    block.append(label, pre, button);
+    const actions = document.createElement("div");
+    actions.className = "settings-harness-installation-actions";
+    if (install && guide.commands.length === 1) actions.append(install);
+    actions.append(button);
+    block.append(label, pre, actions);
     panel.append(block);
   }
   const link = (url: string, label: string): void => {
@@ -61,17 +94,19 @@ export function createHarnessInstallationPanel(
   }
   paragraph(guide.after);
 
-  const check = document.createElement("button");
-  check.type = "button";
-  check.className = "settings-command-button";
-  check.dataset.connectionAction = "check-install";
-  check.textContent = zh ? "重新检测" : "Check again";
-  check.addEventListener("click", () => {
-    check.disabled = true;
-    check.textContent = messages.connectionRefreshing;
-    refresh();
-  });
-  panel.append(check);
+  if (refresh) {
+    const check = document.createElement("button");
+    check.type = "button";
+    check.className = "settings-command-button";
+    check.dataset.connectionAction = "check-install";
+    check.textContent = zh ? "重新检测" : "Check again";
+    check.addEventListener("click", () => {
+      check.disabled = true;
+      check.textContent = messages.connectionRefreshing;
+      refresh();
+    });
+    panel.append(check);
+  }
   link(guide.url, zh ? "查看官方安装说明" : "View official installation instructions");
   return panel;
 }

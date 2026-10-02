@@ -11,7 +11,7 @@ import {
   type UpdateCheckResult,
   type UpdateStatus,
 } from "@codexhost/shared-contracts";
-import { describe, expect, it, vi } from "vitest";
+import { assert, describe, expect, it, vi } from "vitest";
 
 const { createRendererSettingsIcon } = vi.hoisted(() => ({
   createRendererSettingsIcon: vi.fn(() => ({ classList: { add() {} } })),
@@ -60,6 +60,8 @@ import type {
   RendererConnectionDiagnostics,
   RendererConnectionSnapshot,
 } from "../../src/settings/pages.js";
+
+import { createHarnessInstallationPanel } from "../../src/settings/harness-installation-panel.js";
 
 class FakeElement {
   readonly children: unknown[] = [];
@@ -852,7 +854,7 @@ describe("Harness CLI version panel", () => {
     expect(manual.button("update").disabled).toBe(true);
     manual.abort.abort();
   });
-  it("shows native manual-update guidance without claiming an unknown latest version is current", async () => {
+  it("shows localized manual-update guidance without claiming an unknown latest version is current", async () => {
     const { panel, button, abort } = mount(async () => ({
       ...state,
       latestVersion: "Unknown",
@@ -860,7 +862,8 @@ describe("Harness CLI version panel", () => {
       canUpdate: false,
       message: "This installation belongs to its desktop app.",
     }));
-    await vi.waitFor(() => expect(visibleText(panel)).toContain("belongs to its desktop app"));
+    await vi.waitFor(() => expect(visibleText(panel)).toContain("original installer"));
+    expect(visibleText(panel)).not.toContain("belongs to its desktop app");
     expect(button("update").textContent).toBe("Update");
     expect(button("update").disabled).toBe(true);
     abort.abort();
@@ -885,6 +888,67 @@ describe("Harness CLI version panel", () => {
     expect(visibleText(panel)).not.toContain("1.0.0");
     expect(button("update").disabled).toBe(true);
   });
+});
+
+describe("Harness installation actions", () => {
+  it.each(["codebuddy", "kiro-cli"] as const)(
+    "provides one automatic install action for %s",
+    (agent) => {
+      const document = new FakeDocument();
+      const run = vi.fn();
+      const panel = createHarnessInstallationPanel(
+        document as unknown as Document,
+        agent,
+        "local",
+        rendererSettingsMessages("zh-CN"),
+        vi.fn(),
+        { run, status: "idle" },
+      ) as unknown as FakeElement;
+      const installs = descendants(panel).filter(
+        ({ dataset }) => dataset.connectionAction === "install",
+      );
+      expect(installs).toHaveLength(1);
+      const install = installs[0];
+      assert(install);
+      expect(install.textContent).toBe("一键安装");
+      if (agent === "codebuddy") {
+        const actions = elementWithClass(panel, "settings-harness-installation-actions");
+        expect(descendants(actions)).toContain(install);
+        expect(
+          descendants(actions).some(({ dataset }) => dataset.connectionAction === "copy-install"),
+        ).toBe(true);
+      } else {
+        expect(panel.children).toContain(install);
+      }
+      install.dispatch("click");
+      install.dispatch("click");
+      expect(run).toHaveBeenCalledOnce();
+      expect(install.disabled).toBe(true);
+    },
+  );
+
+  it.each(["installing", "checking"] as const)(
+    "disables automatic installation while %s",
+    (status) => {
+      const document = new FakeDocument();
+      const run = vi.fn();
+      const panel = createHarnessInstallationPanel(
+        document as unknown as Document,
+        "codebuddy",
+        "local",
+        rendererSettingsMessages("en"),
+        vi.fn(),
+        { run, status },
+      ) as unknown as FakeElement;
+      const install = descendants(panel).find(
+        ({ dataset }) => dataset.connectionAction === "install",
+      );
+      assert(install);
+      expect(install.disabled).toBe(true);
+      install.dispatch("click");
+      expect(run).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("Renderer Connections page", () => {
@@ -1029,6 +1093,219 @@ describe("Renderer Connections page", () => {
     cleanup?.();
     scope.dispose();
   });
+
+  it.each([
+    {
+      locale: "zh-CN",
+      agent: "qoder-cn",
+      nativeMessage: "Please run qoderclicn login to authenticate.",
+    },
+    {
+      locale: "en",
+      agent: "qoder-cn",
+      nativeMessage: "Please run qoderclicn login to authenticate.",
+    },
+    {
+      locale: "zh-CN",
+      agent: "antigravity",
+      nativeMessage:
+        "Fetching available models... Error: Please sign in to view available models. Launch the CLI without arguments to sign in.",
+    },
+    {
+      locale: "en",
+      agent: "antigravity",
+      nativeMessage:
+        "Fetching available models... Error: Please sign in to view available models. Launch the CLI without arguments to sign in.",
+    },
+  ] as const)(
+    "localizes authentication summaries and preserves native diagnostics ($agent, $locale)",
+    ({ locale, agent, nativeMessage }) => {
+      const diagnostics: RendererConnectionDiagnostics = {
+        snapshot: () => ({
+          adapter: { state: "ready", reason: "ready", modelUpdates: 1, hook: "request-bridge" },
+          hosts: [
+            {
+              hostId: "local",
+              active: true,
+              agents: [
+                {
+                  agent,
+                  availability: "unavailable",
+                  error: {
+                    code: "authenticationRequired",
+                    message: nativeMessage,
+                    retryable: false,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+        refresh: vi.fn(async () => undefined),
+        subscribe: () => () => undefined,
+      };
+      const messages = rendererSettingsMessages(locale);
+      const page = createDefaultRendererSettingsPages(
+        messages,
+        () => null,
+        () => diagnostics,
+      ).find(({ id }) => id === "connections");
+      assert(page);
+      const document = new FakeDocument();
+      const content = document.createElement("main");
+      const scope = new RendererSettingsPageScope();
+      const cleanup = page.mount({
+        content: content as unknown as HTMLElement,
+        signal: scope.signal,
+        runLatest: (op, handlers) => scope.runLatest(op, handlers),
+      });
+      const row = descendants(content).find(({ dataset }) => dataset.connectionItem === agent);
+      assert(row);
+      expect(visibleText(row)).toContain(messages.connectionLoginRequired);
+      row.dispatch("click", { target: null });
+      const status = descendants(row).find(({ className }) =>
+        className.split(" ").includes("settings-connection-row__status"),
+      );
+      assert(status);
+      expect(visibleText(status)).toContain(messages.connectionLoginRequired);
+      const summary = elementWithClass(content, "settings-connection-error-summary");
+      expect(visibleText(summary)).toContain(messages.connectionLoginDescription);
+      expect(visibleText(summary)).not.toContain(nativeMessage);
+      expect(visibleText(elementWithClass(content, "settings-connection-stderr"))).toContain(
+        nativeMessage,
+      );
+      cleanup?.();
+      scope.dispose();
+    },
+  );
+
+  it.each(["zh-CN", "en"] as const)(
+    "shows missing Hermes configuration separately from login (%s)",
+    (locale) => {
+      const diagnostics: RendererConnectionDiagnostics = {
+        snapshot: () => ({
+          adapter: { state: "ready", reason: "ready", modelUpdates: 1, hook: "request-bridge" },
+          hosts: [
+            {
+              hostId: "local",
+              active: true,
+              agents: [
+                {
+                  agent: "hermes",
+                  availability: "unavailable",
+                  error: {
+                    code: "configurationRequired",
+                    message: "Run `hermes setup`.",
+                    retryable: false,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+        refresh: vi.fn(async () => undefined),
+        subscribe: () => () => undefined,
+      };
+      const messages = rendererSettingsMessages(locale);
+      const page = createDefaultRendererSettingsPages(
+        messages,
+        () => null,
+        () => diagnostics,
+      ).find(({ id }) => id === "connections");
+      if (!page) throw new Error("Expected connections page");
+      const document = new FakeDocument();
+      const content = document.createElement("main");
+      const scope = new RendererSettingsPageScope();
+      const cleanup = page.mount({
+        content: content as unknown as HTMLElement,
+        signal: scope.signal,
+        runLatest: (op, handlers) => scope.runLatest(op, handlers),
+      });
+      const row = descendants(content).find(({ dataset }) => dataset.connectionItem === "hermes");
+      if (!row) throw new Error("Expected Hermes row");
+      expect(visibleText(row)).toContain(messages.connectionConfigurationRequired);
+      row.dispatch("click", { target: null });
+      const status = descendants(row).find(({ className }) =>
+        className.split(" ").includes("settings-connection-row__status"),
+      );
+      if (!status) throw new Error("Expected connection status");
+      expect(visibleText(status)).toContain(messages.connectionConfigurationRequired);
+      const summary = elementWithClass(content, "settings-connection-error-summary");
+      expect(visibleText(summary)).toContain(messages.connectionConfigurationDescription);
+      expect(visibleText(summary)).not.toContain("Run `hermes setup`.");
+      expect(visibleText(elementWithClass(content, "settings-connection-stderr"))).toContain(
+        "Run `hermes setup`.",
+      );
+      expect(visibleText(summary)).not.toContain(messages.connectionLoginRequired);
+      cleanup?.();
+      scope.dispose();
+    },
+  );
+
+  it.each(["zh-CN", "en"] as const)(
+    "shows OMP model setup errors without a login status (%s)",
+    (locale) => {
+      const diagnostics: RendererConnectionDiagnostics = {
+        snapshot: () => ({
+          adapter: { state: "ready", reason: "ready", modelUpdates: 1, hook: "request-bridge" },
+          hosts: [
+            {
+              hostId: "local",
+              active: true,
+              agents: [
+                {
+                  agent: "omp",
+                  availability: "error",
+                  error: {
+                    code: "configurationRequired",
+                    message: "Configure a Provider API key and select a model with /model.",
+                    retryable: false,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+        refresh: vi.fn(async () => undefined),
+        subscribe: () => () => undefined,
+      };
+      const messages = rendererSettingsMessages(locale);
+      const page = createDefaultRendererSettingsPages(
+        messages,
+        () => null,
+        () => diagnostics,
+      ).find(({ id }) => id === "connections");
+      assert(page);
+      const document = new FakeDocument();
+      const content = document.createElement("main");
+      const scope = new RendererSettingsPageScope();
+      const cleanup = page.mount({
+        content: content as unknown as HTMLElement,
+        signal: scope.signal,
+        runLatest: (op, handlers) => scope.runLatest(op, handlers),
+      });
+      const row = descendants(content).find(({ dataset }) => dataset.connectionItem === "omp");
+      assert(row);
+      expect(visibleText(row)).toContain(messages.connectionConfigurationRequired);
+      expect(visibleText(row)).not.toContain(messages.connectionLoginRequired);
+      row.dispatch("click", { target: null });
+      const status = descendants(row).find(({ className }) =>
+        className.split(" ").includes("settings-connection-row__status"),
+      );
+      assert(status);
+      expect(visibleText(status)).toContain(messages.connectionConfigurationRequired);
+      expect(visibleText(status)).not.toContain(messages.connectionLoginRequired);
+      const summary = elementWithClass(content, "settings-connection-error-summary");
+      expect(visibleText(summary)).toContain(messages.connectionConfigurationDescription);
+      expect(visibleText(summary)).not.toContain("Configure a Provider API key");
+      expect(visibleText(elementWithClass(content, "settings-connection-stderr"))).toContain(
+        "Configure a Provider API key and select a model with /model.",
+      );
+      expect(visibleText(summary)).not.toContain(messages.connectionLoginRequired);
+      cleanup?.();
+      scope.dispose();
+    },
+  );
 
   it.each(["workbuddy"] as const)(
     "edits %s launch settings in the local right-side inspector",
@@ -1231,6 +1508,7 @@ describe("Renderer Connections page", () => {
                   retryable: true,
                   stage: "startup",
                   durationMs: 120,
+                  diagnostic: "Native process stopped during startup",
                   stderrTail: "check ~/.pi/agent/settings.json",
                 },
               },
@@ -1299,7 +1577,18 @@ describe("Renderer Connections page", () => {
     viewError.dispatch("click");
     expect(visibleText(content)).toContain("pi exited with code 1");
     expect(visibleText(content)).toContain("~/.pi/agent/settings.json");
-    expect(visibleText(content)).toContain("startup");
+    expect(
+      descendants(content).some(
+        ({ className }) => className === "settings-connection-error-metadata",
+      ),
+    ).toBe(false);
+    const report = visibleText(elementWithClass(content, "settings-connection-stderr"));
+    expect(report).toContain("error.code: processExited");
+    expect(report).toContain("retryable: true");
+    expect(report).toContain("stage: startup");
+    expect(report).toContain("durationMs: 120");
+    expect(report).toContain("diagnostic: Native process stopped during startup");
+    expect(report).toContain("stderr:\ncheck ~/.pi/agent/settings.json");
     const issueLink = descendants(content).find(
       ({ tagName, href }) =>
         tagName === "a" && href === "https://github.com/LiberSeek/BOFT-CLI/issues/new",
@@ -1311,9 +1600,7 @@ describe("Renderer Connections page", () => {
     if (!copyButton) throw new Error("Copy error log button is not rendered");
     copyButton.dispatch("click");
     await vi.waitFor(() => expect(document.clipboardWriteText).toHaveBeenCalledOnce());
-    expect(document.clipboardWriteText).toHaveBeenCalledWith(
-      expect.stringContaining("host: local"),
-    );
+    expect(document.clipboardWriteText).toHaveBeenCalledWith(report);
     await vi.waitFor(() => expect(visibleNotesText(content)).toContain("已复制"));
     const refresh = descendants(content).find(
       ({ tagName, dataset }) => tagName === "button" && dataset.connectionAction === "refresh",

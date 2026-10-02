@@ -139,17 +139,6 @@ function diagnosticText(
   ].join("\n");
 }
 
-function detailLine(document: Document, label: string, value: string): HTMLElement {
-  const line = document.createElement("div");
-  line.className = "settings-connection-detail-line";
-  const name = document.createElement("span");
-  name.textContent = label;
-  const content = document.createElement("code");
-  content.textContent = value;
-  line.append(name, content);
-  return line;
-}
-
 function setActionButtonLabel(
   button: HTMLButtonElement,
   icon: RendererSettingsIconName,
@@ -408,31 +397,23 @@ function createInlineErrorDetail(
     return body;
   }
 
+  const needsLogin = item.error.code === "authenticationRequired";
+  const needsConfiguration = item.error.code === "configurationRequired";
   const summary = document.createElement("div");
   summary.className = "settings-connection-error-summary";
   const title = document.createElement("strong");
-  title.textContent = messages.connectionErrorTitle;
+  title.textContent = needsLogin
+    ? messages.connectionLoginRequired
+    : needsConfiguration
+      ? messages.connectionConfigurationRequired
+      : messages.connectionErrorTitle;
   const description = document.createElement("p");
-  description.textContent = item.error.message;
+  description.textContent = needsLogin
+    ? messages.connectionLoginDescription
+    : needsConfiguration
+      ? messages.connectionConfigurationDescription
+      : item.error.message;
   summary.append(title, description);
-
-  const metadata = document.createElement("div");
-  metadata.className = "settings-connection-error-metadata";
-  metadata.append(
-    detailLine(document, messages.connectionErrorCode, item.error.code),
-    detailLine(document, messages.connectionRetryable, String(item.error.retryable)),
-  );
-  if (item.error.stage) {
-    metadata.append(detailLine(document, messages.connectionFailureStage, item.error.stage));
-  }
-  if (item.error.durationMs !== undefined) {
-    metadata.append(
-      detailLine(document, messages.connectionDuration, `${item.error.durationMs} ms`),
-    );
-  }
-  if (item.error.diagnostic) {
-    metadata.append(detailLine(document, messages.connectionDiagnostic, item.error.diagnostic));
-  }
 
   const logHeader = document.createElement("div");
   logHeader.className = "settings-connection-error-log-header";
@@ -449,7 +430,7 @@ function createInlineErrorDetail(
   logHeader.append(logTitle, copy);
   const log = document.createElement("pre");
   log.className = "settings-connection-stderr";
-  log.textContent = item.error.stderrTail ?? item.error.diagnostic ?? report;
+  log.textContent = report;
 
   const actions = document.createElement("div");
   actions.className = "settings-connection-error-actions";
@@ -463,7 +444,7 @@ function createInlineErrorDetail(
   const issueNote = document.createElement("p");
   issueNote.className = "settings-connection-issue-note";
   issueNote.textContent = messages.connectionIssueDescription;
-  body.append(summary, metadata, logHeader, log, actions, issueNote);
+  body.append(summary, logHeader, log, actions, issueNote);
   return body;
 }
 
@@ -510,7 +491,12 @@ function createConnectionBlock(
   status.className = "settings-connection-row__status";
   status.dataset.connectionTone = connectionStatusTone(item.availability, item.error !== null);
   status.setAttribute("role", "cell");
-  status.textContent = connectionStatusLabel(item.availability, messages, item.error !== null);
+  status.textContent =
+    item.error?.code === "authenticationRequired"
+      ? messages.connectionLoginRequired
+      : item.error?.code === "configurationRequired"
+        ? messages.connectionConfigurationRequired
+        : connectionStatusLabel(item.availability, messages, item.error !== null);
 
   const action = document.createElement("div");
   action.className = "settings-connection-row__action";
@@ -890,6 +876,15 @@ export function createConnectionsSettingsPage(
           const nodes: HTMLElement[] = [];
           const agent = item.agentSnapshot?.agent;
           if (expanded && agent && item.availability === "notInstalled") {
+            const installState = installs?.get(selectedHost.hostId, agent);
+            const canInstall =
+              selectedHost.hostId === "local" &&
+              agent !== "workbuddy" &&
+              diagnostics?.installation !== undefined;
+            const installStatus =
+              installState?.status === "installing" || installState?.status === "checking"
+                ? installState.status
+                : "idle";
             nodes.push(
               createHarnessInstallationPanel(
                 document,
@@ -898,41 +893,28 @@ export function createConnectionsSettingsPage(
                 messages,
                 (button, command, label) =>
                   copyTextToClipboard(document, button, command, messages, label),
+                canInstall
+                  ? {
+                      run: () => {
+                        void installs?.install(selectedHost.hostId, agent);
+                      },
+                      status: installStatus,
+                    }
+                  : undefined,
                 runRefresh,
               ),
             );
-            const installState = installs?.get(selectedHost.hostId, agent);
-            const canInstall =
-              selectedHost.hostId === "local" &&
-              agent !== "workbuddy" &&
-              diagnostics?.installation !== undefined;
-            if (canInstall) {
-              const busy =
-                installState?.status === "installing" || installState?.status === "checking";
-              if (installState?.error) {
-                const error = document.createElement("p");
-                error.className = "settings-connection-install-error";
-                error.setAttribute("role", "alert");
-                error.textContent = installState.error;
-                nodes.push(error);
-              }
-              if (busy) {
-                const note = document.createElement("p");
-                note.textContent = messages.connectionInstallRunning;
-                nodes.push(note);
-              }
-              const installNow = document.createElement("button");
-              installNow.type = "button";
-              installNow.className = "settings-command-button";
-              installNow.dataset.connectionAction = "run-install";
-              installNow.disabled = busy;
-              installNow.textContent = busy
-                ? messages.connectionInstallRunning
-                : messages.connectionInstall;
-              installNow.addEventListener("click", () => {
-                void installs?.install(selectedHost.hostId, agent);
-              });
-              nodes.push(installNow);
+            if (canInstall && installState?.error) {
+              const error = document.createElement("p");
+              error.className = "settings-connection-install-error";
+              error.setAttribute("role", "alert");
+              error.textContent = installState.error;
+              nodes.push(error);
+            }
+            if (canInstall && installStatus !== "idle") {
+              const note = document.createElement("p");
+              note.textContent = messages.connectionInstallRunning;
+              nodes.push(note);
             }
           }
           const installation = diagnostics?.installation?.bind(diagnostics);
