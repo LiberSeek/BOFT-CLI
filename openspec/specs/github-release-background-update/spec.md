@@ -4,11 +4,16 @@
 TBD - created by archiving change implement-github-release-update-flow. Update Purpose after archive.
 ## Requirements
 ### Requirement: Host discovers one stable GitHub Release
-The update capability SHALL discover the latest stable codexhost version only from `https://api.github.com/repos/LiberSeek/BOFT-CLI/releases/latest`, SHALL compare its `v`-prefixed tag with the packaged current SemVer, and SHALL keep check failure non-blocking for normal application launch. It MUST NOT require a custom manifest, checksum sidecar, codexhost server, login, or embedded GitHub credential.
+The update capability SHALL discover the latest stable codexhost version only from `https://api.github.com/repos/LiberSeek/BOFT-CLI/releases/latest`, SHALL compare its `v`-prefixed tag with the packaged current SemVer, and SHALL keep check failure non-blocking for normal application launch. It MUST NOT require a custom manifest, checksum sidecar, codexhost server, login, or embedded GitHub credential. Release-notes and asset download URLs SHALL be accepted when the GitHub owner is exactly `LiberSeek` or `LIBERSEEK`, and SHALL be rejected for any other owner spelling.
 
 #### Scenario: New stable Release exists
 - **WHEN** GitHub returns a non-draft, non-prerelease Release with a valid newer `v<semver>` tag
 - **THEN** Host SHALL report the current version, latest version, update availability, bounded plain-text GitHub Release body, and release-notes URL
+
+#### Scenario: GitHub uses either organization spelling
+- **WHEN** a Release notes URL or asset download URL uses owner `LiberSeek` or `LIBERSEEK` for `BOFT-CLI`
+- **THEN** Host SHALL accept that URL as this repository
+- **AND** SHALL reject any other owner spelling
 
 #### Scenario: GitHub is unavailable
 - **WHEN** an automatic update check times out, is rate-limited, or returns malformed data

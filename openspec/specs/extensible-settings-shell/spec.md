@@ -258,6 +258,19 @@ The production settings registry SHALL expose one Updates page backed only by a 
 - **WHEN** the fixed check operation reports a newer version with an installable current-target asset
 - **THEN** the page SHALL show both versions, the bounded Release body as structured Markdown, the GitHub release-notes link, and an enabled update-and-restart command
 
+#### Scenario: User opens GitHub Releases from Updates
+- **WHEN** the update client can open an external URL and the user activates the GitHub Releases download link
+- **THEN** the page SHALL ask the Host to open that link's current HTTPS URL in the OS browser
+- **AND** the link address SHALL stay on the latest Releases page until a release-notes URL is known
+
+#### Scenario: Host cannot open an external URL
+- **WHEN** the update client cannot open an external URL and the user activates the GitHub Releases download link
+- **THEN** the link SHALL remain a normal anchor
+
+#### Scenario: Host rejects the external open
+- **WHEN** the update client reports an external URL open and the Host rejects it
+- **THEN** the page SHALL open that same current URL through the anchor fallback
+
 #### Scenario: User starts an update
 - **WHEN** the user activates update-and-restart and the fixed start operation accepts it
 - **THEN** the page SHALL show bounded preparation or waiting state until the managed Desktop exits

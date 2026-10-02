@@ -5,9 +5,19 @@ export const CODEXHOST_LATEST_RELEASE_URL =
   "https://api.github.com/repos/LiberSeek/BOFT-CLI/releases/latest";
 
 const SHA256_DIGEST_PATTERN = /^sha256:([0-9a-f]{64})$/u;
+// GitHub's canonical owner is LIBERSEEK; older responses and links use LiberSeek.
 const RELEASE_NOTES_URL_PATTERN =
-  /^https:\/\/github\.com\/LiberSeek\/BOFT-CLI\/releases\/tag\/(v[0-9A-Za-z.+-]+)$/u;
-const DOWNLOAD_URL_PREFIX = "https://github.com/LiberSeek/BOFT-CLI/releases/download/";
+  /^https:\/\/github\.com\/(LiberSeek|LIBERSEEK)\/BOFT-CLI\/releases\/tag\/(v[0-9A-Za-z.+-]+)$/u;
+const DOWNLOAD_URL_PREFIXES = [
+  "https://github.com/LiberSeek/BOFT-CLI/releases/download/",
+  "https://github.com/LIBERSEEK/BOFT-CLI/releases/download/",
+] as const;
+
+function isBoftReleaseDownloadUrl(url: string, version?: string): boolean {
+  return DOWNLOAD_URL_PREFIXES.some((prefix) =>
+    url.startsWith(version === undefined ? prefix : `${prefix}v${version}/`),
+  );
+}
 
 export type InstallerReleaseTarget = "macos-arm64" | "macos-x64" | "windows-x64" | "windows-arm64";
 export type ReleaseTarget = InstallerReleaseTarget | "linux-x64" | "linux-arm64";
@@ -54,7 +64,7 @@ function releaseAsset(value: unknown): CodexhostReleaseAsset {
     (asset.size as number) > 2 * 1024 * 1024 * 1024 ||
     (asset.digest != null && typeof asset.digest !== "string") ||
     typeof asset.browser_download_url !== "string" ||
-    !asset.browser_download_url.startsWith(DOWNLOAD_URL_PREFIX)
+    !isBoftReleaseDownloadUrl(asset.browser_download_url)
   ) {
     throw new Error("GitHub Release asset is invalid");
   }
@@ -85,7 +95,7 @@ export function parseLatestGitHubRelease(value: unknown): CodexhostLatestRelease
   }
   const version = requireSemanticVersion(release.tag_name.slice(1));
   const notesMatch = RELEASE_NOTES_URL_PATTERN.exec(release.html_url);
-  if (!notesMatch || notesMatch[1] !== release.tag_name) {
+  if (!notesMatch || notesMatch[2] !== release.tag_name) {
     throw new Error("GitHub Release notes URL does not match its tag");
   }
   const releaseNotes =
@@ -176,8 +186,10 @@ export function selectInstallerReleaseArtifact(
   const digest = asset.digest === null ? null : SHA256_DIGEST_PATTERN.exec(asset.digest);
   const sha256 = digest?.[1];
   if (!sha256) throw new Error(`GitHub Release asset ${name} has no valid SHA-256 digest`);
-  const expectedPrefix = `${DOWNLOAD_URL_PREFIX}v${release.version}/`;
-  if (!asset.downloadUrl.startsWith(expectedPrefix) || !asset.downloadUrl.endsWith(`/${name}`)) {
+  if (
+    !isBoftReleaseDownloadUrl(asset.downloadUrl, release.version) ||
+    !asset.downloadUrl.endsWith(`/${name}`)
+  ) {
     throw new Error(`GitHub Release asset ${name} has an unexpected download URL`);
   }
   return Object.freeze({

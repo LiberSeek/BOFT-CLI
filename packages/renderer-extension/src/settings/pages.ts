@@ -124,6 +124,8 @@ export interface RendererUpdateClient {
   readUpdateStatus(): Promise<UpdateStatusResult>;
   /** Opens the local codexhost console; absent on Hosts that cannot. */
   openConsole?(): Promise<unknown>;
+  /** Opens an http(s) URL in the OS browser; absent when the Host cannot. */
+  openExternalUrl?(url: string): Promise<void>;
 }
 
 function panelIconName(view: string): RendererSettingsIconName {
@@ -503,6 +505,17 @@ function updatesPage(
         messages.updateDownloadFromReleases,
         createRendererSettingsIcon("external-link", 14),
       );
+      releaseLink.addEventListener("click", (event) => {
+        const open = getClient()?.openExternalUrl;
+        if (!open) return;
+        // Codex keeps target=_blank inside the Desktop window. The Host opens the OS browser.
+        event.preventDefault();
+        const url = releaseLink.href;
+        void open(url).catch((error: unknown) => {
+          console.error("codexhost external URL open failed", error);
+          document.defaultView?.open(url, "_blank", "noopener,noreferrer");
+        });
+      });
       actions.append(releaseLink);
       controls.append(manualTitle, manualNpm, manualWindowsInstaller, actions);
 

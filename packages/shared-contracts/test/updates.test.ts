@@ -98,6 +98,32 @@ describe("update runtime contracts", () => {
         updateAvailable: true,
         installationAvailable: true,
         releaseNotes: null,
+        releaseNotesUrl: "https://github.com/LIBERSEEK/BOFT-CLI/releases/tag/v1.2.3",
+        status: null,
+        error: null,
+      }).success,
+    ).toBe(true);
+    expect(
+      updateCheckResultSchema.safeParse({
+        currentVersion: "1.2.2",
+        installation: "npm",
+        latestVersion: "1.2.3",
+        updateAvailable: true,
+        installationAvailable: true,
+        releaseNotes: null,
+        releaseNotesUrl: "https://github.com/liberseek/BOFT-CLI/releases/tag/v1.2.3",
+        status: null,
+        error: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      updateCheckResultSchema.safeParse({
+        currentVersion: "1.2.2",
+        installation: "npm",
+        latestVersion: "1.2.3",
+        updateAvailable: true,
+        installationAvailable: true,
+        releaseNotes: null,
         releaseNotesUrl: "https://github.com/Other/codex-host/releases/tag/v1.2.3",
         status: null,
         error: null,

@@ -51,6 +51,70 @@ describe("GitHub Release update discovery", () => {
     );
   });
 
+  it("accepts LiberSeek and LIBERSEEK release URLs and rejects other spellings", () => {
+    const canonical = parseLatestGitHubRelease(
+      release({
+        html_url: "https://github.com/LIBERSEEK/BOFT-CLI/releases/tag/v1.2.3",
+        assets: [
+          {
+            name: "boft-cli-1.2.3-windows-x64.exe",
+            size: 42,
+            digest: `sha256:${"ab".repeat(32)}`,
+            browser_download_url:
+              "https://github.com/LIBERSEEK/BOFT-CLI/releases/download/v1.2.3/boft-cli-1.2.3-windows-x64.exe",
+          },
+        ],
+      }),
+    );
+    expect(canonical.releaseNotesUrl).toBe(
+      "https://github.com/LIBERSEEK/BOFT-CLI/releases/tag/v1.2.3",
+    );
+    expect(selectInstallerReleaseArtifact(canonical, "windows-x64").source.url).toBe(
+      "https://github.com/LIBERSEEK/BOFT-CLI/releases/download/v1.2.3/boft-cli-1.2.3-windows-x64.exe",
+    );
+
+    const mixed = parseLatestGitHubRelease(
+      release({
+        assets: [
+          {
+            name: "boft-cli-1.2.3-windows-x64.exe",
+            size: 42,
+            digest: `sha256:${"ab".repeat(32)}`,
+            browser_download_url:
+              "https://github.com/LIBERSEEK/BOFT-CLI/releases/download/v1.2.3/boft-cli-1.2.3-windows-x64.exe",
+          },
+        ],
+      }),
+    );
+    expect(mixed.releaseNotesUrl).toBe("https://github.com/LiberSeek/BOFT-CLI/releases/tag/v1.2.3");
+    expect(selectInstallerReleaseArtifact(mixed, "windows-x64").source.url).toContain(
+      "https://github.com/LIBERSEEK/",
+    );
+
+    expect(() =>
+      parseLatestGitHubRelease(
+        release({
+          html_url: "https://github.com/liberseek/BOFT-CLI/releases/tag/v1.2.3",
+        }),
+      ),
+    ).toThrow("does not match");
+    expect(() =>
+      parseLatestGitHubRelease(
+        release({
+          assets: [
+            {
+              name: "boft-cli-1.2.3-windows-x64.exe",
+              size: 42,
+              digest: `sha256:${"ab".repeat(32)}`,
+              browser_download_url:
+                "https://github.com/liberseek/BOFT-CLI/releases/download/v1.2.3/boft-cli-1.2.3-windows-x64.exe",
+            },
+          ],
+        }),
+      ),
+    ).toThrow("invalid");
+  });
+
   it("rejects prereleases, mismatched notes, duplicate assets, and unverified selection", () => {
     expect(() => parseLatestGitHubRelease(release({ prerelease: true }))).toThrow("invalid");
     expect(() =>

@@ -2372,6 +2372,130 @@ describe("Renderer Updates page", () => {
     scope.dispose();
   });
 
+  it("opens the GitHub Releases download in the OS browser when the Host can", async () => {
+    const openExternalUrl = vi.fn(async () => undefined);
+    const client = {
+      checkUpdate: vi.fn(async () => ({
+        ...updateCheck(),
+        releaseNotesUrl: "https://github.com/LIBERSEEK/BOFT-CLI/releases/tag/v1.2.3",
+      })),
+      startUpdate: vi.fn(),
+      readUpdateStatus: vi.fn(async () => ({ status: null })),
+      openExternalUrl,
+    };
+    const page = createDefaultRendererSettingsPages(undefined, () => client).find(
+      ({ id }) => id === "updates",
+    );
+    if (!page) throw new Error("Updates page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    const releaseLink = descendants(content).find(
+      (candidate) =>
+        candidate.tagName === "a" &&
+        visibleNotesText(candidate).includes("Download from GitHub Releases"),
+    );
+    if (!releaseLink) throw new Error("GitHub Releases link is not rendered");
+    const preventDefault = vi.fn();
+    releaseLink.dispatch("click", { preventDefault });
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(openExternalUrl).toHaveBeenCalledWith(CODEXHOST_RELEASES_LATEST_URL);
+
+    await vi.waitFor(() => {
+      expect(releaseLink.href).toBe("https://github.com/LIBERSEEK/BOFT-CLI/releases/tag/v1.2.3");
+    });
+    releaseLink.dispatch("click", { preventDefault });
+    expect(openExternalUrl).toHaveBeenLastCalledWith(
+      "https://github.com/LIBERSEEK/BOFT-CLI/releases/tag/v1.2.3",
+    );
+
+    cleanup?.();
+    scope.dispose();
+  });
+
+  it("falls back to the anchor when the Host cannot open the OS browser", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const openExternalUrl = vi.fn(async () => {
+      throw new Error("Opening a site is available on the local Host only");
+    });
+    const client = {
+      checkUpdate: vi.fn(async () => null),
+      startUpdate: vi.fn(),
+      readUpdateStatus: vi.fn(async () => ({ status: null })),
+      openExternalUrl,
+    };
+    const page = createDefaultRendererSettingsPages(undefined, () => client).find(
+      ({ id }) => id === "updates",
+    );
+    if (!page) throw new Error("Updates page is not registered");
+
+    const document = new FakeDocument();
+    const openWindow = vi.fn();
+    document.defaultView.open = openWindow;
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    const releaseLink = descendants(content).find(
+      (candidate) =>
+        candidate.tagName === "a" &&
+        visibleNotesText(candidate).includes("Download from GitHub Releases"),
+    );
+    if (!releaseLink) throw new Error("GitHub Releases link is not rendered");
+    const preventDefault = vi.fn();
+    releaseLink.dispatch("click", { preventDefault });
+    expect(preventDefault).toHaveBeenCalledOnce();
+    await vi.waitFor(() => {
+      expect(openWindow).toHaveBeenCalledWith(
+        CODEXHOST_RELEASES_LATEST_URL,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    });
+
+    consoleError.mockRestore();
+    cleanup?.();
+    scope.dispose();
+  });
+
+  it("leaves the GitHub Releases download as a normal link when the Host cannot open it", () => {
+    const page = createDefaultRendererSettingsPages().find(({ id }) => id === "updates");
+    if (!page) throw new Error("Updates page is not registered");
+
+    const document = new FakeDocument();
+    const content = document.createElement("main");
+    const scope = new RendererSettingsPageScope();
+    const cleanup = page.mount({
+      content: content as unknown as HTMLElement,
+      signal: scope.signal,
+      runLatest: (operation, handlers) => scope.runLatest(operation, handlers),
+    });
+
+    const releaseLink = descendants(content).find(
+      (candidate) =>
+        candidate.tagName === "a" &&
+        visibleNotesText(candidate).includes("Download from GitHub Releases"),
+    );
+    if (!releaseLink) throw new Error("GitHub Releases link is not rendered");
+    const preventDefault = vi.fn();
+    releaseLink.dispatch("click", { preventDefault });
+    expect(preventDefault).not.toHaveBeenCalled();
+
+    cleanup?.();
+    scope.dispose();
+  });
+
   it("points to GitHub Releases without a retry or internal detail when the update request fails", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const client = {
