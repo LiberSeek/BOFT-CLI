@@ -38,7 +38,7 @@ pub struct ConsoleCommand {
 /// How a launch shows the console once its outcome is known.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Presentation {
-    /// Installer launches (Finder, Start Menu) open the default browser.
+    /// Application launches (Finder, Start Menu) open the browser only after startup fails.
     Browser,
     /// Terminal launches (`launch`, used by npm and `npm start`) print the address.
     Print,
@@ -77,10 +77,10 @@ fn node_command(command: &ConsoleCommand) -> Result<Command, Box<dyn Error>> {
     Ok(process)
 }
 
-/// Starts the console as part of this launch. A terminal launch starts it in
-/// the background; an installer launch waits for it and opens it before Codex
-/// Desktop starts. Resources that do not exist are ignored, so a broken
-/// installation still reports its launch error.
+/// Prepares the console for this launch. A terminal launch starts it in the
+/// background. An application launch records the command and leaves the
+/// console stopped until startup fails. Resources that do not exist are
+/// ignored, so a broken installation still reports its launch error.
 pub fn start_for_launch(command: ConsoleCommand) {
     if !console_enabled(env::var_os(CONSOLE_ENV)) || !command.console_server.is_file() {
         return;
@@ -95,6 +95,9 @@ pub fn start_for_launch(command: ConsoleCommand) {
             ensure: None,
             shown: false,
         });
+    }
+    if presentation == Presentation::Browser {
+        return;
     }
     let ensure = thread::spawn(move || {
         let Ok(mut process) = node_command(&command) else {
@@ -116,10 +119,6 @@ pub fn start_for_launch(command: ConsoleCommand) {
         && let Some(console) = slot.as_mut()
     {
         console.ensure = Some(ensure);
-    }
-    // An installer launch shows the console first, then starts Codex Desktop.
-    if presentation == Presentation::Browser {
-        show(None);
     }
 }
 
@@ -161,10 +160,9 @@ fn console_url(command: &ConsoleCommand) -> Result<String, Box<dyn Error>> {
 }
 
 /// Shows the console for this launch's outcome. A terminal launch prints the
-/// address. An installer launch already opened the console before starting
-/// Codex Desktop; it opens the overview again only for a problem (`reason`),
-/// and after a successful start watches for a persistent Codex UI integration
-/// failure.
+/// address. An application launch stays closed on success and opens the
+/// browser only for a problem (`reason`). After a successful application start
+/// it watches for a persistent Codex UI integration failure.
 pub fn show_for_launch(reason: Option<&str>) -> bool {
     if reason.is_none() && launch_presentation() == Some(Presentation::Browser) {
         watch_integration();

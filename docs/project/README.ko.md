@@ -83,7 +83,7 @@ xattr -d com.apple.quarantine /Applications/BOFT.app
 
 **BOFT가 시작되지 않거나, Codex는 열렸지만 BOFT CLI 기능이 보이지 않는 경우**
 
-`boft console`(Windows: 시작 메뉴 → "BOFT console")을 실행하면 로컬 콘솔 `http://127.0.0.1:26339/`이 열립니다. 마지막 시작 실패 원인, Codex Desktop 버전, Host Runtime 로그를 확인할 수 있고, Codex가 실행 중이 아닐 때 BOFT CLI를 업데이트할 수 있습니다. 콘솔은 BOFT와 함께 시작됩니다. 설치 패키지로 실행하면 브라우저에서 열리고, 터미널에서 실행하면 주소가 출력됩니다.
+`boft console`(Windows: 시작 메뉴 → "BOFT console")을 실행하면 로컬 콘솔 `http://127.0.0.1:26339/`이 열립니다. 마지막 시작 실패 원인, Codex Desktop 버전, Host Runtime 로그를 확인할 수 있고, Codex가 실행 중이 아닐 때 BOFT CLI를 업데이트할 수 있습니다. 설치 패키지로 정상 실행하면 콘솔을 열지 않으며, 시작에 실패할 때만 브라우저에서 엽니다. 터미널에서 실행하면 주소가 출력됩니다.
 
 **Windows** - 휴대용/압축 해제 Codex Desktop
 

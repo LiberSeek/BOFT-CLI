@@ -36,14 +36,12 @@ type: warning
 
 ## 打开方式
 
-控制台随 codexhost 启动：
-
 | 启动方式 | 行为 |
 |---|---|
-| 安装包（macOS 打开应用、Windows 开始菜单） | 先启动控制台并在默认浏览器打开总览，再启动 Codex Desktop；启动失败或注入持续失败时另外打开总览查看原因 |
+| 安装包（macOS 打开应用、Windows 开始菜单） | 正常启动不打开控制台。启动失败时再启动控制台，并在默认浏览器打开总览；注入持续失败时也会打开总览 |
 | 终端（npm 的 `boft`、`boft launch`、`npm start`） | 控制台在后台与 Codex Desktop 一同启动，启动结束时在终端输出 `codexhost console: http://127.0.0.1:26339/` |
 
-控制台在校验 Shim、Host Runtime、Desktop Controller 和 Renderer 等 Codex 启动资源之前启动；这些文件缺失时，仍能提供故障恢复入口。npm 包装脚本将这部分校验交给 Launcher，不提前拦截。Launcher、Node 和控制台自身文件仍须可用，端口占用等控制台自身故障不保证能打开网页；命令参数解析失败也不进入启动流程。
+终端启动时，控制台在校验 Shim、Host Runtime、Desktop Controller 和 Renderer 等 Codex 启动资源之前启动；这些文件缺失时，仍能提供故障恢复入口。安装包要等启动失败后才启动控制台。npm 包装脚本将这部分校验交给 Launcher，不提前拦截。Launcher、Node 和控制台自身文件仍须可用，端口占用等控制台自身故障不保证能打开网页；命令参数解析失败也不进入启动流程。
 
 Launcher 在打开控制台之前先写入 `starting` 启动记录（`finishedAtMs: null`）。只要该记录对应的 Launcher 仍存活，总览和侧边栏显示“正在启动”，不再提示重复启动；启动完成或失败后由同一条记录更新结果。超时沿用 Launcher 原有的超时与失败处理，不在网页额外设置倒计时。如果 Launcher 异常退出而留下未完成记录，控制台显示启动失败，不会永久停在“正在启动”。
 
@@ -63,7 +61,7 @@ Launcher 在打开控制台之前先写入 `starting` 启动记录（`finishedAt
 
 - 默认 `26339`，只监听 `127.0.0.1`。可用 `CODEXHOST_CONSOLE_PORT` 修改（1024–65535）。
 - 端口被其他程序占用时直接报错，不自动换端口。
-- codexhost 运行期间控制台保持运行；codexhost 未运行时，30 分钟无请求后自动退出，下次打开或启动 codexhost 时重新启动。
+- codexhost 运行期间控制台保持运行；codexhost 未运行时，30 分钟无请求后自动退出。下次手动打开、终端启动，或安装包启动失败时重新启动。
 
 ## 文件
 
