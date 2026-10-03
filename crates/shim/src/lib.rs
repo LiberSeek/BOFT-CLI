@@ -32,11 +32,35 @@ pub const HOST_RUNTIME_PATH_ENV: &str = "CODEXHOST_HOST_RUNTIME_PATH";
 pub const REMOTE_SSH_MANAGED_ENV: &str = "CODEXHOST_REMOTE_SSH_MANAGED";
 const DATA_DIRECTORY_ENV: &str = "CODEXHOST_DATA_DIR";
 const LAUNCHER_PID_ENV: &str = "CODEXHOST_LAUNCHER_PID";
+#[cfg(target_os = "windows")]
+const LOCAL_APP_DATA_ENV: &str = "LOCALAPPDATA";
 const NPM_NODE_PATH_ENV: &str = "CODEXHOST_NPM_NODE_PATH";
 const NPM_PACKAGE_ROOT_ENV: &str = "CODEXHOST_NPM_PACKAGE_ROOT";
 const REMOTE_LISTENER_CHILD_ENV: &str = "CODEXHOST_REMOTE_LISTENER_CHILD";
 const INTERNAL_ORIGINATOR_OVERRIDE_ENV: &str = "CODEX_INTERNAL_ORIGINATOR_OVERRIDE";
 const DESKTOP_ORIGINATOR: &str = "Codex Desktop";
+
+#[cfg(target_os = "windows")]
+fn is_desktop_managed_cache_path(path: &Path) -> bool {
+    let Some(local_app_data) = env::var_os(LOCAL_APP_DATA_ENV) else {
+        return false;
+    };
+    let cache_root = PathBuf::from(local_app_data).join("OpenAI/Codex/bin");
+    let normalize = |value: &Path| {
+        let normalized = value
+            .to_string_lossy()
+            .replace('\\', "/")
+            .to_ascii_lowercase();
+        normalized
+            .strip_prefix("//?/")
+            .unwrap_or(&normalized)
+            .trim_end_matches('/')
+            .to_owned()
+    };
+    let path = normalize(path);
+    let cache_root = normalize(&cache_root);
+    path.starts_with(&(cache_root + "/"))
+}
 
 /// Optional lifecycle hooks for diagnostics around the byte-transparent proxy core.
 pub trait ProxyObserver {
@@ -801,9 +825,11 @@ fn child_command(
 /// Desktop helpers that persist only the standard `CODEX_CLI_PATH`
 /// override.
 ///
-/// The launcher-provided path remains authoritative. Discovery requires the
-/// exact self override, except for macOS node_repl's top-level `sandbox` call:
-/// it resolves the executable before clearing both CLI overrides from the child.
+/// The launcher-provided path remains authoritative except for a Windows path
+/// in Desktop's cache, which is revalidated against the current AppX package.
+/// Discovery requires the exact self override, except for macOS node_repl's
+/// top-level `sandbox` call: it resolves the executable before clearing both
+/// CLI overrides from the child.
 fn resolve_stock_codex_path(
     current_executable: &Path,
     arguments: &[OsString],
@@ -811,7 +837,27 @@ fn resolve_stock_codex_path(
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     let _ = arguments;
     let stock_codex_path = match env::var_os(STOCK_CODEX_PATH_ENV) {
-        Some(configured) => PathBuf::from(configured),
+        Some(configured) => {
+            #[cfg(target_os = "windows")]
+            if env::var_os(LAUNCHER_PID_ENV).is_some()
+                && is_desktop_managed_cache_path(Path::new(&configured))
+            {
+                // The Launcher discovers the cache before Desktop has copied a new
+                // AppX build. Re-resolve here so the first Shim process cannot
+                // inherit the previous build's codex.exe.
+                discover_desktop_managed_codex_cli().map_err(|error| {
+                    format!(
+                        "{STOCK_CODEX_PATH_ENV} points at a stale Desktop CLI and the current package CLI could not be discovered: {error}"
+                    )
+                })?
+            } else {
+                PathBuf::from(configured)
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                PathBuf::from(configured)
+            }
+        }
         None => {
             #[cfg(not(any(target_os = "windows", target_os = "macos")))]
             return Err(format!("{STOCK_CODEX_PATH_ENV} is required").into());

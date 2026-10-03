@@ -10,6 +10,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 #[cfg(target_os = "windows")]
 use std::time::SystemTime;
+#[cfg(target_os = "windows")]
+use std::time::{Duration, Instant};
 
 #[cfg(target_os = "macos")]
 use plist::Value;
@@ -69,6 +71,9 @@ use super::{
 
 #[cfg(target_os = "windows")]
 const WINDOWS_CODEX_PACKAGE_NAME: &str = "OpenAI.Codex";
+
+#[cfg(target_os = "windows")]
+const DESKTOP_CACHE_REFRESH_INTERVAL: Duration = Duration::from_secs(1);
 
 #[cfg(target_os = "windows")]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -270,6 +275,67 @@ fn find_desktop_cli_cache(local_app_data: &Path) -> Result<Option<PathBuf>, Plat
         })
 }
 
+#[cfg(all(target_os = "windows", test))]
+fn find_matching_desktop_cli_cache(
+    local_app_data: &Path,
+    packaged_codex_cli: &Path,
+) -> Result<Option<PathBuf>, PlatformError> {
+    let expected = sha256_file(packaged_codex_cli)?;
+    let expected_size = packaged_codex_cli.metadata()?.len();
+    find_matching_desktop_cli_cache_with_digest(local_app_data, &expected, expected_size)
+}
+
+#[cfg(target_os = "windows")]
+fn find_matching_desktop_cli_cache_with_digest(
+    local_app_data: &Path,
+    expected: &str,
+    expected_size: u64,
+) -> Result<Option<PathBuf>, PlatformError> {
+    let cache_root = local_app_data.join("OpenAI/Codex/bin");
+    let canonical_cache_root = match cache_root.canonicalize() {
+        Ok(root) => root,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(PlatformError::Io(error)),
+    };
+    let mut candidates = vec![cache_root.join("codex.exe")];
+
+    if let Ok(entries) = cache_root.read_dir() {
+        for entry in entries.flatten() {
+            if entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
+                candidates.push(entry.path().join("codex.exe"));
+            }
+        }
+    }
+
+    let candidates = candidates
+        .into_iter()
+        .map(|candidate| desktop_cli_candidate(&canonical_cache_root, candidate))
+        .collect::<Result<Vec<_>, PlatformError>>()?
+        .into_iter()
+        .flatten()
+        .map(|(_, candidate)| {
+            let same_size = candidate
+                .metadata()
+                .is_ok_and(|metadata| metadata.len() == expected_size);
+            let matches_packaged = same_size
+                && sha256_file(&candidate)
+                    .ok()
+                    .is_some_and(|actual| actual == expected);
+            (candidate, matches_packaged)
+        })
+        .collect::<Vec<_>>();
+    Ok(candidates
+        .into_iter()
+        .filter(|(_, matches)| *matches)
+        .map(|(candidate, _)| candidate)
+        .max_by_key(|candidate| {
+            candidate
+                .metadata()
+                .and_then(|metadata| metadata.modified())
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+        }))
+}
+
 #[cfg(target_os = "windows")]
 fn windows_installation(
     details: WindowsPackageDetails,
@@ -341,13 +407,12 @@ fn windows_local_app_data() -> Result<PathBuf, PlatformError> {
         })
 }
 
-/// Locate the executable CLI maintained by Codex Desktop without enumerating
-/// the installed AppX package.
+/// Locate the executable CLI maintained by Codex Desktop for the current
+/// installed package.
 ///
 /// Desktop helpers can preserve `CODEX_CLI_PATH` while dropping private
-/// launcher state. This focused lookup lets the Shim recover the same
-/// Desktop-managed CLI that normal installation discovery selects, without
-/// paying the PackageManager cost on every helper invocation.
+/// launcher state. The Shim therefore validates the packaged CLI and waits for
+/// its matching Desktop-managed cache copy before launching it.
 #[cfg(target_os = "windows")]
 pub fn discover_desktop_managed_codex_cli() -> Result<PathBuf, PlatformError> {
     if let Some(root) = custom_install_root(env::var_os) {
@@ -362,11 +427,36 @@ pub fn discover_desktop_managed_codex_cli() -> Result<PathBuf, PlatformError> {
         }
         return Ok(executable);
     }
-    find_desktop_cli_cache(&windows_local_app_data()?)?.ok_or_else(|| {
-        PlatformError::NotFound(
-            "no runnable Codex CLI was found in the Desktop-managed cache; launch the official Desktop once to create it".into(),
-        )
-    })
+    let details =
+        probe_package_details(env::var_os)?.map_or_else(discover_installed_windows_package, Ok)?;
+    let install_root = details.install_root.canonicalize().map_err(|error| {
+        PlatformError::NotFound(format!(
+            "Codex Desktop package '{}' is unavailable: {error}",
+            details.install_root.display()
+        ))
+    })?;
+    let packaged_codex_cli = install_root.join("app/resources/codex.exe");
+    let packaged_codex_cli_hash = sha256_file(&packaged_codex_cli)?;
+    let packaged_codex_cli_size = packaged_codex_cli.metadata()?.len();
+    let local_app_data = windows_local_app_data()?;
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        if let Some(executable) = find_matching_desktop_cli_cache_with_digest(
+            &local_app_data,
+            &packaged_codex_cli_hash,
+            packaged_codex_cli_size,
+        )? {
+            stage_code_mode_host(&packaged_codex_cli, &executable)?;
+            return Ok(executable);
+        }
+        if Instant::now() >= deadline {
+            return Err(PlatformError::NotFound(format!(
+                "no Desktop-managed Codex CLI matching the installed package was found; waited for the cache to refresh after '{}', but no matching codex.exe appeared",
+                packaged_codex_cli.display()
+            )));
+        }
+        std::thread::sleep(DESKTOP_CACHE_REFRESH_INTERVAL);
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -437,7 +527,7 @@ fn find_code_mode_host_source(packaged_codex_cli: &Path, runnable_dir: &Path) ->
 mod desktop_managed_cli_tests {
     use std::fs;
 
-    use super::{desktop_cli_candidate, find_desktop_cli_cache};
+    use super::{desktop_cli_candidate, find_desktop_cli_cache, find_matching_desktop_cli_cache};
 
     #[test]
     fn focused_cli_discovery_uses_only_the_desktop_managed_cache() {
@@ -487,6 +577,45 @@ mod desktop_managed_cli_tests {
         assert!(candidate.is_none());
 
         fs::remove_dir_all(root).expect("remove containment fixture");
+    }
+
+    #[test]
+    fn matching_cli_discovery_ignores_a_newer_stale_cache_entry() {
+        let root = crate::temporary_directory("desktop-managed-cli-match");
+        let packaged = root.join("package/resources/codex.exe");
+        let cache = root.join("OpenAI/Codex/bin");
+        let stale = cache.join("old-build/codex.exe");
+        let current = cache.join("new-build/codex.exe");
+        fs::create_dir_all(packaged.parent().expect("packaged parent")).expect("create package");
+        fs::create_dir_all(stale.parent().expect("stale parent")).expect("create stale cache");
+        fs::create_dir_all(current.parent().expect("current parent"))
+            .expect("create current cache");
+        fs::write(&packaged, b"current codex").expect("write packaged CLI");
+        fs::write(&stale, b"stale codex!").expect("write stale CLI");
+        fs::write(&current, b"current codex").expect("write current CLI");
+        fs::write(
+            stale
+                .parent()
+                .expect("stale parent")
+                .join(CODE_MODE_HOST_FILE),
+            b"host",
+        )
+        .expect("write stale code-mode host");
+        fs::write(
+            current
+                .parent()
+                .expect("current parent")
+                .join(CODE_MODE_HOST_FILE),
+            b"host",
+        )
+        .expect("write code-mode host");
+
+        let discovered = find_matching_desktop_cli_cache(&root, &packaged)
+            .expect("search matching CLI cache")
+            .expect("find matching CLI cache");
+        assert_eq!(discovered, current.canonicalize().expect("current CLI"));
+
+        fs::remove_dir_all(root).expect("remove matching CLI fixture");
     }
 
     #[test]
