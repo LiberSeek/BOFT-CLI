@@ -527,7 +527,10 @@ fn find_code_mode_host_source(packaged_codex_cli: &Path, runnable_dir: &Path) ->
 mod desktop_managed_cli_tests {
     use std::fs;
 
-    use super::{desktop_cli_candidate, find_desktop_cli_cache, find_matching_desktop_cli_cache};
+    use super::{
+        CODE_MODE_HOST_FILE, desktop_cli_candidate, find_desktop_cli_cache,
+        find_matching_desktop_cli_cache,
+    };
 
     #[test]
     fn focused_cli_discovery_uses_only_the_desktop_managed_cache() {
