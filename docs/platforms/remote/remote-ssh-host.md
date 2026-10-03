@@ -1,60 +1,141 @@
-# Remote Harnesses over SSH
+# Use AI coding tools on a remote computer over SSH
 
-Use Harnesses that are installed and signed in only on a remote machine — Claude Code included — from your local Codex Desktop, through its native SSH workspace. Your credentials stay on the remote machine and are never sent over SSH.
+The Web console’s **Remote connections** page (`#remote-connections`) provides the same connection management, installation, update, repair, and uninstall actions as the embedded settings. Codex Desktop must be running through BOFT CLI on the local computer.
 
-## Prerequisites
+Use Claude Code, Pi, and other Harnesses (AI coding tools) installed and signed in on another computer from your local Codex Desktop. Your project and tools run remotely while you read replies, send messages, and manage the conversation locally.
 
-- **Local machine** (macOS, Linux, or Windows): Codex Desktop and BOFT CLI are installed.
-- **Remote machine** (macOS or x64/ARM64 Linux; Windows isn't supported yet): Codex CLI is installed, along with **the same BOFT CLI version** as your local machine.
-- The Harness you want to use is installed and signed in on the remote machine.
-- Codex Desktop's native SSH workspace already works (**Settings → Connections → SSH**).
+## Before you start
 
-## Install
+- **Local computer**: install Codex Desktop and BOFT CLI, and make sure you can open **Settings → Connections → SSH** in Codex.
+- **Remote computer**: use a Mac or Linux computer with SSH enabled and Node.js, npm, and Codex CLI installed. Windows remote computers are not currently supported.
+- **Your coding tool**: install it and sign in on the remote computer—for example, Claude Code.
+- **Connection details**: have the SSH address ready, such as `username@computer-address`. If your connection needs a specific port or identity file, have those details ready too.
 
-On the remote machine, run:
+Update local BOFT CLI to the latest version before installing the remote end below.
+
+## Step 1: Check SSH login
+
+Log in to the remote computer once through SSH from your local terminal and confirm its identity. The page uses your existing SSH key or alias and does not show a password prompt.
+
+The remote computer needs Node.js, npm and Codex CLI, with permission for your user to install npm packages. Use Node.js 22.19 or later in the 22.x series, or Node.js 24.x. Installation loads your interactive login shell, including configured version managers such as nvm. Existing installations prefer the executable Node.js path recorded by BOFT CLI; an unsupported recorded version must be updated before maintenance. On a remote Mac, keep the desktop user logged in when using Claude Code.
+
+## Step 2: Add an SSH connection
+
+1. Launch Codex Desktop through BOFT CLI on your local computer.
+2. Open **BOFT CLI settings → Remote connections** and click **Add connection**.
+3. Enter the connection details:
+   - **Name**: choose a recognizable name, such as “Office computer.”
+   - **SSH address**: enter `username@computer-address` or an existing SSH alias.
+   - **Port and identity file**: fill these in only if your connection requires them; otherwise, leave them blank.
+4. Click **Save**. The page checks the computer. Choose **Install and connect** if the remote service is missing, or **Connect** if it is already installed.
+   - Wait for the installation result; you do not need to copy installation commands.
+   - Installation uses the published stable version running locally. Development builds require a stable runtime version as described in **Test from source with a specified version** below.
+5. Once it shows **Connected**, open a project on that computer in Codex.
+
+Existing Codex SSH connections appear here automatically; you do not need to add them again. Both pages share the same connection settings, so changes appear in both places.
+
+For connections discovered from your SSH config, you can edit the name here. Edit other details in your local SSH config, or view them in Codex **Settings → Connections → SSH**.
+
+## Step 3: Choose a tool and start working
+
+In the remote project's composer, choose your Harness and model from the **Agent / Model** selector, then send a message as usual.
+
+You can work in local and remote projects at the same time. Each shows the tools and models available on its own computer.
+
+If you only use Codex's built-in remote coding features, you do not need BOFT CLI on the remote computer.
+
+## Manage connections
+
+Use **Remote connections** to edit connection details, disconnect, or remove a connection you no longer use.
+
+- **Disconnect** stops automatic connection to that computer. Tasks already started remotely can continue. Click **Connect** when you want to use it again.
+- **Remove** removes the computer from the connection list without deleting remote files or conversations.
+
+## Update the remote end
+
+The Remote connections page shows the local version and the remote **Installed** and **Running** versions. **Running** is the version currently in use. If the page asks you to restart, follow its prompt.
+
+Each computer shows its own available actions. Operations run only when you click:
+
+- **Install and connect** installs the remote service, then connects.
+- **Match local version** appears for older remote versions. Click to update and restart immediately.
+- **Update remote service** appears when the remote end is too old to report its version. Click to install the local version over SSH, then reconfigure and start the remote service.
+- **Restart and connect** appears when a newer build is installed but an older build is running. Click to restart immediately.
+- **Reconnect** appears when a connection fails. It disconnects and connects again right away.
+- **Repair remote service** appears only when remote status is unavailable, the connection failed, or an update failed. It stops the service, removes its connection setup, configures it again and starts it. It does not uninstall or update the BOFT CLI package.
+- **Check again** retries an unavailable remote status. A failed check does not mean the service is missing.
+
+Updates, restarts and repairs run immediately and may interrupt active conversations. There is no task-completion wait.
+
+The page does not install or update in the background. These actions update BOFT CLI software, not project files or conversation history.
+
+If the remote version is newer, update the local computer first. Reconnect if the connection does not recover after an update.
+
+### When you need to update manually
+
+Older remote installations cannot report their version; the page shows **Update remote service**, which is usually all you need. If the button is unavailable (the local build is not a published release) or the update fails:
+
+1. Update local BOFT CLI to the latest version.
+2. Run these commands in order in a terminal on the remote computer:
 
 ```bash
-npm install -g @liberseek/boft-cli
+boft remote stop
+npm install -g @liberseek/boft-cli@latest
 boft remote install
 boft remote start
-boft remote status
 ```
 
-`remote install` adds a clearly marked block to your shell profile that only applies to SSH sessions, and backs up the profile first. Your local shells and existing `codex` command are left alone. On macOS, it also installs a per-user LaunchAgent that starts Claude Code in your logged-in session. It never reads the Keychain or any credentials.
+Then reconnect to that computer from your local machine.
 
-## Usage
+## Test from source with a specified version
 
-1. On your local machine, launch Codex Desktop through BOFT.
-2. Open the SSH workspace.
-3. Pick a Harness from the composer's Agent / Model selector.
-
-Settings → Session Import is scoped to that same current Host. With a remote Composer selected, it lists and maps only Sessions stored on the SSH host, and opens the imported Thread through that remote Host. Claude discovery runs directly on Linux SSH hosts and through the Aqua broker on managed macOS hosts; only bounded Session metadata and the validated native identity cross the broker, never Transcript content or credentials. Close the Session in its native Claude client before importing when activity is reported as unknown. Install the same BOFT CLI version on both machines and reconnect after an upgrade so the remote runtime and broker expose the matching import methods.
-
-A local Desktop launched through BOFT can also connect to a stock Codex remote Host: native conversations do not require remote `codexhost/*` methods; external Harnesses require remote BOFT. Thread ownership, Harness availability, configuration requests, and usage notifications are scoped to each composer's Host. Hidden composers on other Hosts must not block model loading or change its Harness selection. Native Model version requirements depend on the running remote app-server, not merely the CLI version installed on disk.
-
-Renderer integration readiness means at least one validated native Host connection is available; it does not require a single Composer Host across the window. Installation and readiness checks can succeed with local and remote composers present together. Requests without an unambiguous target Host still fail rather than choosing a connection arbitrarily. If no connections are available, installation waits and reports failure on timeout.
-
-## Commands
+From the repository root, run:
 
 ```bash
-boft remote status     # Check whether it is running and installed correctly
-boft remote start      # Start it (safe to run more than once)
-boft remote stop       # Stop it without touching other Codex processes
-boft remote uninstall  # Uninstall it but keep your Thread mapping data
+npm start 0.7.8
 ```
 
-After you start, stop, or uninstall, reconnect the SSH workspace in Codex Desktop.
+This sets the source runtime version for the whole launch: Host status, the console and update-check version reporting share this value. Remote installation and updates use that same version through the normal version policy. The remote npm package must already be published; this command does not upload local changes. Without a version argument, the source version remains `<workspace-version>-dev` and npm installation stays disabled. The override does not change version files or turn the source checkout into an installed distribution with self-update resources.
 
-## Upgrade
+To test unpublished remote Host or Broker changes too, build and install the corresponding remote platform package on that computer; changing the local version label cannot deliver those changes.
 
-Upgrade both machines to the same version using the same package manager. Then rerun `boft remote install` and `boft remote start` on the remote machine and reconnect the SSH workspace.
+## View the same conversation on both computers
+
+If the remote computer also has Codex Desktop, launch it through BOFT CLI there. Use the same BOFT CLI version on both computers, and use the same user account for the remote desktop login and SSH connection.
+
+External Harness conversations created in an SSH project appear on the other computer automatically. This may take a few seconds initially. Both computers can show messages, replies as they arrive, and tool activity. You can also send messages, interrupt tasks, or answer approvals from either computer.
+
+Keep these points in mind:
+
+- Use the insert-message feature to add input during a running task. Starting a separate task may return a busy message.
+- If both computers answer the same approval or question, the first processed answer applies.
+- After disconnecting, reopen the conversation to see what happened while you were away. If you are unsure whether a message was sent, check the conversation before resending it.
+
+This applies to external Harness conversations created in SSH projects. Other local conversations and built-in Codex conversations continue to work as before.
 
 ## Troubleshooting
 
-- **Inserting a message into a running native Codex task reports unsupported `codexhost/thread/ownership/list`**: the client verifies the native Thread on the same connection and then uses Desktop's native steering. This fallback does not apply to external Harness Threads or connection failures.
-- **`codexhost/harness/inspect is unsupported on this Host connection`**: the SSH connection isn't going through BOFT. Make sure the same BOFT CLI version is installed and running on the remote machine, then reconnect the SSH workspace.
-- **`remote status` says degraded or asks you to reinstall**: run `boft remote install`, then `boft remote start`.
-- **Native Codex requests fail with `Official request failed; retry explicitly`**: if the official Codex process on the remote machine exits, BOFT restarts it automatically with backoff, and reconnecting the SSH workspace retries immediately. If it keeps failing, run `boft remote stop` and then `boft remote start`.
-- **After reconnecting, the workspace connects for a few seconds, drops, and only the next reconnect works**: when a previous listener left its control socket behind on the remote machine (for example after being force-killed), older versions misjudged the new listener as not ready and terminated it after 10 seconds. Upgrade to a version with the fix. As a workaround, reconnecting once more usually recovers, because the terminated listener removes the socket when it exits normally. If the problem persists, confirm that no listener is running on the remote machine (`pgrep -f '^codexhost remote app-server listener'` prints nothing), then delete `~/.codex/app-server-control/app-server-control.sock` (under `CODEX_HOME` when it is set) and reconnect.
-- **A Harness is missing**: make sure it is installed and signed in on the remote machine, then click **Run connection diagnostics** in Settings.
-- **Install fails on macOS with a launchd / `gui/$UID` error**: the remote Mac needs someone logged in to the desktop. Log in, then run `boft remote install` again.
+| What happened | What to try |
+| --- | --- |
+| A specific tool (Node.js, npm or Codex CLI) is not detected over SSH | Install the named tool on the remote computer, or add its existing installation to the login shell PATH, then retry. This message does not prove the tool is uninstalled. Codex CLI is the command-line tool; remote Codex Desktop is not required. |
+| The connection fails or disconnects shortly afterward | Check that SSH login works, then choose **Check again**. If the service is missing, choose **Install and connect**. If needed, follow the manual update steps and reconnect. |
+| A Harness is missing | Confirm the tool is installed and signed in on the remote computer, then click **Run connection diagnostics** on BOFT CLI's **Connections** page. |
+| Remote version information is missing or the service is outdated | Choose **Update remote service**. If it is unavailable or fails, follow **When you need to update manually** above. |
+| An update fails | Check the remote computer's internet connection and retry. If it still fails, follow the manual update steps. |
+| The other computer does not show the same conversation | Check that both computers launched Desktop through BOFT CLI, use the same version, and use the same remote user account. If you use a custom data directory, use the same directory for both launch methods. |
+| Installation fails on a Mac | Make sure the remote Mac's desktop user is logged in, then run `boft remote install` again. |
+
+## Stop or uninstall
+
+Choose **Uninstall remote service** on the connection card. After confirmation, auto-connect is disabled for this connection, the remote service stops and its connection setup is removed. On Mac, the associated Harness background service is also uninstalled. The SSH connection entry, project files and chat data are kept, so the service can be installed again later. Active remote sessions are interrupted.
+
+The BOFT CLI package is kept by default. Select **Also uninstall the BOFT CLI package** to remove the remote computer's global npm `@liberseek/boft-cli` after service removal succeeds. Codex CLI, Node.js and other Harnesses are kept. Only select this if the remote Desktop no longer needs that package to launch. A mismatch between the active CLI and npm's global installation rejects package removal before stopping the service; choose service-only removal or uninstall the package manually on the remote computer. If package removal fails after service removal, the page explains the partial result and allows retrying.
+
+When you no longer need the remote installation, run these commands on the remote computer:
+
+```bash
+boft remote stop
+boft remote uninstall
+```
+
+Stopping the service interrupts active conversations. To disconnect temporarily, use **Disconnect** on the page; you do not need to uninstall.

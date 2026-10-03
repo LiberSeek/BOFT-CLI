@@ -7,10 +7,15 @@ export const HARNESS_BROKER_MAX_PENDING_REQUESTS = 32;
 export const HARNESS_BROKER_REQUEST_TIMEOUT_MS = 15_000;
 /** Keeps worst-case bounded Session metadata below the Broker frame limit. */
 export const HARNESS_BROKER_SESSION_IMPORT_PAGE_SIZE = 100;
+/** A broker with no open Session and no request for this long exits until next needed. */
+export const HARNESS_BROKER_IDLE_TIMEOUT_MS = 60 * 60 * 1000;
+/** Error code for a request the broker refused unprocessed because it is exiting. */
+export const HARNESS_BROKER_RETIRING_ERROR_CODE = "brokerRetiring";
 
 export const harnessBrokerMethodSchema = z.enum([
   "adapter.inspect",
   "adapter.inspectAccount",
+  "adapter.credits",
   "adapter.open",
   "adapter.sessionImport.list",
   "adapter.sessionImport.resolve",

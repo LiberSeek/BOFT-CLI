@@ -740,24 +740,31 @@ describe("Codex UI projector", () => {
       ],
     });
 
-    expect(value.project({ type: "turn.started", turnId }).messages).toMatchObject([
+    const messages = value.project({ type: "turn.started", turnId }).messages;
+    expect(messages.map(({ method }) => method)).toEqual([
+      "turn/started",
+      "item/started",
+      "item/completed",
+    ]);
+    const userMessage = {
+      id: `${turnId}-user`,
+      type: "userMessage",
+      content: [
+        { type: "text", text: "describe this", text_elements: [] },
+        { type: "inputImage", imageUrl: "data:image/png;base64,aW1hZ2U=" },
+      ],
+    };
+    expect(messages).toMatchObject([
       {
         method: "turn/started",
         params: {
           turn: {
-            items: [
-              {
-                id: `${turnId}-user`,
-                type: "userMessage",
-                content: [
-                  { type: "text", text: "describe this", text_elements: [] },
-                  { type: "inputImage", imageUrl: "data:image/png;base64,aW1hZ2U=" },
-                ],
-              },
-            ],
+            items: [userMessage],
           },
         },
       },
+      { method: "item/started", params: { item: userMessage } },
+      { method: "item/completed", params: { item: userMessage } },
     ]);
   });
 

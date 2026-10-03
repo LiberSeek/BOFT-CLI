@@ -1,3 +1,5 @@
+import { createRemoteConnectionsControl } from "./remote-connections-control.js";
+import { handleRemoteConnectionsRequest } from "./remote-connections-request.js";
 import {
   catalogModelForRef,
   decodeHarnessPluginRoute,
@@ -128,6 +130,7 @@ const externalHarnessIds = {
   qoder: harnessIdSchema.parse("qoder"),
   "qoder-cn": harnessIdSchema.parse("qoder-cn"),
   "kimi-code": harnessIdSchema.parse("kimi-code"),
+  zcode: harnessIdSchema.parse("zcode"),
 } as const;
 
 const externalAgents: readonly ExternalRendererAgent[] = [
@@ -147,6 +150,7 @@ const externalAgents: readonly ExternalRendererAgent[] = [
   "qoder",
   "qoder-cn",
   "kimi-code",
+  "zcode",
 ];
 type HarnessAvailability = Partial<Record<ExternalRendererAgent, RendererAgentAvailability>>;
 type HarnessAvailabilityErrors = Partial<Record<ExternalRendererAgent, CodexhostError | undefined>>;
@@ -310,7 +314,9 @@ type ApplyAdapterAgent = (
 ) => boolean;
 
 export interface RendererBindingProbeApi {
+  remoteConnections(request: unknown): Promise<unknown>;
   status(): RendererBindingProbeStatus;
+  currentThreadId(): string | null;
   lockedSelection(): LockedComposerSelection | null;
   setAdapter(
     status: RendererAdapterStatus,
@@ -842,7 +848,9 @@ export function installRendererBindingProbe(
     },
   });
   let connectionDiagnostics: RendererConnectionDiagnostics | null = null;
+  const remoteConnections = createRemoteConnectionsControl(window, modelClientForHost);
   const settingsLifecycle = installRendererSettingsLifecycle(window, {
+    getRemoteConnections: () => remoteConnections,
     getUpdateClient: () => modelControl,
     getAccountClient: () => modelControl,
     getConnectionDiagnostics: () => connectionDiagnostics,
@@ -895,6 +903,7 @@ export function installRendererBindingProbe(
       qoder: undefined,
       "qoder-cn": undefined,
       "kimi-code": undefined,
+      zcode: undefined,
     },
     webUi: Object.fromEntries(
       externalAgents.map((agent) => [agent, false]),
@@ -3081,6 +3090,13 @@ export function installRendererBindingProbe(
     );
 
   const api: RendererBindingProbeApi = {
+    remoteConnections: (request) => handleRemoteConnectionsRequest(remoteConnections, request),
+    currentThreadId() {
+      const mounted = connectedComposers();
+      return mounted.length === 1 && mounted[0]
+        ? (threadIdFromComposerModelTarget(mounted[0].modelTarget) ?? null)
+        : null;
+    },
     status() {
       const selections = connectedComposers().map((mounted) => ({
         composerId: mounted.composerId,

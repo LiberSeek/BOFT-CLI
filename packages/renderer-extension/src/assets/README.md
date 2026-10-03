@@ -3,6 +3,14 @@
 `logo-animated.mp4` is the LiberSeek animated mark used in the settings About
 page footer. It is bundled as a data URL because Codex Desktop CSP allows
 `media-src data:` but blocks remote `https:` media hosts.
+`zcode-agent.svg` matches the ZCode Adapter's `assets/icon.svg`, preserved from
+the upstream codex-host ZCode integration snapshot `b66013bb`. It is bundled as
+a data URL and does not load an installed application asset at runtime.
+
+`codex-logo.png` is the Codex X mark
+source and `codex-logo-transparent.png` is its white-background-free square
+variant. `codex-logo-bright.png` recolors that mark in the official bright
+Codex blue so it stays visible on dark surfaces.
 
 `codexhost-logo.png`, `codexhost-icon.png`, and `codexhost-logo-transparent.png`
 are the BOFT product marks. `codexhost-brand-icon.png` is the 256px crop used

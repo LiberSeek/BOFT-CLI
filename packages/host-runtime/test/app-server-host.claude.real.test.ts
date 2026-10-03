@@ -206,7 +206,6 @@ describe("AppServerHost hermetic Claude projection", () => {
     const host = new AppServerHost({
       stockCodexPath: "/synthetic/codex",
       arguments: [],
-      defaultAgent: "codex",
       desktopInput,
       desktopOutput,
       diagnosticOutput,
@@ -310,7 +309,6 @@ describe.skipIf(!RUN_REAL)("AppServerHost real Claude projection", () => {
       const host = new AppServerHost({
         stockCodexPath: "/synthetic/codex",
         arguments: [],
-        defaultAgent: "codex",
         desktopInput,
         desktopOutput,
         diagnosticOutput,

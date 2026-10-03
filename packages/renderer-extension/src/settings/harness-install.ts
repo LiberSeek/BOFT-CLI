@@ -17,6 +17,12 @@ interface HarnessInstallSpec {
 
 const HARNESS_INSTALL_SPECS: Readonly<Record<ExternalRendererAgent, HarnessInstallSpec>> =
   Object.freeze({
+    zcode: {
+      url: "https://zcode.z.ai/",
+      binary: "zcode",
+      posix: "Install ZCode Desktop and sign in with a Start Plan account.",
+      windows: "Install ZCode Desktop and sign in with a Start Plan account.",
+    },
     pi: {
       url: "https://pi.dev/",
       binary: "pi",

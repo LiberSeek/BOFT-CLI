@@ -116,11 +116,14 @@ export class HarnessSessionImporter {
             : [],
         ),
       );
+      // An earlier version of an existing Thread is not a Session the user still has to bring in.
+      const superseded = this.#repository.supersededNativeSessionIds(this.#harnessId);
       const query = input.query?.trim().toLowerCase() ?? "";
       const candidates = parsed.data
         .filter(
           (candidate) =>
             !mapped.has(candidate.nativeSessionId) &&
+            !superseded.has(candidate.nativeSessionId) &&
             (!query ||
               [candidate.title, candidate.nativeSessionId, candidate.cwd].some((value) =>
                 value?.toLowerCase().includes(query),
@@ -166,6 +169,9 @@ export class HarnessSessionImporter {
       return { ok: false, error: fixedError(-32081, "Session mappings could not be read") };
     }
     const existing = this.#mappedRecord(records, nativeSessionId);
+    // A stale page or a direct request must not turn a replaced Session into a second Thread.
+    if (!existing && this.#repository.supersededNativeSessionIds(this.#harnessId).has(nativeSessionId))
+      return { ok: false, error: fixedError(-32079, "Native Session is no longer available") };
     const capability = this.#capability;
     if (existing) {
       if (!capability?.resolveCandidate) return importedThread(existing);

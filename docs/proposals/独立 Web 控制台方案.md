@@ -73,7 +73,7 @@
 | 更新 | `update-manager` 的 installer / macOS DMG 路径 | `update-manager` 的 npm 路径 |
 
 - npm 用户的 Node 本身不可用时，控制台无法启动。此时 launcher 在终端打印失败记录摘要；这也是启动失败记录必须由 Rust 写出的原因。
-- 控制台触发的更新沿用现有 `codexhost-updater` 流程：交给 updater 后控制台服务退出，由 updater 替换文件，不另写一套自我替换逻辑。
+- 控制台触发的更新沿用现有 `boft-updater` 流程：交给 updater 后控制台服务退出，由 updater 替换文件，不另写一套自我替换逻辑。
 
 ## 4. 页面内容
 
@@ -114,8 +114,7 @@
 
 ### 5.1 端口
 
-- 默认 `127.0.0.1:26339`，只监听 loopback。26339 为 "CODEX" 的九宫格键位。
-- 核对结果：IANA 登记表中处于未分配段 `26265–26485`；低于 macOS / Windows（49152 起）与 Linux（32768 起）的临时端口范围；不与 Kubernetes NodePort（30000–32767）、Minecraft（25565）、MongoDB（27017）、CockroachDB（26257）等常见端口重叠；本机与仓库中无占用。
+- 默认 `127.0.0.1:26339`，只监听 loopback。沿用 BOFT 的默认端口。
 - 可通过 `CODEXHOST_CONSOLE_PORT` 或控制台设置修改。
 
 ### 5.2 单实例与端口冲突

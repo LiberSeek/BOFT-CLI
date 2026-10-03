@@ -15,7 +15,8 @@
     "packages/adapters/cursor-cli",
     "packages/adapters/qoder",
     "packages/adapters/qoder-cn",
-    "packages/adapters/kimi-code"
+    "packages/adapters/kimi-code",
+    "packages/adapters/zcode"
   ],
   "runtimePackages": [
     "@agentclientprotocol/sdk",

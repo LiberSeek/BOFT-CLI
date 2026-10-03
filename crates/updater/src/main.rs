@@ -1,7 +1,9 @@
 #![forbid(unsafe_code)]
 
 mod install;
+mod remote;
 mod request;
+mod ssh;
 mod status;
 
 use std::env;
@@ -139,6 +141,12 @@ fn usage() {
 }
 
 fn run(arguments: &[String]) -> Result<(), Box<dyn Error>> {
+    if arguments == ["ssh"] {
+        return ssh::apply();
+    }
+    if arguments.len() == 3 && arguments[0] == "remote" && arguments[1] == "--request" {
+        return remote::apply(Path::new(&arguments[2]));
+    }
     if arguments.len() != 3 || arguments[0] != "apply" || arguments[1] != "--request" {
         usage();
         return Err("invalid updater arguments".into());
@@ -151,7 +159,7 @@ fn main() -> ExitCode {
     match run(&arguments) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("codexhost updater: {error}");
+            eprintln!("boft updater: {error}");
             ExitCode::FAILURE
         }
     }

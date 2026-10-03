@@ -19,21 +19,21 @@
 
 <p>
   <a href="https://pi.dev/"><img alt="Pi" src="https://img.shields.io/badge/Pi-000000?logo=pi&logoColor=white" /></a>
-  <a href="https://openai.com/codex/"><img alt="Codex" src="imgs/badge-codex.svg" /></a>
+  <a href="https://openai.com/codex/"><img alt="Codex" src="../imgs/badge-codex.svg" /></a>
   <a href="https://code.claude.com/docs/en/quickstart"><img alt="Claude Code" src="https://img.shields.io/badge/Claude_Code-D97757?logo=claudecode&logoColor=white" /></a>
-  <a href="https://opencode.ai/docs/"><img alt="OpenCode" src="imgs/badge-opencode.svg" /></a>
+  <a href="https://opencode.ai/docs/"><img alt="OpenCode" src="../imgs/badge-opencode.svg" /></a>
   <a href="https://grok.com/"><img alt="Grok" src="https://img.shields.io/badge/Grok-000000?logo=x&logoColor=white" /></a>
-  <a href="https://github.com/can1357/oh-my-pi"><img alt="Oh My Pi" src="imgs/badge-omp-v5.svg" /></a><br />
+  <a href="https://github.com/can1357/oh-my-pi"><img alt="Oh My Pi" src="../imgs/badge-omp-v5.svg" /></a><br />
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="DeepSeek Harness" src="https://img.shields.io/badge/DeepSeek_Harness-4D6BFE?logo=deepseek&logoColor=white" /></a>
-  <a href="https://antigravity.google/product/antigravity-cli"><img alt="AGY" src="imgs/badge-agy.svg" /></a>
-  <a href="https://kiro.dev/docs/cli/"><img alt="Kiro CLI" src="imgs/badge-kiro.svg" /></a>
-  <a href="https://www.codebuddy.cn/home/"><img alt="CodeBuddy" src="imgs/badge-codebuddy.svg" /></a>
-  <a href="https://cursor.com/docs/cli/overview"><img alt="Cursor" src="imgs/badge-cursor.svg" /></a>
-  <a href="https://hermes-agent.nousresearch.com/docs"><img alt="Hermes" src="imgs/badge-hermes.svg" /></a>
+  <a href="https://antigravity.google/product/antigravity-cli"><img alt="AGY" src="../imgs/badge-agy.svg" /></a>
+  <a href="https://kiro.dev/docs/cli/"><img alt="Kiro CLI" src="../imgs/badge-kiro.svg" /></a>
+  <a href="https://www.codebuddy.cn/home/"><img alt="CodeBuddy" src="../imgs/badge-codebuddy.svg" /></a>
+  <a href="https://cursor.com/docs/cli/overview"><img alt="Cursor" src="../imgs/badge-cursor.svg" /></a>
+  <a href="https://hermes-agent.nousresearch.com/docs"><img alt="Hermes" src="../imgs/badge-hermes.svg" /></a>
 </p>
 
 <p align="center">
-  <sub><a href="../README.md">简体中文</a> · <a href="README.en.md">English</a> · 한국어</sub>
+  <sub><a href="../../README.md">简体中文</a> · <a href="README.en.md">English</a> · 한국어</sub>
 </p>
 </div>
 
@@ -61,7 +61,7 @@
 
 **설치 프로그램 다운로드** (macOS, Windows)
 
-[최신 릴리스](https://github.com/LiberSeek/BOFT-CLI/releases/latest)에서 운영체제와 CPU 아키텍처에 맞는 설치 프로그램을 다운로드하세요. macOS는 DMG, Windows는 EXE를 선택합니다. [x64/ARM64 Linux](linux.md)도 지원합니다.
+[최신 릴리스](https://github.com/LiberSeek/BOFT-CLI/releases/latest)에서 운영체제와 CPU 아키텍처에 맞는 설치 프로그램을 다운로드하세요. macOS는 DMG, Windows는 EXE를 선택합니다. [x64/ARM64 Linux](../platforms/linux/linux.md)도 지원합니다.
 
 또는 npm으로 설치하세요:
 
@@ -167,7 +167,7 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
 
 **CodeBuddy(실험적):** 네이티브 ACP를 사용하며, 실제 작업을 실행하는 컴퓨터에 [CodeBuddy CLI](https://www.codebuddy.ai/docs/zh/cli/overview)를 설치하고 로그인해야 합니다. BOFT CLI에는 플러그인만 포함되며 CLI는 포함되지 않습니다. CodeBuddy App만 설치해서는 CLI를 대체할 수 없습니다.
 
-| 기능 | <a href="https://openai.com/codex/"><img alt="Codex" src="imgs/harness-icon-codex.svg" /></a> | <a href="https://pi.dev/"><img alt="Pi" src="https://img.shields.io/badge/-000000?logo=pi&logoColor=white" /></a> | <a href="https://github.com/can1357/oh-my-pi"><img alt="Oh My Pi" src="imgs/harness-icon-omp-v5.svg" /></a> | <a href="https://code.claude.com/docs/en/quickstart"><img alt="Claude Code" src="https://img.shields.io/badge/-D97757?logo=claudecode&logoColor=white" /></a> | <a href="https://opencode.ai/docs/"><img alt="OpenCode" src="imgs/harness-icon-opencode.svg" /></a> | <a href="https://grok.com/"><img alt="Grok" src="https://img.shields.io/badge/-000000?logo=x&logoColor=white" /></a> | <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="DeepSeek Harness" src="https://img.shields.io/badge/-4D6BFE?logo=deepseek&logoColor=white" /></a> | <a href="https://antigravity.google/product/antigravity-cli"><img alt="AGY" src="imgs/harness-icon-agy.svg" /></a> | <a href="https://www.codebuddy.cn/home/"><img alt="CodeBuddy" src="imgs/harness-icon-codebuddy.svg" /></a> | <a href="https://cursor.com/docs/cli/overview"><img alt="Cursor" src="imgs/harness-icon-cursor.svg" /></a> | <a href="https://hermes-agent.nousresearch.com/docs"><img alt="Hermes" src="imgs/harness-icon-hermes.svg" /></a> |
+| 기능 | <a href="https://openai.com/codex/"><img alt="Codex" src="../imgs/harness-icon-codex.svg" /></a> | <a href="https://pi.dev/"><img alt="Pi" src="https://img.shields.io/badge/-000000?logo=pi&logoColor=white" /></a> | <a href="https://github.com/can1357/oh-my-pi"><img alt="Oh My Pi" src="../imgs/harness-icon-omp-v5.svg" /></a> | <a href="https://code.claude.com/docs/en/quickstart"><img alt="Claude Code" src="https://img.shields.io/badge/-D97757?logo=claudecode&logoColor=white" /></a> | <a href="https://opencode.ai/docs/"><img alt="OpenCode" src="../imgs/harness-icon-opencode.svg" /></a> | <a href="https://grok.com/"><img alt="Grok" src="https://img.shields.io/badge/-000000?logo=x&logoColor=white" /></a> | <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="DeepSeek Harness" src="https://img.shields.io/badge/-4D6BFE?logo=deepseek&logoColor=white" /></a> | <a href="https://antigravity.google/product/antigravity-cli"><img alt="AGY" src="../imgs/harness-icon-agy.svg" /></a> | <a href="https://www.codebuddy.cn/home/"><img alt="CodeBuddy" src="../imgs/harness-icon-codebuddy.svg" /></a> | <a href="https://cursor.com/docs/cli/overview"><img alt="Cursor" src="../imgs/harness-icon-cursor.svg" /></a> | <a href="https://hermes-agent.nousresearch.com/docs"><img alt="Hermes" src="../imgs/harness-icon-hermes.svg" /></a> |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | 스트리밍 응답 | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 도구 상태 | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -183,7 +183,7 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
 | 슬래시 명령 | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | 이전 메시지 수정 | 기본 제공 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
 
-> **Antigravity:**¹ **Skip permissions(위험)**만 제공하며 네이티브 `--dangerously-skip-permissions`를 사용합니다. BOFT CLI는 도구 승인, 권한 규칙, 작업 영역 읽기/쓰기 제한을 추가하지 않으므로 신뢰할 수 있는 환경에서만 사용하세요. 이전 Configured permissions / Desktop approvals는 더 이상 지원되지 않으며 Skip permissions를 명시적으로 선택해야 합니다. 질문은 단일 선택과 텍스트를 지원하고, 하위 Agent는 네이티브 카드와 읽기 전용 기록을 지원합니다. 자세한 내용은 [권한 설명](antigravity-tool-approval.md)과 [하위 Agent 설명](antigravity-subagents.md)을 참고하세요.
+> **Antigravity:**¹ **Skip permissions(위험)**만 제공하며 네이티브 `--dangerously-skip-permissions`를 사용합니다. BOFT CLI는 도구 승인, 권한 규칙, 작업 영역 읽기/쓰기 제한을 추가하지 않으므로 신뢰할 수 있는 환경에서만 사용하세요. 이전 Configured permissions / Desktop approvals는 더 이상 지원되지 않으며 Skip permissions를 명시적으로 선택해야 합니다. 질문은 단일 선택과 텍스트를 지원하고, 하위 Agent는 네이티브 카드와 읽기 전용 기록을 지원합니다. 자세한 내용은 [권한 설명](../harnesses/antigravity/antigravity-tool-approval.md)과 [하위 Agent 설명](../harnesses/antigravity/antigravity-subagents.md)을 참고하세요.
 
 > **CodeBuddy:** 여러 Turn, 쓰기 가능한 Session 복원, 취소 후 대화 계속하기, 네이티브 하위 Agent 카드와 읽기 전용 기록을 지원하며 백그라운드 하위 Agent 관찰도 포함됩니다. Model, Thinking 및 권한 옵션은 CLI의 네이티브 카탈로그를 따릅니다.
 >
@@ -193,7 +193,7 @@ Codex Desktop을 완전히 종료한 뒤, 새 터미널을 열고 `boft`를 실�
 >
 > ⁴ 네이티브 토큰/컨텍스트 사용량과 Credits를 표시합니다. Credits는 USD가 아니며 계정의 남은 한도는 연동되지 않았습니다.
 >
-> CodeBuddy의 — 표시는 Host에 아직 연동되지 않았다는 뜻이며, CLI 자체에 기능이 없다는 뜻은 아닙니다. 이미지 입력과 Teams 전용 UI도 아직 연동되지 않았습니다. 버전, 원격 실행 요건 및 검증 범위는 [CodeBuddy 연동 설명](codebuddy-harness-integration.md)을 참고하세요. Cursor CLI는 실험적이며 [Cursor CLI 실험 메모](cursor-cli-experimental.md)를 참고하세요.
+> CodeBuddy의 — 표시는 Host에 아직 연동되지 않았다는 뜻이며, CLI 자체에 기능이 없다는 뜻은 아닙니다. 이미지 입력과 Teams 전용 UI도 아직 연동되지 않았습니다. 버전, 원격 실행 요건 및 검증 범위는 [CodeBuddy 연동 설명](../harnesses/codebuddy/codebuddy-harness-integration.md)을 참고하세요. Cursor CLI는 실험적이며 [Cursor CLI 실험 메모](../harnesses/cursor/cursor-cli-experimental.md)를 참고하세요.
 
 ## Agent 간 협업
 
@@ -267,7 +267,9 @@ BOFT CLI는 다른 방식을 사용합니다.
 
 </details>
 
-## 교류 그룹 참여
+<a id="교류-그룹-참여"></a>
+
+## 微信交流群
 
 <table align="center">
   <tr>
@@ -283,7 +285,7 @@ BOFT CLI는 다른 방식을 사용합니다.
       <sub><strong>함께 기여해 주세요.</strong></sub>
     </td>
     <td align="center">
-      <img width="230" alt="위챗 그룹 QR 코드" src="../imgs/wechat-qrcode.jpg" />
+      <img width="230" alt="위챗 그룹 QR 코드" src="../imgs/wechat-group-4-qrcode.jpg" />
     </td>
   </tr>
 </table>
@@ -293,8 +295,8 @@ BOFT CLI는 다른 방식을 사용합니다.
 환경 요구 사항: 공식 Codex Desktop, Node.js 22.19+ 또는 24, Rust.
 
 ```bash
-git clone https://github.com/BytePioneer-AI/codex-host
-cd codex-host
+git clone https://github.com/LiberSeek/BOFT-CLI
+cd BOFT-CLI
 npm ci
 npm start
 ```
@@ -304,7 +306,7 @@ npm start
 Pi를 예로 듭니다. 왼쪽에서 오른쪽이 한 번의 요청 호출 체인입니다: Desktop → 공용 계층 → Pi 플러그인 → 네이티브 프로세스.
 
 <div align="center">
-  <img width="100%" src="imgs/pi-runtime-architecture.png" alt="Pi를 예로 든 실행 아키텍처: Desktop에서 공용 계층, 이어서 Pi 플러그인과 네이티브 프로세스">
+  <img width="100%" src="../imgs/pi-runtime-architecture.png" alt="Pi를 예로 든 실행 아키텍처: Desktop에서 공용 계층, 이어서 Pi 플러그인과 네이티브 프로세스">
 </div>
 
 ### Harness 추가

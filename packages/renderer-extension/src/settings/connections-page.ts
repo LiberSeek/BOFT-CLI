@@ -12,6 +12,8 @@ import {
   type AgentGroupPreferenceStore,
   type AgentGroupSection,
 } from "../agent-group-preference.js";
+import type { RemoteConnectionsControl } from "../remote-connections-control.js";
+import { harnessHasInstallCommands } from "./harness-installation-guides.js";
 import type { ExternalRendererAgent, RendererAgentAvailability } from "../agent-selection-state.js";
 import { createRendererAgentIcon, RENDERER_AGENT_LABELS } from "../renderer-agent-icon.js";
 import type { RendererAdapterStatus } from "../versioned-renderer-adapter.js";
@@ -195,6 +197,7 @@ function createHostSegmentedControl(
   selectedHostId: string,
   messages: RendererSettingsMessages,
   onSelect: (hostId: string) => void,
+  hostNames: ReadonlyMap<string, string>,
 ): HTMLElement {
   const root = document.createElement("div");
   root.className = "settings-segmented";
@@ -212,7 +215,7 @@ function createHostSegmentedControl(
     button.setAttribute("role", "tab");
     button.setAttribute("aria-selected", String(selected));
     button.tabIndex = selected ? 0 : -1;
-    const hostName = connectionHostName(host.hostId, messages);
+    const hostName = hostNames.get(host.hostId) || connectionHostName(host.hostId, messages);
     button.textContent = hostName;
     button.title = host.active ? `${hostName} · ${messages.connectionActiveHost}` : hostName;
     button.addEventListener("click", () => {
@@ -655,6 +658,7 @@ export function createConnectionsSettingsPage(
   messages: RendererSettingsMessages,
   getDiagnostics: () => RendererConnectionDiagnostics | null,
   groupPreference: AgentGroupPreferenceStore = getSharedAgentGroupPreferenceStore(),
+  getRemoteConnections: () => RemoteConnectionsControl | null = () => null,
 ): RendererSettingsPageDefinition {
   return Object.freeze({
     id: "connections",
@@ -685,6 +689,7 @@ export function createConnectionsSettingsPage(
       syncMessage.setAttribute("role", "status");
       context.content.append(header, syncMessage, content);
 
+      const hostNames = new Map<string, string>();
       let pending = false;
       let selectedHostId: string | null = null;
       let expandedItemKey: string | null = null;
@@ -701,7 +706,7 @@ export function createConnectionsSettingsPage(
         const setLaunchSettings = diagnostics?.setLaunchSettings;
         if (
           hostId !== "local" ||
-          item.agentSnapshot?.agent !== "workbuddy" ||
+          (item.agentSnapshot?.agent !== "workbuddy" && item.agentSnapshot?.agent !== "zcode") ||
           !getLaunchSettings ||
           !setLaunchSettings
         ) {
@@ -710,9 +715,10 @@ export function createConnectionsSettingsPage(
         if (launchControls?.hostId === hostId && launchControls.itemKey === item.key) {
           return launchControls.element;
         }
-        const element = createHarnessLaunchControls(document, messages, "workbuddy", {
-          get: () => getLaunchSettings(hostId, "workbuddy"),
-          set: (path) => setLaunchSettings(hostId, "workbuddy", path),
+        const agent = item.agentSnapshot.agent;
+        const element = createHarnessLaunchControls(document, messages, agent, {
+          get: () => getLaunchSettings(hostId, agent),
+          set: (path) => setLaunchSettings(hostId, agent, path),
         });
         launchControls = { hostId, itemKey: item.key, element };
         return element;
@@ -833,6 +839,7 @@ export function createConnectionsSettingsPage(
             selectedHostId = hostId;
             render(latestSnapshot);
           },
+          hostNames,
         );
 
         const list = document.createElement("section");
@@ -879,7 +886,7 @@ export function createConnectionsSettingsPage(
             const installState = installs?.get(selectedHost.hostId, agent);
             const canInstall =
               selectedHost.hostId === "local" &&
-              agent !== "workbuddy" &&
+              harnessHasInstallCommands(agent) &&
               diagnostics?.installation !== undefined;
             const installStatus =
               installState?.status === "installing" || installState?.status === "checking"
@@ -1219,6 +1226,16 @@ export function createConnectionsSettingsPage(
       };
 
       render(diagnostics?.snapshot() ?? null);
+      void getRemoteConnections()?.ssh.list(context.signal).then(
+        (connections) => {
+          if (context.signal.aborted) return;
+          for (const connection of connections) {
+            hostNames.set(connection.hostId, connection.displayName.trim());
+          }
+          render(diagnostics?.snapshot() ?? null);
+        },
+        () => { /* Keep the Host ID fallback when native names are unavailable. */ },
+      );
       // Keep the Main / More grouping in sync with any other open picker or
       // settings instance (e.g. the Agent picker's "Manage" shortcut).
       const unsubscribeGroup = groupPreference.subscribe(() =>

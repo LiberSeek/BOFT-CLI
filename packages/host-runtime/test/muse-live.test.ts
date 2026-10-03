@@ -152,7 +152,6 @@ function createHost(directory: string, pluginRoot: string) {
   const host = new AppServerHost({
     stockCodexPath: "/synthetic/codex",
     arguments: ["app-server"],
-    defaultAgent: "codex",
     desktopInput,
     desktopOutput,
     diagnosticOutput,

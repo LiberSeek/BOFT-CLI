@@ -1,3 +1,5 @@
+import { createRemoteConnectionsPage } from "./remote-connections-page.js";
+import type { RemoteConnectionsControl } from "../remote-connections-control.js";
 import type {
   UpdateCheckResult,
   UpdateInstallation,
@@ -82,6 +84,7 @@ function windowsInstallerDownloadUrl(window: Window | null | undefined, version:
 
 export const DEFAULT_RENDERER_SETTINGS_PAGE_IDS = [
   "connections",
+  "remote-connections",
   "accounts",
   "session-import",
   "appearance",
@@ -93,7 +96,7 @@ export const DEFAULT_RENDERER_SETTINGS_PAGE_IDS = [
 export const RENDERER_SETTINGS_NAV_SECTIONS = [
   {
     id: "connection",
-    pageIds: ["connections", "accounts", "session-import"],
+    pageIds: ["connections", "remote-connections", "accounts", "session-import"],
   },
   {
     id: "general",
@@ -813,11 +816,18 @@ export function createDefaultRendererSettingsPages(
   openImportedThread: RendererImportedThreadOpener | null = () =>
     Promise.reject(new Error("Imported Thread navigation is unavailable")),
   getLoadedSessionsClient: () => LoadedSessionsClient | null = () => null,
+  getRemoteConnections: () => RemoteConnectionsControl | null = () => null,
 ): readonly RendererSettingsPageDefinition[] {
   return Object.freeze([
-    createConnectionsSettingsPage(messages, getDiagnostics),
+    createConnectionsSettingsPage(messages, getDiagnostics, undefined, getRemoteConnections),
+    createRemoteConnectionsPage(messages, getRemoteConnections),
     createAccountsSettingsPage(messages, getAccountClient),
-    createSessionImportSettingsPage(messages, getSessionImportClient, openImportedThread),
+    createSessionImportSettingsPage(
+      messages,
+      getSessionImportClient,
+      openImportedThread,
+      getDiagnostics,
+    ),
     createAppearanceSettingsPage(messages, getLoadedSessionsClient),
     createPluginsSettingsPage(messages, getDiagnostics),
     updatesPage(messages, getUpdateClient),

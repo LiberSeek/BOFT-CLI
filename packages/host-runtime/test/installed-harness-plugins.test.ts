@@ -30,6 +30,7 @@ const classes = {
   "cursor-cli": "CursorAdapter",
   qoder: "QoderAdapter",
   "qoder-cn": "QoderAdapter",
+  zcode: "ZcodeAdapter",
 };
 
 const unavailable: HarnessInspection = {
@@ -132,6 +133,7 @@ describe("installed Harness composition", () => {
       "kimi-code": ["/compact", "/status", "/usage", "/mcp", "/tasks", "/help"],
       qoder: ["/compact"],
       "qoder-cn": ["/compact"],
+      zcode: ["/compact", "/goal"],
     };
     const registry = await load();
     try {

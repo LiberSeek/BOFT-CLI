@@ -63,7 +63,7 @@
 
 **下载安装包**（macOS、Windows）
 
-前往 [最新版本](https://github.com/LiberSeek/BOFT-CLI/releases/latest) 下载与系统和 CPU 架构匹配的安装包：macOS 选择 DMG，Windows 选择 EXE。也支持 [x64/ARM64 Linux](docs/linux.zh-CN.md)。
+前往 [最新版本](https://github.com/LiberSeek/BOFT-CLI/releases/latest) 下载与系统和 CPU 架构匹配的安装包：macOS 选择 DMG，Windows 选择 EXE。也支持 [x64/ARM64 Linux](docs/platforms/linux/linux.zh-CN.md)。
 
 或使用 npm：
 
@@ -79,6 +79,8 @@ xattr -d com.apple.quarantine /Applications/BOFT.app
 ```
 
 然后再打开 BOFT。
+
+运行 `boft update` 可在终端检查最新版本并准备更新。有可用更新时请先退出 Codex Desktop；准备完成后，后台 updater 安装更新并重新启动 BOFT。已是最新版本时直接退出。
 
 <details>
 <summary>其他安装问题</summary>
@@ -197,7 +199,7 @@ xattr -d com.apple.quarantine /Applications/BOFT.app
 | 斜杠命令 | 原生 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 修订上一条消息 | 原生 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-> **Antigravity：**¹ 仅提供 **Skip permissions（危险）**，使用原生 `--dangerously-skip-permissions`；BOFT CLI 不添加工具审批、权限规则或工作区读写限制，请仅在可信环境中使用。旧的 Configured permissions / Desktop approvals 不再支持，需明确选择 Skip permissions。提问仍支持单选和文本，子代理支持原生卡片与只读过程记录。详见[权限说明](docs/antigravity-tool-approval.md)和[子代理说明](docs/antigravity-subagents.md)。
+> **Antigravity：**¹ 仅提供 **Skip permissions（危险）**，使用原生 `--dangerously-skip-permissions`；BOFT CLI 不添加工具审批、权限规则或工作区读写限制，请仅在可信环境中使用。旧的 Configured permissions / Desktop approvals 不再支持，需明确选择 Skip permissions。提问仍支持单选和文本，子代理支持原生卡片与只读过程记录。详见[权限说明](docs/harnesses/antigravity/antigravity-tool-approval.md)和[子代理说明](docs/harnesses/antigravity/antigravity-subagents.md)。
 
 > **CodeBuddy：** 支持多轮会话、可写恢复、取消后继续，以及原生子代理卡片和只读过程记录（含后台子代理观察）。模型／思考／权限选项以 CLI 原生目录为准。
 >
@@ -207,7 +209,7 @@ xattr -d com.apple.quarantine /Applications/BOFT.app
 >
 > ⁴ 展示原生 Token、上下文用量与 Credits；Credits 不是美元，账号剩余额度尚未接入。
 >
-> 表中的 — 表示 Host 尚未接入对应能力，不代表 CLI 本身没有。图片输入和 Teams 专用界面也未接入。版本、远程运行条件和验证范围见 [CodeBuddy 接入说明](docs/codebuddy-harness-integration.md)。Cursor CLI 仍为实验性接入，见 [Cursor CLI 实验说明](docs/cursor-cli-experimental.md)。Kimi 的 Fork 为部分支持。
+> 表中的 — 表示 Host 尚未接入对应能力，不代表 CLI 本身没有。图片输入和 Teams 专用界面也未接入。版本、远程运行条件和验证范围见 [CodeBuddy 接入说明](docs/harnesses/codebuddy/codebuddy-harness-integration.md)。Cursor CLI 仍为实验性接入，见 [Cursor CLI 实验说明](docs/harnesses/cursor/cursor-cli-experimental.md)。Kimi 的 Fork 为部分支持。
 
 ## 跨 Agent 协作
 
@@ -294,6 +296,8 @@ cd BOFT-CLI
 npm ci
 npm start
 ```
+
+使用 `npm start 0.7.8` 可以为当前源码指定运行版本，也接受 `0.7.9-rc.1` 等预发布版本。Host 状态、控制台和更新检查会使用该版本；未指定时仍为 `<workspace-version>-dev`。构建一次后，可用 `npm start 0.7.8 -- --no-build` 复用产物。版本覆盖仅对本次启动生效，不修改版本文件或发布包。源码安装仍不支持自更新；远程 npm 安装会下载对应版本的已发布包。
 
 ### 运行架构
 

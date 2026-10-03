@@ -27,6 +27,7 @@ export const RENDERER_PROBE_AGENTS = Object.freeze([
   "kiro-cli",
   "qoder",
   "qoder-cn",
+  "zcode",
 ]);
 
 function usage() {

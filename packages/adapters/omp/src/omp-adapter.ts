@@ -86,6 +86,7 @@ import {
 } from "./omp-slash-commands.js";
 import { mapOmpSnapshot, resolveOmpForkBoundary, type OmpSessionHistory } from "./omp-history.js";
 import { readOmpSessionHistory } from "./omp-session-file.js";
+import { OmpSessionImport } from "./session-import.js";
 import { rollbackOmpLastTurn } from "./omp-last-turn-rollback.js";
 import {
   OmpRpcFaultError,
@@ -2223,6 +2224,7 @@ export class OmpAdapter implements HarnessAdapter {
   readonly commandCatalog = ompCommandCatalog;
   readonly liveCommandCatalog = true;
   readonly harnessId: HarnessId = ompHarnessId;
+  readonly sessionImport: OmpSessionImport;
   readonly subagents: HarnessSubagentCapability = {
     readSnapshot: async (input) => {
       if (
@@ -2301,6 +2303,7 @@ export class OmpAdapter implements HarnessAdapter {
     },
   ) {
     this.#createTransport = dependencies.createTransport;
+    this.sessionImport = new OmpSessionImport({ ...process.env, ...options.environment });
     this.#closeTimeoutMs = options.closeTimeoutMs ?? 2_000;
     this.#toolOutputLimit = options.toolOutputLimit ?? DEFAULT_TOOL_OUTPUT_LIMIT;
   }
@@ -2637,6 +2640,7 @@ export class OmpAdapter implements HarnessAdapter {
   close(): Promise<void> {
     if (!this.#closePromise) {
       this.#closePromise = Promise.all([
+        this.sessionImport.close(),
         ...[...this.#inspections].map((transport) => transport.close()),
         ...[...this.#sessions].map((session) => session.close()),
       ]).then(() => undefined);
