@@ -22,7 +22,9 @@ async function fixture(remote = false) {
   const pkg = path.join(root, "node_modules/@liberseek/boft-cli-darwin-arm64");
   const runtimePath = path.join(pkg, "app/host-runtime.mjs");
   await Promise.all(
-    ["app", "libexec", "../boft-cli/bin"].map((dir) => mkdir(path.join(pkg, dir), { recursive: true })),
+    ["app", "libexec", "../boft-cli/bin"].map((dir) =>
+      mkdir(path.join(pkg, dir), { recursive: true }),
+    ),
   );
   await writeFile(runtimePath, "// build one");
   await writeFile(path.join(pkg, "libexec/boft-updater"), "fixture");

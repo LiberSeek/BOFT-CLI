@@ -278,7 +278,9 @@ export class ZcodeSession implements HarnessSession {
           !command.input.some((item) => item.type === "text" && item.text.trim())
         )
           return failure("invalidRequest", "ZCode requires nonempty text and a turn ID");
-        const content = command.input.map((item) => (item.type === "text" ? item.text : "")).join("\n\n");
+        const content = command.input
+          .map((item) => (item.type === "text" ? item.text : ""))
+          .join("\n\n");
         const nativeCommand = /^\/(compact|goal)(?:\s+([\s\S]*))?$/u.exec(content.trim());
         if (nativeCommand?.[1])
           return this.#command({

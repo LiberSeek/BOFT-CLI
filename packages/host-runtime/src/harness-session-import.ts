@@ -170,7 +170,10 @@ export class HarnessSessionImporter {
     }
     const existing = this.#mappedRecord(records, nativeSessionId);
     // A stale page or a direct request must not turn a replaced Session into a second Thread.
-    if (!existing && this.#repository.supersededNativeSessionIds(this.#harnessId).has(nativeSessionId))
+    if (
+      !existing &&
+      this.#repository.supersededNativeSessionIds(this.#harnessId).has(nativeSessionId)
+    )
       return { ok: false, error: fixedError(-32079, "Native Session is no longer available") };
     const capability = this.#capability;
     if (existing) {

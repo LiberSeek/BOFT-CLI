@@ -1226,16 +1226,20 @@ export function createConnectionsSettingsPage(
       };
 
       render(diagnostics?.snapshot() ?? null);
-      void getRemoteConnections()?.ssh.list(context.signal).then(
-        (connections) => {
-          if (context.signal.aborted) return;
-          for (const connection of connections) {
-            hostNames.set(connection.hostId, connection.displayName.trim());
-          }
-          render(diagnostics?.snapshot() ?? null);
-        },
-        () => { /* Keep the Host ID fallback when native names are unavailable. */ },
-      );
+      void getRemoteConnections()
+        ?.ssh.list(context.signal)
+        .then(
+          (connections) => {
+            if (context.signal.aborted) return;
+            for (const connection of connections) {
+              hostNames.set(connection.hostId, connection.displayName.trim());
+            }
+            render(diagnostics?.snapshot() ?? null);
+          },
+          () => {
+            /* Keep the Host ID fallback when native names are unavailable. */
+          },
+        );
       // Keep the Main / More grouping in sync with any other open picker or
       // settings instance (e.g. the Agent picker's "Manage" shortcut).
       const unsubscribeGroup = groupPreference.subscribe(() =>
