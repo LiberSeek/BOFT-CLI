@@ -59,8 +59,8 @@ export const REMOTE_FAILURE_CHINESE: Readonly<Record<string, string>> = Object.f
   "Unexpected SSH inspection response": "SSH 检测返回了无法识别的结果",
   "SSH installation failed; check the remote computer and retry":
     "SSH 安装失败，请检查远程电脑后重试",
-  "SSH installation helper is unavailable. Update local codexhost and restart.":
-    "SSH 安装组件不可用，请更新本机 codexhost 后重启",
+  "SSH installation helper is unavailable. Update local BOFT and restart.":
+    "SSH 安装组件不可用，请更新本机 BOFT 后重启",
   "SSH installation must run from the local computer": "SSH 安装只能从本机发起",
   "An SSH operation is already running for this connection": "这个连接已有 SSH 操作正在进行",
 
